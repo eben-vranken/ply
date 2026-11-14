@@ -1,11 +1,11 @@
 <script lang="ts">
   // An opening's sigil: the path its first moves trace across the board, inlaid in a birch tile.
-  import { squaresOf } from './demo';
+  // path is UCI from the start position
   interface Props { path: string[]; hue?: string; size?: number; flip?: boolean; bare?: boolean; draw?: boolean }
   let { path, hue = '#2b4bee', size = 56, flip = false, bare = false, draw = false }: Props = $props();
 
   const segs = $derived(
-    squaresOf(path).map(([a, b], i) => {
+    path.map((u) => [u.slice(0, 2), u.slice(2, 4)] as const).map(([a, b], i) => {
       const xy = (s: string) => {
         const f = s.charCodeAt(0) - 97, r = +s[1] - 1;
         return [(flip ? 7 - f : f) * 10 + 5, (flip ? r : 7 - r) * 10 + 5];

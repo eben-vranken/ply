@@ -1,4 +1,5 @@
-// App state for the design build: persisted to localStorage (Dexie comes with the real SRS engine).
+// Settings and navigation. Settings live in Dexie (`settings` table) with a
+// localStorage copy so the theme is known before first paint.
 const KEY = 'ply-state-v1';
 
 const defaults = {
@@ -13,9 +14,9 @@ const defaults = {
   maxReviews: 150,
   hardSeconds: 10,
   retention: 90,
-  depth: 0, // 0 = auto
+  depth: 0, // 0 = auto by rating
   replyPct: 3,
-  band: 0, // 0 = auto
+  band: 0, // 0 = auto (chess.com rapid + 350)
   timeClasses: ['Rapid'] as string[],
   rollover: 4,
   sounds: true,
@@ -23,20 +24,37 @@ const defaults = {
   delay: 400,
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
-  streak: 12,
-  doneToday: 0,
-  sessionAt: 0,
+  // growing with rating
+  rating: 0, // last chess.com rapid rating
+  autoBand: 1200, // band the app is on in auto mode
+  pendingBand: 0, // a different band seen since pendingSince
+  pendingSince: 0,
+  bandNotice: '',
+  // day bookkeeping
   extraNew: 0,
-  lastBackup: 0
+  extraDay: 0,
+  lastBackup: 0,
+  lastSync: 0,
+  syncedArchives: [] as string[]
 };
 export type Settings = typeof defaults;
+export const DEFAULTS: Readonly<Settings> = defaults;
 
 function load(): Settings {
   try { return { ...defaults, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }; } catch { return { ...defaults }; }
 }
 export const app = $state<Settings>(load());
-export function save() { try { localStorage.setItem(KEY, JSON.stringify(app)); } catch { /* private mode */ } }
-export function resetAll() { Object.assign(app, defaults); save(); }
+
+let mirror: ((s: Settings) => void) | null = null;
+/** db.ts registers the Dexie mirror once it is open. */
+export function onSave(fn: (s: Settings) => void) { mirror = fn; }
+export function save() {
+  const snap = $state.snapshot(app) as Settings;
+  try { localStorage.setItem(KEY, JSON.stringify(snap)); } catch { /* private mode */ }
+  mirror?.(snap);
+}
+export function replaceSettings(s: Partial<Settings>) { Object.assign(app, defaults, s); save(); }
+export function resetSettings() { Object.assign(app, defaults); save(); }
 
 // hash router
 export const route = $state({ path: location.hash.slice(1) || '/today', dir: 1 });
@@ -48,6 +66,15 @@ addEventListener('hashchange', () => {
 });
 export const go = (p: string) => { location.hash = p; };
 
-// what the trainer should run next (set by Today / Explore / Stats before navigating)
-import type { Item } from './demo';
-export const run = $state<{ items: Item[]; mode: 'today' | 'learn' | 'drill'; title: string }>({ items: [], mode: 'today', title: '' });
+// what the trainer runs next (set by Today / Explore / Stats before navigating)
+import type { Item } from './session';
+export interface Run {
+  items: Item[];
+  mode: 'today' | 'learn' | 'drill';
+  title: string;
+  /** more items when the list runs out (Learn rounds, Drill, re-queued learning cards) */
+  more?: (missed: Item[]) => Promise<Item[]> | Item[];
+  /** Drill: called with the summary when stopped */
+  rare?: boolean;
+}
+export const run = $state<Run>({ items: [], mode: 'today', title: '' });

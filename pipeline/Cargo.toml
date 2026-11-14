@@ -1,0 +1,24 @@
+[package]
+name = "ply-data"
+version = "1.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+description = "Builds Ply's opening tree, trap and puzzle data from the Lichess open databases"
+
+[dependencies]
+shakmaty = "0.30"
+pgn-reader = "0.29"
+zstd = "0.13"
+ureq = "3"
+ahash = "0.8"
+flate2 = "1"
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+crossbeam-channel = "0.5"
+
+[profile.release]
+opt-level = 3
+debug = 1

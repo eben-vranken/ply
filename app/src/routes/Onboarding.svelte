@@ -1,22 +1,24 @@
 <script lang="ts">
   import { app, save } from '../lib/state.svelte';
+  import { chooseStarter } from '../lib/model.svelte';
+  import { syncNow } from '../lib/import/sync.svelte';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
 
   let step = $state(0);
-  const S = (s: string) => s.split(' ');
+  const S = (s: string) => s.split(' '); // UCI
   const picks = [
     { key: 'white' as const, title: 'As White', opts: [
-      { v: 'Italian Game', sub: '1.e4, Giuoco Piano', path: S('e4 e5 Nf3 Nc6 Bc4 Bc5'), hue: '#2b4bee', flip: false },
-      { v: "Queen's Gambit", sub: '1.d4 and 2.c4', path: S('d4 d5 c4 e6 Nc3 Nf6'), hue: '#7a3fc4', flip: false }
+      { v: 'Italian Game', sub: '1.e4, Giuoco Piano', path: S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5'), hue: '#2b4bee', flip: false },
+      { v: "Queen's Gambit", sub: '1.d4 and 2.c4', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#7a3fc4', flip: false }
     ] },
     { key: 'blackE4' as const, title: 'As Black against 1.e4', opts: [
-      { v: '1...e5', sub: 'Open games', path: S('e4 e5 Nf3 Nc6 Bb5 a6'), hue: '#cf331c', flip: true },
-      { v: 'Sicilian Defense', sub: '1...c5', path: S('e4 c5 Nf3 d6 d4 cxd4'), hue: '#0b7f93', flip: true }
+      { v: '1...e5', sub: 'Open games', path: S('e2e4 e7e5 g1f3 b8c6 f1b5 a7a6'), hue: '#cf331c', flip: true },
+      { v: 'Sicilian Defense', sub: '1...c5', path: S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4'), hue: '#0b7f93', flip: true }
     ] },
     { key: 'blackD4' as const, title: 'As Black against 1.d4', opts: [
-      { v: "Queen's Gambit Declined", sub: '1...d5 and 2...e6', path: S('d4 d5 c4 e6 Nc3 Nf6'), hue: '#0f7a55', flip: true },
-      { v: "King's Indian", sub: '1...Nf6 and 2...g6', path: S('d4 Nf6 c4 g6 Nc3 Bg7'), hue: '#b9770a', flip: true }
+      { v: "Queen's Gambit Declined", sub: '1...d5 and 2...e6', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#0f7a55', flip: true },
+      { v: "King's Indian", sub: '1...Nf6 and 2...g6', path: S('d2d4 g8f6 c2c4 g7g6 b1c3 f8g7'), hue: '#b9770a', flip: true }
     ] }
   ];
   const limits = [
@@ -25,7 +27,15 @@
     { k: 'maxReviews' as const, label: 'Most reviews a day', max: 999, note: 'The rest roll to tomorrow', step: 10, min: 20 }
   ];
   const bump = (l: (typeof limits)[number], d: number) => { app[l.k] = Math.min(l.max, Math.max(l.min ?? 0, app[l.k] + d * (l.step ?? 1))); };
-  function finish() { app.onboarded = true; save(); }
+  let busy = $state(false);
+  async function finish() {
+    busy = true;
+    app.username = app.username.trim();
+    save();
+    await chooseStarter();
+    app.onboarded = true; save();
+    if (app.username) void syncNow();
+  }
 </script>
 
 <div class="ob" class:night={step === 0}>
@@ -35,9 +45,9 @@
     <div class="body">
       {#if step === 0}
         <div class="hero" aria-hidden="true">
-          <div class="tile t1"><Sigil path={S('e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6')} size={200} draw /></div>
-          <div class="tile t2"><Sigil path={S('d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7')} size={128} hue="#0f7a55" flip /></div>
-          <div class="tile t3"><Sigil path={S('e4 c5 Nf3 d6 d4 cxd4 Nxd4 Nf6')} size={104} hue="#cf331c" /></div>
+          <div class="tile t1"><Sigil path={S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6')} size={200} draw /></div>
+          <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={128} hue="#0f7a55" flip /></div>
+          <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={104} hue="#cf331c" /></div>
         </div>
         <h1 class="t-name hl">Openings that stay learned.</h1>
         <p class="lead">Ply drills the lines people at your rating really play, the traps inside them, and the mistakes from your own games. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
@@ -80,7 +90,7 @@
 
   <footer>
     {#if step > 0}<button class="btn quiet" onclick={() => step--} aria-label="Back"><Icon name="back" size={20} /></button>{/if}
-    <button class="btn big grow {step === 0 ? 'sun' : ''}" onclick={() => (step < 3 ? step++ : finish())}>
+    <button class="btn big grow {step === 0 ? 'sun' : ''}" disabled={busy} onclick={() => (step < 3 ? step++ : finish())}>
       {step === 0 ? 'Set up Ply' : step === 3 ? (app.username ? 'Start training' : 'Skip and start') : 'Continue'}
     </button>
   </footer>

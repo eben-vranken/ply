@@ -9,7 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
-      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2}'] },
+      // app shell and the engine are precached; opening data lives in IndexedDB, not the SW cache
+      workbox: { globPatterns: ['**/*.{js,css,html,svg,png,woff2,wasm}'], globIgnores: ['data/**'], maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, navigateFallbackDenylist: [/\/data\//] },
       manifest: {
         name: 'Ply',
         short_name: 'Ply',

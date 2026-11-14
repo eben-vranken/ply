@@ -1,47 +1,119 @@
 <script lang="ts">
   import { Chess } from 'chess.js';
-  import { route, go, run } from '../lib/state.svelte';
-  import { TREE, MY, LINES, epdOf, nameOf, evalGlyph, evalText, type Side, type Item, type Stage } from '../lib/demo';
+  import { route, go, run, app } from '../lib/state.svelte';
+  import { model, data, movesAt, nameOf, stageAt, deviations, adoptPath, learnRound, subtreeNew, subtreeTraps, drillLine, drillTrapItems, trapPreview, puzzlePreview, getCtx } from '../lib/model.svelte';
+  import { epdAfter, epdOf, child, san, sans, turnOf, evalGlyph, evalText, fenOf, dests as destsOf, type Side } from '../lib/chess';
+  import { replies } from '../lib/srs/lines';
+  import type { Item } from '../lib/session';
   import Board from '../lib/Board.svelte';
   import Icon from '../lib/Icon.svelte';
   import Plies from '../lib/Plies.svelte';
+  import MoveEditor from '../lib/MoveEditor.svelte';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   let side = $state<Side>((q.get('side') as Side) ?? 'w');
   let path = $state<string[]>(q.get('p')?.split(' ').filter(Boolean) ?? []);
   let search = $state('');
   let toast = $state('');
-
-  const pos = $derived.by(() => {
-    const c = new Chess();
-    let last: [string, string] | null = null;
-    for (const m of path) { const mv = c.move(m); last = [mv.from, mv.to]; }
-    return { fen: c.fen(), last, turn: c.turn() as Side };
+  let editing = $state(false);
+  let confirmDev = $state<{ epd: string; uci: string; ply: number }[] | null>(null);
+  let drillOpen = $state(false);
+  let rare = $state(false);
+  let preview = $state<'punish' | 'danger' | 'puzzles' | null>(null);
+  let showRare = $state(false);
+  // follow the URL when another screen (or a link here) opens a position
+  let lastRoute = route.path;
+  $effect(() => {
+    const r = route.path;
+    if (r === lastRoute || !r.startsWith('/explore')) return;
+    lastRoute = r;
+    const p = new URLSearchParams(r.split('?')[1] ?? '');
+    side = (p.get('side') as Side) ?? side;
+    path = p.get('p')?.split(' ').filter(Boolean) ?? [];
   });
-  const node = $derived(TREE.get(epdOf(pos.fen)));
-  const name = $derived(nameOf(path));
-  const mine = $derived(pos.turn === side ? (MY[side].get(epdOf(pos.fen)) ?? []) : []);
-  const below = $derived(LINES.filter((l) => l.side === side && l.san.length > path.length && path.every((m, i) => l.san[i] === m)));
-  const PUNISH = new Set(['e4 e5 Nf3 Nc6 Bc4 Nf6 Ng5 d5 exd5 Nxd5', 'e4 e5 Nf3 Nc6 Bc4 Bc5 c3 Nf6 d4 exd4 cxd4 Bb4+']);
-  const DANGER = new Set(['e4 e5 Qh5 Nc6 Bc4 g6', 'e4 e5 Nf3 Nc6 Bc4 Nd4']);
-  const stageOf = (s: string): Stage => (['mature', 'young', 'learning', 'young', 'new'] as Stage[])[(s.length * 7 + s.charCodeAt(0)) % 5];
+  $effect(() => { void path; showRare = false; preview = null; });
+
+  const epd = $derived(epdAfter(path));
+  const pos = $derived.by(() => {
+    const c = new Chess(fenOf(epd));
+    const last = path.length ? [path.at(-1)!.slice(0, 2), path.at(-1)!.slice(2, 4)] as [string, string] : null;
+    return { fen: c.fen(), last, turn: turnOf(epd), check: c.inCheck(), dests: destsOf(c) };
+  });
+  const node = $derived.by(() => { void model.rev; return data()?.tree[epd]; });
+  const name = $derived(nameOf(epd, path));
+  const mine = $derived.by(() => { void model.rev; return pos.turn === side ? movesAt(side, epd) : []; });
+  const ctx = getCtx();
+  const punishAfter = $derived(new Set((node?.m ?? []).filter(([u]) => { const t = ctx?.punishAt.get(child(epd, u)); return !!t; }).map(([u]) => u)));
+  const dangerHere = $derived(new Set((data()?.traps ?? []).filter((t) => t.kind === 'danger' && t.epd === epd).map((t) => t.bait!)));
+  const rows = $derived((node?.m ?? []).map(([u, g, w, d, b]) => {
+    const t = w + d + b || 1;
+    const c = data()?.tree[child(epd, u)];
+    return { u, san: san(epd, u), g, freq: node!.g ? g / node!.g : 0, w: Math.round((w / t) * 100), d: Math.round((d / t) * 100), b: Math.round((b / t) * 100), cp: c?.e ?? null };
+  }));
+  const traps = $derived.by(() => { void model.rev; return subtreeTraps(side, path); });
+  const newBelow = $derived.by(() => { void model.rev; return subtreeNew(side, path).length; });
 
   const hits = $derived.by(() => {
     const s = search.trim().toLowerCase();
-    if (s.length < 2) return [];
-    const seen = new Set<string>();
-    return [...TREE.values()].filter((n) => n.name.toLowerCase().includes(s) && !seen.has(n.name) && seen.add(n.name)).sort((a, b) => a.path.length - b.path.length).slice(0, 6);
+    if (s.length < 2 || !data()) return [];
+    const words = s.split(/\s+/);
+    return data()!.openings.filter((o) => words.every((w) => o.name.toLowerCase().includes(w) || o.eco.toLowerCase() === w)).sort((a, b) => a.uci.length - b.uci.length).slice(0, 8);
   });
 
-  function launch(mode: 'learn' | 'drill') {
-    const items: Item[] = below
-      .map((l) => ({ kind: mode === 'learn' ? ('new' as const) : ('line' as const), side, setup: path.slice(), moves: l.san.slice(path.length), prompt: mode === 'learn' ? 'New move' : 'Your move' }))
-      .filter((it) => it.moves.some((_, i) => ((it.setup.length + i) % 2 === 0) === (side === 'w')));
-    if (!items.length) { toast = 'No lines of yours pass through here in the demo data.'; setTimeout(() => (toast = ''), 2600); return; }
-    run.items = items; run.mode = mode; run.title = name[1]; go('/train');
-  }
-  let sx = 0;
+  function say(t: string) { toast = t; setTimeout(() => (toast = ''), 2800); }
   const back = () => { if (path.length) path = path.slice(0, -1); };
+  function onBoardMove(from: string, to: string) {
+    const c = new Chess(fenOf(epd));
+    const p = c.get(from as never);
+    const promo = p?.type === 'p' && (to[1] === '8' || to[1] === '1') ? 'q' : '';
+    path = [...path, from + to + promo];
+  }
+
+  // ---------- Learn from here
+  function learn() {
+    const dev = deviations(side, path);
+    if (dev.length) { confirmDev = dev; return; }
+    startLearn();
+  }
+  async function adopt() { await adoptPath(side, path); confirmDev = null; startLearn(); }
+  function startLearn() {
+    const first = learnRound(side, path);
+    if (!first.length) { say(subtreeNew(side, path).length ? 'Nothing new to learn here yet.' : 'Every move below here is already learned or in your reviews.'); return; }
+    const at = path.slice();
+    run.items = first; run.mode = 'learn'; run.title = name[1];
+    run.more = (missed: Item[]) => {
+      const again = missed.map((m) => ({ ...m, asks: Object.fromEntries(Object.entries(m.asks).map(([k, a]) => [k, { ...a, intro: false, graded: false }])), prompt: 'Your move', spec: undefined }));
+      return [...again, ...learnRound(side, at)];
+    };
+    go('/train');
+  }
+
+  // ---------- Drill from here
+  function drill(mode: 'lines' | 'traps' | 'mixed') {
+    const at = path.slice();
+    const trapItems = drillTrapItems(side, at);
+    if (mode === 'traps' && !trapItems.length) { say('No traps or puzzles start below this position.'); return; }
+    const first = mode === 'traps' ? trapItems.slice(0, 1) : [drillLine(side, at, rare)].filter((x): x is Item => !!x);
+    if (!first.length) { say('The tree ends here: there is nothing to drill.'); return; }
+    let n = 0, ti = mode === 'traps' ? 1 : 0;
+    run.items = first; run.mode = 'drill'; run.title = name[1]; run.rare = rare;
+    run.more = () => {
+      n++;
+      const wantTrap = mode === 'traps' || (mode === 'mixed' && n % 2 === 1 && trapItems.length);
+      if (wantTrap) { const t = trapItems[ti++ % trapItems.length]; return t ? [{ ...t }] : []; }
+      const l = drillLine(side, at, rare);
+      return l ? [l] : [];
+    };
+    drillOpen = false;
+    go('/train');
+  }
+  function previewTrap(i: Item) { run.items = [i]; run.mode = 'drill'; run.title = 'Preview'; run.more = undefined; go('/train'); }
+
+  let sx = 0;
+  const pctOf = (r: { freq: number }) => Math.round(r.freq * 100);
+  const isMineRow = (u: string) => mine.includes(u);
+  const defRow = (u: string) => pos.turn === side && node?.d === u;
+  const coveredReply = (u: string) => pos.turn !== side && ctx ? replies(ctx, epd, app.replyPct / 100, 50).some(([m]) => m === u) : false;
 </script>
 
 <div class="screen">
@@ -60,8 +132,8 @@
   </label>
   {#if hits.length}
     <ul class="hits card">
-      {#each hits as h}
-        <li><button onclick={() => { path = h.path.slice(); search = ''; }}><span class="t-name">{h.name}</span><span class="eco">{h.eco}</span></button></li>
+      {#each hits as h (h.id)}
+        <li><button onclick={() => { path = h.uci.slice(); search = ''; }}><span class="t-name">{h.name}</span><span class="eco">{h.eco}</span></button></li>
       {/each}
     </ul>
   {/if}
@@ -70,47 +142,64 @@
     <p class="t-name nm">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</p>
     <div class="crumbs">
       <button class="crumb home" onclick={() => (path = [])} aria-label="Start position">Start</button>
-      {#each path as m, i}
+      {#each sans(path) as m, i}
         <button class="crumb" class:cur={i === path.length - 1} onclick={() => (path = path.slice(0, i + 1))}>{#if i % 2 === 0}<em>{i / 2 + 1}.</em>{/if}{m}</button>
       {/each}
     </div>
   </div>
 
   <div class="bw" role="presentation" ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
-    <Board fen={pos.fen} {side} lastMove={pos.last} />
+    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} onmove={onBoardMove} />
   </div>
 
   <div class="acts">
     <button class="btn quiet sq" onclick={back} disabled={!path.length} aria-label="Step back"><Icon name="back" /></button>
-    <button class="btn grow" onclick={() => launch('learn')}>Learn from here</button>
-    <button class="btn quiet grow" onclick={() => launch('drill')}>Drill</button>
+    <button class="btn grow" onclick={learn}>Learn from here</button>
+    <button class="btn quiet grow" onclick={() => (drillOpen = !drillOpen)} aria-expanded={drillOpen}>Drill</button>
   </div>
+  {#if drillOpen}
+    <div class="card drillbox">
+      <div class="row" style="gap:8px">
+        <button class="btn sm grow" onclick={() => drill('lines')}>Lines</button>
+        <button class="btn sm quiet grow" onclick={() => drill('traps')}>Traps</button>
+        <button class="btn sm quiet grow" onclick={() => drill('mixed')}>Mixed</button>
+      </div>
+      <label class="rr"><span class="grow"><b>Rare replies</b><br /><span class="t-small">Pick evenly among every reply ≥ {app.replyPct}%</span></span><input type="checkbox" role="switch" bind:checked={rare} /></label>
+      <p class="t-small">Drill never changes your schedule.</p>
+    </div>
+  {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
 
   <section class="card list">
-    {#if node?.moves.length}
+    {#if rows.length}
       <div class="lh"><span>Move</span><span>Played</span><span>Results</span><span>Eval</span></div>
-      {#each node.moves as m, i (m.san)}
-        {@const key = [...path, m.san].join(' ')}
-        <button class="mv" onclick={() => (path = [...path, m.san])}>
+      {#each showRare ? rows : rows.slice(0, 8) as m (m.u)}
+        {@const st = isMineRow(m.u) ? stageAt(side, epd, m.u) : null}
+        <button class="mv" class:out={pos.turn !== side && !coveredReply(m.u)} onclick={() => (path = [...path, m.u])}>
           <span class="san">
             {m.san}
             <span class="marks">
-              {#if mine.includes(m.san)}<span class="mk star" title="Your move"><Icon name="star" size={14} fill /></span><Plies stage={stageOf(key)} size={14} />
-              {:else if i === 0 && pos.turn === side}<span class="mk dot" title="Default move"></span>{/if}
-              {#if PUNISH.has(key)}<span class="mk sw" title="A Punish trap follows"><Icon name="sword" size={14} /></span>{/if}
-              {#if DANGER.has(key)}<span class="mk wr" title="Danger: popular but losing"><Icon name="warn" size={14} /></span>{/if}
+              {#if isMineRow(m.u)}<span class="mk star" title="Your move"><Icon name="star" size={14} fill /></span>{#if st}<Plies stage={st} size={14} />{/if}
+              {:else if defRow(m.u)}<span class="mk dot" title="Default move"></span>{/if}
+              {#if punishAfter.has(m.u)}<span class="mk sw" title="A Punish trap follows"><Icon name="sword" size={14} /></span>{/if}
+              {#if dangerHere.has(m.u)}<span class="mk wr" title="Danger: popular but losing"><Icon name="warn" size={14} /></span>{/if}
             </span>
           </span>
-          <span class="pct"><b>{Math.round(m.freq * 100)}%</b><small>{m.games.toLocaleString('en')}</small></span>
+          <span class="pct"><b>{pctOf(m)}%</b><small>{m.g.toLocaleString('en')}</small></span>
           <span class="wdl" role="img" aria-label="White {m.w}%, draw {m.d}%, Black {m.b}%"><i class="w" style="width:{m.w}%"></i><i class="d" style="width:{m.d}%"></i><i class="b" style="width:{m.b}%"></i></span>
-          <span class="ev"><b>{evalGlyph(m.cp)}</b><small>{evalText(m.cp)}</small></span>
+          <span class="ev">{#if m.cp !== null}<b>{evalGlyph(m.cp)}</b><small>{evalText(m.cp)}</small>{:else}<small>—</small>{/if}</span>
         </button>
       {/each}
+      {#if rows.length > 8}
+        <button class="more" onclick={() => (showRare = !showRare)}>{showRare ? 'Show fewer moves' : `Show ${rows.length - 8} rarer move${rows.length === 9 ? '' : 's'}`}</button>
+      {/if}
+      {#if pos.turn === side}
+        <button class="edit" onclick={() => (editing = true)}><Icon name="star" size={16} /> {mine.length > 1 ? 'Edit your moves here' : 'Change your move or add a second'}</button>
+      {/if}
     {:else}
       <div class="empty">
         <p class="t-head">The book ends here</p>
-        <p class="t-small">Fewer than 50 games at your band reach this position, so there is nothing reliable to show.</p>
+        <p class="t-small">Fewer than 50 games at the {model.band} band reach this position, so there is nothing reliable to show.</p>
       </div>
     {/if}
   </section>
@@ -121,18 +210,45 @@
     <span><span class="mk sw"><Icon name="sword" size={13} /></span>Punish follows</span>
     <span><span class="mk wr"><Icon name="warn" size={13} /></span>Danger</span>
   </p>
+  {#if node}
+    <p class="t-small foot">{node.g.toLocaleString('en')} games at the {model.band} band reach this position · eval {evalText(node.e)} · {newBelow} new move{newBelow === 1 ? '' : 's'} below for you</p>
+  {/if}
 
   <div class="sect"><h2 class="t-head">Traps below this position</h2></div>
   <section class="card traps">
-    {#if below.length}
-      <div><b class="t-num">{Math.max(1, Math.round(below.length * 0.8))}</b><span>Punish</span></div>
-      <div><b class="t-num">{Math.ceil(below.length / 3)}</b><span>Danger</span></div>
-      <div><b class="t-num">{below.length * 4 + 3}</b><span>Puzzles</span></div>
+    {#if traps.punish.length + traps.danger.length + traps.puzzles.length}
+      <button onclick={() => (preview = preview === 'punish' ? null : 'punish')} disabled={!traps.punish.length}><b class="t-num">{traps.punish.length}</b><span>Punish</span></button>
+      <button onclick={() => (preview = preview === 'danger' ? null : 'danger')} disabled={!traps.danger.length}><b class="t-num">{traps.danger.length}</b><span>Danger</span></button>
+      <button onclick={() => (preview = preview === 'puzzles' ? null : 'puzzles')} disabled={!traps.puzzles.length}><b class="t-num">{traps.puzzles.length}</b><span>Puzzles</span></button>
     {:else}
-      <p class="t-small">No traps or puzzles start below this position.</p>
+      <p class="t-small">No traps or puzzles for {side === 'w' ? 'White' : 'Black'} start below this position.</p>
     {/if}
   </section>
+  {#if preview}
+    <ul class="card plist">
+      {#each (preview === 'puzzles' ? traps.puzzles.slice(0, 12).map(puzzlePreview) : (preview === 'punish' ? traps.punish : traps.danger).slice(0, 12).map(trapPreview)) as it}
+        <li><button onclick={() => previewTrap(it)}><span class="grow"><span class="t-name pn">{it.label}</span><span class="t-small">{it.source}</span></span><Icon name="play" size={18} /></button></li>
+      {/each}
+    </ul>
+  {/if}
 </div>
+
+{#if editing}<MoveEditor {side} {epd} onclose={() => (editing = false)} />{/if}
+
+{#if confirmDev}
+  <div class="sheet-bg" role="presentation" onclick={() => (confirmDev = null)}></div>
+  <div class="dialog card" role="dialog" aria-label="Different from your repertoire">
+    <h2 class="t-title">Not your repertoire</h2>
+    <p class="t-small">The path here plays {confirmDev.length === 1 ? 'a move' : 'moves'} you don't play:</p>
+    <ul>
+      {#each confirmDev as d}<li><b>{sans(path.slice(0, d.ply + 1)).slice(-1)[0]}</b> instead of <b>{movesAt(side, d.epd).map((u) => san(d.epd, u)).join(' / ') || '—'}</b></li>{/each}
+    </ul>
+    <div class="row" style="gap:10px;margin-top:14px">
+      <button class="btn quiet grow" onclick={() => (confirmDev = null)}>Cancel</button>
+      <button class="btn grow" onclick={adopt}>Set as my repertoire</button>
+    </div>
+  </div>
+{/if}
 
 <style>
   .seg { display: flex; background: var(--card); border-radius: 14px; padding: 4px; box-shadow: var(--shadow); }
@@ -161,6 +277,13 @@
   .acts { display: flex; gap: 10px; margin: 20px 0 6px; }
   .acts .btn { padding: 0 14px; font-size: 16px; white-space: nowrap; }
   .acts .sq { width: 52px; padding: 0; }
+  .drillbox { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; animation: rise 200ms var(--ease) both; }
+  .btn.sm { min-height: 46px; font-size: 15px; }
+  .rr { display: flex; align-items: center; gap: 12px; min-height: 52px; }
+  input[role='switch'] { appearance: none; width: 54px; height: 32px; border-radius: 16px; background: var(--st-new); position: relative; transition: background 160ms; flex: none; }
+  input[role='switch']::after { content: ''; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 4px rgba(21, 25, 54, 0.3); transition: transform 220ms var(--spring); }
+  input[role='switch']:checked { background: var(--cobalt); }
+  input[role='switch']:checked::after { transform: translateX(22px); }
   .toast { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
 
   .list { padding: 6px 6px 8px; margin-top: 16px; }
@@ -169,6 +292,7 @@
   .lh span:last-child { text-align: right; }
   .mv { width: 100%; min-height: 54px; text-align: left; border-radius: 16px; border-top: 1px solid var(--ground); }
   .mv:active { background: var(--ground); }
+  .mv.out .san, .mv.out .pct { opacity: 0.6; }
   .san { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; }
   .marks { display: flex; align-items: center; gap: 4px; }
   .mk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; flex: none; }
@@ -180,11 +304,23 @@
   .pct small, .ev small { font-size: 11.5px; color: var(--ink-3); }
   .ev { text-align: right; }
   .ev b { font-size: 17px; font-weight: 600; }
+  .more { width: 100%; min-height: 44px; padding: 0 12px; text-align: left; font-size: 14px; font-weight: 650; color: var(--ink-2); border-top: 1px solid var(--ground); }
+  .edit { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; padding: 0 12px; margin-top: 4px; border-top: 1px solid var(--ground); font-weight: 650; color: var(--accent-text); }
   .empty { padding: 22px 14px; }
   .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 6px 0; font-size: 12.5px; color: var(--ink-2); }
   .legend > span { display: inline-flex; align-items: center; gap: 5px; }
+  .foot { padding: 8px 6px 0; }
   .traps { display: flex; gap: 8px; }
-  .traps div { flex: 1; display: flex; flex-direction: column; }
+  .traps button { flex: 1; display: flex; flex-direction: column; align-items: flex-start; text-align: left; min-height: 56px; border-radius: 12px; }
+  .traps button:disabled { opacity: 0.5; }
   .traps b { font-size: 28px; }
   .traps span { font-size: 13px; color: var(--ink-2); }
+  .plist { list-style: none; margin: 10px 0 0; padding: 4px; }
+  .plist button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; min-height: 56px; padding: 6px 10px; border-radius: 12px; }
+  .plist li + li { border-top: 1px solid var(--ground); }
+  .pn { display: block; font-size: 16px; line-height: 1.15; }
+  .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(13, 16, 36, 0.45); }
+  .dialog { position: fixed; z-index: 61; left: 16px; right: 16px; top: 22%; padding: 20px; animation: rise 220ms var(--ease) both; }
+  .dialog ul { margin: 10px 0 0; padding-left: 18px; font-size: 15px; }
+  .dialog li { margin: 4px 0; }
 </style>

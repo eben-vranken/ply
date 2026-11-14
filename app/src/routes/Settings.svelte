@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { app, save, resetAll } from '../lib/state.svelte';
+  import { app, save, DEFAULTS, resetSettings } from '../lib/state.svelte';
+  import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress } from '../lib/model.svelte';
+  import { db } from '../lib/db';
+  import { makeBackup, parseBackup, restoreBackup, shareBackup, type Backup } from '../lib/backup';
+  import { sync, syncNow, importPgn } from '../lib/import/sync.svelte';
   import { sfx, buzz } from '../lib/fx';
   import Icon from '../lib/Icon.svelte';
 
@@ -17,16 +21,22 @@
       { k: 'rollover', label: 'Day rollover', min: 0, max: 6, step: 1, fmt: (v) => `0${v}:00` }
     ]],
     ['Lines', [
-      { k: 'depth', label: 'Line depth', hint: 'Your moves per line', min: 3, max: 20, step: 1, fmt: (v) => (v < 4 ? 'Auto' : `${v}`) },
+      { k: 'depth', label: 'Line depth', hint: 'Your moves per line', min: 3, max: 20, step: 1, fmt: (v) => (v < 4 ? `Auto · ${depthLimit()}` : `${v}`) },
       { k: 'replyPct', label: 'Opponent reply threshold', min: 1, max: 10, step: 1, fmt: (v) => `${v}%` },
-      { k: 'band', label: 'Rating band', hint: 'Auto is chess.com rapid + 350', min: 800, max: 2000, step: 200, fmt: (v) => (v < 1000 ? 'Auto' : `${v}`) }
+      { k: 'band', label: 'Rating band', hint: 'Auto is chess.com rapid + 350. A set band is locked', min: 800, max: 2000, step: 200, fmt: (v) => (v < 1000 ? `Auto · ${app.autoBand}` : `${v}`) }
     ]],
     ['Board and appearance', [{ k: 'delay', label: 'Opponent move delay', min: 0, max: 1500, step: 100, fmt: (v) => `${v} ms` }]]
   ];
+  let regenTimer: ReturnType<typeof setTimeout> | undefined;
   function bump(n: Num, d: number) {
     app[n.k] = Math.min(n.max, Math.max(n.min, app[n.k] + d * n.step));
     if (n.k === 'depth' && app.depth < 4) app.depth = d > 0 ? 4 : 3;
+    if (n.k === 'band' && app.band < 1000) app.band = d > 0 ? 1000 : 800;
     save(); buzz(8);
+    // limits rebuild today's queue at once; line settings regenerate the lines
+    if (n.k === 'depth' || n.k === 'replyPct') { clearTimeout(regenTimer); regenTimer = setTimeout(regenerate, 350); }
+    else if (n.k === 'band') { clearTimeout(regenTimer); regenTimer = setTimeout(() => void switchBand(currentBand()).catch((e: Error) => say(e.message)), 600); }
+    else model.rev++;
   }
   const toggles: ['sounds' | 'vibration' | 'showName', string, string?][] = [
     ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
@@ -37,24 +47,42 @@
   let status = $state('');
   let confirm = $state('');
   let asking = $state(false);
-  const say = (s: string) => { status = s; setTimeout(() => (status = ''), 3200); };
-  function sync() { say(app.username ? 'Sync needs the game analyser, which is not in this build yet.' : 'Add your chess.com username first.'); }
+  let pending = $state<Backup | null>(null);
+  let pasting = $state(false);
+  let pgn = $state('');
+  let pasteSide = $state<'auto' | 'w' | 'b'>('auto');
+  const say = (s: string) => { status = s; setTimeout(() => (status = ''), 3600); };
+  function syncClick() { if (!app.username) return say('Add your chess.com username first.'); void syncNow(); }
   async function exportBackup() {
-    const name = `ply-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    const blob = new Blob([JSON.stringify({ app: 'ply', schemaVersion: 0, exportedAt: new Date().toISOString(), tables: { settings: app } }, null, 2)], { type: 'application/json' });
-    const file = new File([blob], name, { type: 'application/json' });
-    try {
-      if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: name });
-      else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); }
-      app.lastBackup = Date.now(); save(); say('Backup exported.');
-    } catch { /* share sheet dismissed */ }
+    if (await shareBackup(await makeBackup())) { app.lastBackup = Date.now(); save(); say('Backup exported.'); }
   }
-  async function importBackup(e: Event) {
+  async function pickBackup(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];
     if (!f) return;
-    try { const j = JSON.parse(await f.text()); Object.assign(app, j.tables.settings); save(); say('Backup imported.'); } catch { say("That file isn't a Ply backup."); }
+    try { pending = parseBackup(await f.text()); } catch (err) { say((err as Error).message); }
   }
+  async function importBackup() {
+    if (!pending) return;
+    await restoreBackup(pending);
+    pending = null;
+    const s = (await db.settings.get('app'))?.value;
+    if (s) Object.assign(app, DEFAULTS, s);
+    save();
+    await reloadFromDb();
+    say('Backup imported. Lines regenerated.');
+  }
+  async function paste() {
+    try { const n = await importPgn(pgn, pasteSide); say(n ? `${n} game${n === 1 ? '' : 's'} imported. Analysing.` : 'No new games in that text.'); pgn = ''; pasting = false; }
+    catch (e) { say((e as Error).message); }
+  }
+  async function resetEverything() {
+    await resetAllProgress();
+    resetSettings();
+    location.reload();
+  }
+  const summary = $derived(sync.summary);
 </script>
+
 
 <div class="screen">
   <header class="screen-head"><h1 class="t-display">Settings</h1></header>
@@ -94,15 +122,45 @@
       <p class="lb grow">Time classes</p>
       <div class="pick">{#each classes as c}<button class:on={app.timeClasses.includes(c)} aria-pressed={app.timeClasses.includes(c)} onclick={() => flip(c)}>{c}</button>{/each}</div>
     </div>
-    <div class="r"><button class="btn quiet wide" onclick={sync}><Icon name="wifi" size={20} /> Sync now</button></div>
+    <div class="r col">
+      <button class="btn quiet wide" onclick={syncClick} disabled={sync.running}><Icon name="wifi" size={20} /> {sync.running ? 'Syncing…' : 'Sync now'}</button>
+      {#if sync.text}<p class="t-small">{sync.text}</p>{/if}
+      {#if sync.analysing && sync.total}<div class="meter"><i style="width:{(sync.done / sync.total) * 100}%"></i></div>{/if}
+      {#if summary}
+        <p class="t-small">{summary.imported} new game{summary.imported === 1 ? '' : 's'} · {summary.mistakes} mistake card{summary.mistakes === 1 ? '' : 's'} · {summary.uncovered} uncovered repl{summary.uncovered === 1 ? 'y' : 'ies'}</p>
+        {#if summary.lapsed.length}<p class="t-small">You left your repertoire here, so these cards are due again:</p><ul class="lapsed">{#each summary.lapsed as l}<li>{l}</li>{/each}</ul>{/if}
+      {/if}
+      {#if sync.error}
+        <p class="err">{sync.error}</p>
+        {#if !pasting}<button class="link" onclick={() => (pasting = true)}>Paste PGN instead</button>{/if}
+      {:else if !pasting}
+        <button class="link" onclick={() => (pasting = true)}>Paste PGN</button>
+      {/if}
+      {#if pasting}
+        <textarea class="pgn" rows="5" bind:value={pgn} placeholder="Paste one or many games in PGN"></textarea>
+        <div class="pick">
+          <button class:on={pasteSide === 'auto'} onclick={() => (pasteSide = 'auto')}>Detect</button>
+          <button class:on={pasteSide === 'w'} onclick={() => (pasteSide = 'w')}>I was White</button>
+          <button class:on={pasteSide === 'b'} onclick={() => (pasteSide = 'b')}>I was Black</button>
+        </div>
+        <button class="btn wide" onclick={paste} disabled={!pgn.trim()}>Import games</button>
+      {/if}
+    </div>
   </section>
+
 
   <div class="sect"><h2 class="t-head">Your data</h2></div>
   <section class="card rows">
     <div class="r two">
       <button class="btn grow" onclick={exportBackup}><Icon name="share" size={20} /> Export backup</button>
-      <label class="btn quiet grow">Import backup<input type="file" accept="application/json" hidden onchange={importBackup} /></label>
+      <label class="btn quiet grow">Import backup<input type="file" accept="application/json,.json" hidden onchange={pickBackup} /></label>
     </div>
+    {#if pending}
+      <div class="r col">
+        <p class="t-small">Replace everything on this phone with the backup from {pending.exportedAt.slice(0, 10)}? It holds {pending.tables.cards.length} cards and {pending.tables.reviews.length} reviews.</p>
+        <div class="row" style="gap:8px"><button class="btn quiet sm grow" onclick={() => (pending = null)}>Cancel</button><button class="btn sm grow" onclick={importBackup}>Replace and import</button></div>
+      </div>
+    {/if}
     {#if !asking}
       <div class="r"><button class="link danger" onclick={() => (asking = true)}>Reset all progress</button></div>
     {:else}
@@ -110,13 +168,13 @@
         <p class="t-small">This deletes every card, review and setting on this phone. Type RESET to confirm.</p>
         <div class="row">
           <input class="txt grow" style="text-align:left" placeholder="RESET" bind:value={confirm} autocapitalize="characters" />
-          <button class="btn sm bad" disabled={confirm !== 'RESET'} onclick={() => { resetAll(); }}>Reset</button>
+          <button class="btn sm bad" disabled={confirm !== 'RESET'} onclick={resetEverything}>Reset</button>
         </div>
       </div>
     {/if}
   </section>
   {#if status}<p class="status" role="status">{status}</p>{/if}
-  <p class="foot">Ply 1.0 design build · demo data · GPL-3.0</p>
+  <p class="foot">Ply 1.0 · opening data {model.version || '—'} · {model.band} band · GPL-3.0<br />Opening data from the Lichess open database (CC0)</p>
 </div>
 
 <style>
@@ -142,5 +200,11 @@
   .btn.sm { min-height: 44px; }
   .btn.bad { --face: var(--bad); --edge: #8f1f0e; }
   .status { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
+  .meter { height: 8px; border-radius: 4px; background: var(--ground); overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--good); }
+  .err { color: var(--bad-text); font-weight: 600; font-size: 14px; }
+  .lapsed { margin: 0; padding-left: 18px; font-size: 13px; color: var(--ink-2); }
+  .pgn { width: 100%; border: 0; border-radius: 14px; background: var(--ground); padding: 12px; font: 13px/1.4 ui-monospace, monospace; color: var(--ink); user-select: text; resize: vertical; }
+  .r.col { gap: 10px; }
   .foot { text-align: center; font-size: 12.5px; color: var(--ink-3); margin-top: 26px; }
 </style>

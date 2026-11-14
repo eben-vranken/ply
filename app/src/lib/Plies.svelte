@@ -1,7 +1,7 @@
 <script lang="ts">
   // Memory strength as veneers: new = an empty outline, learning = 1 ply, young = 2, mature = 4.
   // Shape carries the meaning, so the stage never depends on colour alone.
-  import type { Stage } from './demo';
+  import type { Stage } from './srs/fsrs';
   let { stage, size = 18 }: { stage: Stage; size?: number } = $props();
   const n = $derived({ new: 0, learning: 1, young: 2, mature: 4 }[stage]);
   const label = $derived({ new: 'New', learning: 'Learning', young: 'Young', mature: 'Mature' }[stage]);

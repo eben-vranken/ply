@@ -10,6 +10,13 @@
   import Settings from './routes/Settings.svelte';
   import Train from './routes/Train.svelte';
   import Onboarding from './routes/Onboarding.svelte';
+  import { model, boot } from './lib/model.svelte';
+  import { autoSync } from './lib/import/sync.svelte';
+  import { onMount } from 'svelte';
+
+  onMount(() => { void boot().then(() => { if (app.onboarded) void autoSync(); }); });
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => { if (model.notice) { clearTimeout(noticeTimer); noticeTimer = setTimeout(() => (model.notice = ''), 7000); } });
 
   const tabs = [
     ['/today', 'today', 'Today'],
@@ -34,7 +41,22 @@
   });
 </script>
 
-{#if !app.onboarded}
+{#if model.status !== 'ready'}
+  <div class="boot" class:err={model.status === 'error'} role="status">
+    <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    {#if model.status === 'error'}
+      <p class="t-head">Ply could not load its opening data</p>
+      <p class="t-small">{model.error}. The first launch needs a connection; after that Ply works offline.</p>
+      <button class="btn" onclick={() => location.reload()}>Try again</button>
+    {:else if model.status === 'downloading'}
+      <p class="t-head">Fetching every opening</p>
+      <div class="bar"><i style="width:{Math.round(model.progress * 100)}%"></i></div>
+      <p class="t-small">{Math.round(model.progress * 100)}% · one time, then it all lives on this phone</p>
+    {:else}
+      <p class="t-head">Laying out your lines</p>
+    {/if}
+  </div>
+{:else if !app.onboarded}
   <div out:fade={{ duration: dur }}><Onboarding /></div>
 {:else}
   {#key base}
@@ -51,6 +73,9 @@
     </div>
   {/key}
 
+  {#if model.notice && !training}
+    <button class="notice" transition:fly={{ y: -40, duration: dur }} onclick={() => (model.notice = '')}>{model.notice}</button>
+  {/if}
   {#if !training}
     <nav transition:fly={{ y: 90, duration: dur }} aria-label="Main">
       {#each tabs as [href, icon, label]}
@@ -64,6 +89,18 @@
 {/if}
 
 <style>
+  .boot { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 32px; text-align: center; background: var(--night); color: var(--night-ink); }
+  .boot .t-small { color: var(--night-ink-2); max-width: 280px; }
+  .boot .mark { display: flex; flex-direction: column; gap: 5px; margin-bottom: 18px; }
+  .boot .mark i { width: 120px; height: 14px; border-radius: 5px; background: var(--birch); animation: lay 1.4s var(--ease) infinite alternate; }
+  .boot .mark i:nth-child(2) { background: var(--birch-3); animation-delay: 120ms; }
+  .boot .mark i:nth-child(3) { animation-delay: 240ms; }
+  .boot .mark i:nth-child(4) { background: var(--sun); animation-delay: 360ms; }
+  @keyframes lay { from { transform: scaleX(0.55); opacity: 0.5; } to { transform: none; opacity: 1; } }
+  .boot.err .mark i { animation: none; }
+  .boot .bar { width: 220px; height: 8px; border-radius: 4px; background: var(--night-3); overflow: hidden; }
+  .boot .bar i { display: block; height: 100%; background: var(--sun); transition: width 200ms; }
+  .notice { position: absolute; z-index: 40; top: calc(env(safe-area-inset-top) + 10px); left: 12px; right: 12px; padding: 14px 16px; border-radius: 18px; background: var(--ink); color: var(--on-ink); font-size: 14.5px; text-align: left; box-shadow: var(--shadow); }
   .page { position: absolute; inset: 0; }
   .page.over { z-index: 20; }
   nav {

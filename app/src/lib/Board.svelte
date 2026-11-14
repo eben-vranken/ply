@@ -84,7 +84,7 @@
   });
 </script>
 
-<div class="slab" class:dark>
+<div class="slab" class:dark data-fen={fen}>
   <div class="top" bind:this={top}>
     <div class="cg-wrap" bind:this={el}></div>
     {#if badge && pos}

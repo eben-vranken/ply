@@ -50,6 +50,8 @@ Follows the phone's setting by default; Settings → Appearance switches between
 
 Slab button (`.btn`, variants quiet / sun / night, sizes default / big), card, chip, ECO tag, W/D/L bar, stepper, switch, segmented control, floating tab bar (ink, active tab in birch), Sigil, Plies (stage icon), Board (chessground with the Ply theme and a glyph badge).
 
+Added with the real build, in the same language: the first-launch screen (night ground, four birch veneers laying themselves down while the data downloads, a sun progress bar), the bottom sheet for changing your move (MoveEditor: every move with frequency, W/D/L and eval, ★ to make it yours, + for a second move), the promotion picker (four birch tiles over a dimmed board), the Learn / Drill header with a Stop button, the Drill summary (missed positions as a night card list), the Not-your-repertoire dialog, and an ink notice bar for band changes and data updates.
+
 ## Icons
 
 Own set, 24 px grid, 2 px round strokes, drawn in `src/lib/Icon.svelte`.
@@ -63,8 +65,10 @@ Own set, 24 px grid, 2 px round strokes, drawn in `src/lib/Icon.svelte`.
 | Feedback glyph pop, session-complete plies | 260–520 ms | `--spring` (overshoot) |
 | Screen change | 260 ms slide in, 130 ms fade out | cubic out |
 | Wrong move | 300 ms shake | ease-out |
+| Bottom sheet | 300 ms rise, 200 ms dim | `--ease` |
+| First-launch veneers | 1.4 s alternate while loading | `--ease` (the one loop, only while waiting) |
 
-Only actions get motion; nothing loops. `prefers-reduced-motion` collapses everything to instant.
+Only actions get motion; nothing loops except the first-launch loader. `prefers-reduced-motion` collapses everything to instant.
 
 ## Sound and haptics
 

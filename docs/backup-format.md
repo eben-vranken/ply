@@ -1,0 +1,112 @@
+# Ply backup format
+
+**Export backup** in Settings writes one JSON file, `ply-backup-YYYY-MM-DD.json`, and hands it to the Android share sheet (plain download where sharing files is not supported). **Import backup** checks the file, asks for confirmation, replaces every user table with its contents and regenerates your lines. The baked opening data is not in the backup; it is downloaded again from the site.
+
+This document is the contract for anything else that reads the file (Construct, scripts). `schemaVersion` changes whenever a Dexie migration changes a table; older backups stay importable.
+
+```ts
+interface Backup {
+  app: 'ply';
+  schemaVersion: 1;
+  exportedAt: string;          // ISO 8601
+  dataVersion?: string;        // manifest version the backup was made with
+  tables: {
+    settings: { key: string; value: unknown }[];
+    repertoire: RepRow[];
+    cards: CardRow[];
+    reviews: ReviewRow[];
+    games: GameRow[];
+  };
+}
+```
+
+Dates inside FSRS card objects are ISO strings in the file; every other time is milliseconds since the Unix epoch. Moves are UCI, positions are EPD (first four FEN fields, see `docs/DATA_CONTRACT.md`).
+
+## settings
+
+One row, `key: "app"`, whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+
+## repertoire
+
+Your moves where they differ from the tree's default move. A position not listed uses the default.
+
+```ts
+interface RepRow {
+  side: 'w' | 'b';   // which repertoire
+  epd: string;       // position, you to move
+  moves: string[];   // your moves in branch order (two or more = a branch)
+  note?: string;     // your note for the position
+}
+```
+
+## cards
+
+```ts
+interface CardRow {
+  id: string;        // 'm…' move, 't<trap id>' punish/danger, 'z<puzzle id>' puzzle, 'k…' mistake
+  type: 'move' | 'punish' | 'danger' | 'puzzle' | 'mistake';
+  side: 'w' | 'b';
+  epd: string;       // position shown (puzzles: after the opponent's first move)
+  move: string;      // expected first move
+  answer: string[];  // your moves (multi-move cards)
+  line: string[];    // full sequence with replies
+  accepted?: string[]; // mistake: every move within 30 cp of best
+  played?: string;   // mistake: the move played in the game
+  bait?: string; refute?: string[];
+  label: string;     // "Italian Game: Giuoco Piano (C50)"
+  path?: string[];   // most common move order from the start
+  source?: string;   // "Punish · played by 6% at your band", "From your game vs …"
+  fen?: string;      // puzzle start FEN
+  ref?: string;      // trap id, puzzle id or game URL
+  opening?: number;  // opening id in openings.json of the data version
+  fsrs: {            // ts-fsrs Card
+    due: string; stability: number; difficulty: number; elapsed_days: number;
+    scheduled_days: number; learning_steps: number; reps: number; lapses: number;
+    state: 0 | 1 | 2 | 3; // New, Learning, Review, Relearning
+    last_review?: string;
+  };
+  due: number;       // fsrs.due as epoch ms (indexed)
+  suspended: 0 | 1;  // retired or suspended
+  created: number;
+  lapses: number;
+  loss?: number;     // mistake: win% lost in the game
+}
+```
+
+A Move card id is a hash of side + EPD + expected move, so the same position reached by another move order is the same card, and a band or data change never loses a schedule.
+
+## reviews
+
+The full review log, kept so FSRS weights can be optimised later.
+
+```ts
+interface ReviewRow {
+  id: number;
+  cardId: string;
+  at: number;                       // epoch ms
+  rating: 1 | 2 | 3 | 4;            // Again, Hard, Good, Easy (Easy is never given)
+  ms: number;                       // time taken
+  mode: 'today' | 'learn' | 'drill-again';
+  stage: 'new' | 'learning' | 'young' | 'mature'; // before this review
+  prev?: object | null;             // FSRS card before the review (for Undo grade)
+}
+```
+
+## games
+
+```ts
+interface GameRow {
+  url: string;                      // chess.com game URL, or 'pgn:<hash>' for pasted games
+  pgn: string;
+  colour: 'w' | 'b';
+  opponent: string;
+  result: 'win' | 'loss' | 'draw';
+  date: number;
+  timeClass: string;                // rapid, blitz, daily, pasted
+  rating?: number;                  // your rating in that game
+  evals: (number | null)[];         // per ply, cp from White, null where not analysed
+  analyzed: 0 | 1;
+  mistakes?: string[];              // mistake card ids from this game
+  uncovered?: string[];             // first reply your lines did not cover (UCI path)
+}
+```

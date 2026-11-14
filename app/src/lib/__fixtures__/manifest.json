@@ -1,0 +1,85 @@
+{
+  "version": "2026-10-ddd7893",
+  "month": "2026-10",
+  "built": "2026-11-14",
+  "bands": [
+    1000,
+    1200,
+    1400,
+    1600,
+    1800,
+    2000
+  ],
+  "files": [
+    {
+      "name": "openings.json",
+      "bytes": 1148750,
+      "sha256": "c46b0cfabff995bea502c9dc5ac7c40ffe854320b018030759c7d562720a2a40"
+    },
+    {
+      "name": "tree-1000.json.gz",
+      "bytes": 9940,
+      "sha256": "9a1874b5173b24faccc94e9f48846ca00a051f569b9a94e226f5bcd8c5d9168f"
+    },
+    {
+      "name": "traps-1000.json.gz",
+      "bytes": 448,
+      "sha256": "f48b42e552a59b4f0c4bd3913ee7476b0bfa5ad297d56998fd3843cccfe8a69c"
+    },
+    {
+      "name": "tree-1200.json.gz",
+      "bytes": 15825,
+      "sha256": "2d17443b8222a8d07d1cb37e538f84b14fed37c57d71dfad3b9c0c611b89fd6d"
+    },
+    {
+      "name": "traps-1200.json.gz",
+      "bytes": 448,
+      "sha256": "2cbb9ece854752442743404206094cbcc4a060dc9800a1f1a9159da277a705b1"
+    },
+    {
+      "name": "tree-1400.json.gz",
+      "bytes": 23328,
+      "sha256": "356bd7466e7ce05b6fc1e348f37bce3c5ca052cdf6af35f69016946ddccbbd02"
+    },
+    {
+      "name": "traps-1400.json.gz",
+      "bytes": 447,
+      "sha256": "f050139095e0d0b438e72ebb74e6a1dda2d24d5fa56994c8d1768e14beb564ea"
+    },
+    {
+      "name": "tree-1600.json.gz",
+      "bytes": 28462,
+      "sha256": "10688f638a9c01456b8e6941d6b9a37410ed8cf487a58f575c0af28494d62124"
+    },
+    {
+      "name": "traps-1600.json.gz",
+      "bytes": 448,
+      "sha256": "7612a0cb742075539b01bae3166b5b153f4fa04f9c4197110cf6d824fd60ee94"
+    },
+    {
+      "name": "tree-1800.json.gz",
+      "bytes": 27642,
+      "sha256": "d0fe3cbb3f1210658dcd8c57e22abcfa6c7327d6876dbc9d93d1b19602289f01"
+    },
+    {
+      "name": "traps-1800.json.gz",
+      "bytes": 353,
+      "sha256": "a58d45df94f38518c34d27dc319a376fd3286a36aa2d10af732aae098f0131dc"
+    },
+    {
+      "name": "tree-2000.json.gz",
+      "bytes": 18506,
+      "sha256": "94262586ade27e7206f8959e841e7901a9276cf125c58a2ab4b3a304dc843641"
+    },
+    {
+      "name": "traps-2000.json.gz",
+      "bytes": 352,
+      "sha256": "b8b5f19bd049210f3ab703422365002410196c3c01ffa3e20ebe22cd43610370"
+    },
+    {
+      "name": "puzzles.json.gz",
+      "bytes": 786853,
+      "sha256": "b1111b8f4365cfc2c5a8f984298929067a7539bdd0a1d0db26de0da9bfd74dc4"
+    }
+  ]
+}
