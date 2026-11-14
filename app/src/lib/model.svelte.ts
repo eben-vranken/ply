@@ -186,9 +186,10 @@ export async function chooseStarter() {
 }
 
 /** A repertoire deviation in one of your games: that card gets Again. */
-export async function lapse(cardId: string): Promise<boolean> {
+/** Lapse a card for a game deviation; a game played before you learned the move does not count. */
+export async function lapse(cardId: string, playedAt = Date.now()): Promise<boolean> {
   const c = cards.get(cardId);
-  if (!c || c.suspended) return false;
+  if (!c || c.suspended || playedAt < c.created) return false;
   await review(c, Rating.Again, 0, 'today', new Date(), []);
   bump();
   return true;

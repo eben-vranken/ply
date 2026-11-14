@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { findMistakes, parsePgn, splitPgns, sideOf, type PlyAnalysis } from './mistakes';
 import { parseBackup, backupName } from '../backup';
+import { monthsToSync, windowStart, lastMonths } from './chesscom';
 import { createEmptyCard } from 'ts-fsrs';
 
 const ply = (cps: number[], played: string, afterCp: number, n = 0): PlyAnalysis => ({
@@ -71,5 +72,22 @@ describe('backup format', () => {
   });
   it('names the file by date', () => {
     expect(backupName(new Date('2026-11-14T10:00:00Z'))).toBe('ply-backup-2026-11-14.json');
+  });
+});
+
+describe('chess.com months', () => {
+  const all = ['2024/03', '2025/12', '2026/09', '2026/10', '2026/11'].map((m) => 'https://api.chess.com/pub/player/x/games/' + m);
+  it('the first sync takes three months, later syncs never reach back into older history', () => {
+    const first = lastMonths(all, 3);
+    expect(first).toEqual(all.slice(2));
+    const synced = first.slice(0, -1);
+    expect(monthsToSync(all, synced, '2026/09')).toEqual([all[4]]);
+    // an install that already recorded the whole history still only takes the window
+    expect(monthsToSync(all, all.slice(0, -1), '2026/09')).toEqual([all[4]]);
+    expect(monthsToSync([...all, all[4].replace('11', '12')], synced, '2026/09')).toEqual([all[4], all[4].replace('11', '12')]);
+  });
+  it('the window starts two months back', () => {
+    expect(windowStart(new Date(Date.UTC(2026, 10, 14)))).toBe('2026/09');
+    expect(windowStart(new Date(Date.UTC(2026, 0, 5)))).toBe('2025/11');
   });
 });

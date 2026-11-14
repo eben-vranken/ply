@@ -36,7 +36,8 @@ const defaults = {
   extraDay: 0,
   lastBackup: 0,
   lastSync: 0,
-  syncedArchives: [] as string[]
+  syncedArchives: [] as string[],
+  syncFrom: '' // 'YYYY/MM': the oldest chess.com month Ply imports (three months back from the first sync)
 };
 export type Settings = typeof defaults;
 export const DEFAULTS: Readonly<Settings> = defaults;
