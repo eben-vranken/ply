@@ -21,6 +21,8 @@
     plus: 'M12 5v14M5 12h14',
     trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
     share: 'M12 15V4M8 8l4-4 4 4M5 13v6h14v-6',
+    fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',
+    fold: 'M8 4l4 4 4-4M8 20l4-4 4 4',
     wifi: 'M4 9a12 12 0 0 1 16 0M7 12.500a7.500 7.500 0 0 1 10 0M12 17v.5'
   };
   let { name, size = 24, fill = false }: { name: string; size?: number; fill?: boolean } = $props();

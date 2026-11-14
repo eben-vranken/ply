@@ -1,243 +1,467 @@
 <script lang="ts">
-  // An opening as a skill tree, growing sideways: the position is the root on the left,
-  // each of your moves is a node, the opponent's replies are the curved edges between them.
-  // Main branches have their own colour and light up as you learn them. Three levels of
-  // your moves show at a time; deeper parts fold into "+N" nodes you can step into.
-  import { fly } from 'svelte/transition';
-  import { cubicOut } from 'svelte/easing';
+  // An opening as a skill tree on a canvas you drag and pinch. It grows left to right from
+  // the opening's position. Each tile is one of your moves, with the reply it answers written
+  // above it. A learned tile turns to birch and sits on one, two or four veneers as it goes
+  // from learning to mature; the moves you can learn next are outlined in their branch colour.
+  // Branches fold and unfold in place, and tapping a tile shows its position on a board.
+  import { untrack } from 'svelte';
   import { branchName, type TreeMove } from './model.svelte';
+  import { child, fenOf, type Side } from './chess';
+  import type { Stage } from './srs/fsrs';
+  import Board from './Board.svelte';
+  import Plies from './Plies.svelte';
+  import Icon from './Icon.svelte';
 
+  interface Sum { total: number; stages: number[]; lapses: number }
   interface Props {
     roots: TreeMove[];
     rootName: string;
     rootMove?: string;
+    side: Side;
+    sum: Sum;
+    /** moves still to learn below a move (null = the whole opening) */
+    newCount: (m: TreeMove | null) => number;
     onexplore: (m: TreeMove) => void;
-    ondrill: (m: TreeMove) => void;
+    ondrill: (m: TreeMove | null) => void;
+    onlearn: (m: TreeMove | null) => void;
   }
-  let { roots, rootName, rootMove = '', onexplore, ondrill }: Props = $props();
+  let { roots, rootName, rootMove = '', side, sum, newCount, onexplore, ondrill, onlearn }: Props = $props();
 
-  const PALETTE = ['#34e08f', '#f6c445', '#ff5c4d', '#6f8dff', '#c07bff', '#2fd0e0', '#ff8ad0', '#9be04a'];
+  const PALETTE = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
   const TRUNK = '#e8d3a8';
-  const LEVELS = 3; // levels of your moves shown at once
-  const COL = 96, ROW = 58, GROUP = 54, X0 = 8, Y0 = 18, R = 21;
-  const STAGE_LEVEL: Record<string, number> = { new: 0, learning: 1, young: 2, mature: 3 };
+  const W = 112, H = 44, COL = 164, ROW = 68, GAP = 22, PLY = 2.5;
+  const KMIN = 0.22, KMAX = 1.6, MS = 300;
+  const NAV = 92; // the floating tab bar under the sheet
+  const TOP = 60; // the row of tools over the canvas
+  const PLIES: Record<string, number> = { new: 0, learning: 1, young: 2, mature: 4 };
   const STAGE_NAME: Record<string, string> = { new: 'Not learned yet', learning: 'Learning', young: 'Young', mature: 'Mature' };
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ---------------------------------------------------------------- the tree
   type Step = { n: TreeMove; reply: TreeMove | null };
   /** your next moves from a move, each through one opponent reply */
   function next(m: TreeMove): Step[] {
     if (m.mine) return m.children.flatMap((r): Step[] => (r.mine ? [{ n: r, reply: null }] : r.children.filter((c) => c.mine).map((c) => ({ n: c, reply: r }))));
     return m.children.filter((c) => c.mine).map((c) => ({ n: c, reply: m }));
   }
-  const top = $derived(roots.flatMap((r): Step[] => (r.mine ? [{ n: r, reply: null }] : r.children.filter((c) => c.mine).map((c) => ({ n: c, reply: r })))));
   const lit = (m: TreeMove) => m.stage !== null && m.stage !== 'new';
   const learned = (m: TreeMove) => m.sum.total - m.sum.stages[0];
   const family = $derived(rootName.split(':')[0]);
-  function shortName(n: string) {
-    const s = n.startsWith(family + ': ') ? n.slice(family.length + 2) : n;
-    return s.length > 40 ? s.slice(0, 39) + '…' : s;
-  }
+  const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+  const shortName = (n: string) => (n.startsWith(family + ': ') ? n.slice(family.length + 2) : n);
+  /** the most specific part of a name, e.g. "Fried Liver Attack" */
+  const tail = (n: string) => clip(n.split(/: |, /).at(-1)!, 24);
 
-  /** a section title: the most specific part of the name, e.g. "Fried Liver Attack" */
-  function sectionTitle(n: string, parent: string) {
-    if (n === parent || !n) return shortName(n || parent);
-    const tail = n.split(/: |, /).at(-1)!;
-    return tail.length > 30 ? tail.slice(0, 29) + '…' : tail;
+  interface N {
+    id: string; m: TreeMove; reply: TreeMove | null; depth: number; parent: N | null; kids: N[];
+    colour: string; name: string; label: string; state: 'lit' | 'next' | 'far';
   }
-
-  // every move keeps the colour and name of the main branch it grows from
-  const paint = $derived.by(() => {
-    const colour = new Map<TreeMove, string>();
-    const name = new Map<TreeMove, string>();
-    let split: Step[] = top;
-    const trunk: TreeMove[] = [];
-    while (split.length === 1) { trunk.push(split[0].n); split = next(split[0].n); }
-    for (const t of trunk) { colour.set(t, TRUNK); name.set(t, rootName); }
-    const walk = (s: Step, c: string, nm: string) => {
-      colour.set(s.n, c);
-      // a deeper name replaces its parent's only when it is more specific
-      let own = nm;
-      if (s.reply) { const b = branchName(s.reply, nm)[1]; if (b && b !== nm && b.length > nm.length && b.split(':')[0] === nm.split(':')[0]) own = b; }
-      name.set(s.n, own);
-      for (const k of next(s.n)) walk(k, c, own);
-    };
-    split.forEach((s, i) => walk(s, PALETTE[i % PALETTE.length], s.reply ? branchName(s.reply, rootName)[1] : rootName));
-    return { colour, name };
+  const tree = $derived.by(() => {
+    const all = new Map<string, N>();
+    let deepest = 0;
+    // a move keeps the colour of the main branch it grows from; the trunk before the first split stays birch
+    const grow = (steps: Step[], depth: number, parent: N | null, colour: string | null, name: string): N[] =>
+      steps.map((s, i) => {
+        const split = colour === null && steps.length > 1;
+        const c = colour ?? (split ? PALETTE[i % PALETTE.length] : null);
+        // a deeper name replaces its parent's only when it is more specific
+        let own = name;
+        if (s.reply) {
+          const b = branchName(s.reply, name)[1];
+          if (b && b !== name && (split || (b.length > name.length && b.split(':')[0] === name.split(':')[0]))) own = b;
+        }
+        const state = lit(s.n) ? 'lit' : !parent || parent.state === 'lit' ? 'next' : 'far';
+        const n: N = { id: [...s.n.path, s.n.uci].join(' '), m: s.n, reply: s.reply, depth, parent, kids: [], colour: c ?? TRUNK, name: own, label: own !== name ? tail(own) : '', state };
+        all.set(n.id, n);
+        deepest = Math.max(deepest, depth);
+        n.kids = grow(next(s.n), depth + 1, n, c, own);
+        return n;
+      });
+    const first = roots.flatMap((r): Step[] => (r.mine ? [{ n: r, reply: null }] : r.children.filter((c) => c.mine).map((c) => ({ n: c, reply: r }))));
+    return { top: grow(first, 1, null, null, rootName), all, deepest };
   });
-  const colourOf = (m: TreeMove) => paint.colour.get(m) ?? TRUNK;
-  const nameOf = (m: TreeMove) => paint.name.get(m) ?? rootName;
 
-  // focus: the move the view grows from (null = the opening itself)
-  let trail = $state<TreeMove[]>([]);
-  const focus = $derived(trail.at(-1) ?? null);
-  let sel = $state<TreeMove | null>(null);
+  // which branches are unfolded: at first only what you have learned, so the tree opens on its main branches
+  const firstOpen = () => new Set([...tree.all.values()].filter((n) => n.kids.length && (n.state === 'lit' || (n.depth === 1 && tree.top.length === 1))).map((n) => n.id));
+  let open = $state.raw(untrack(firstOpen));
 
-  interface V { m: TreeMove; reply: TreeMove | null; x: number; y: number; depth: number; parent: V | null; more: number }
-  interface G { label: string; learned: number; total: number; colour: string; y: number }
-  const view = $derived.by(() => {
-    const first = focus ? next(focus) : top;
-    const nodes: V[] = [];
-    const groups: G[] = [];
-    let y = Y0;
-    const place = (s: Step, depth: number, parent: V | null): V => {
-      const v: V = { m: s.n, reply: s.reply, x: X0 + depth * COL, y: 0, depth, parent, more: 0 };
-      nodes.push(v);
-      const kids = next(s.n);
-      if (depth < LEVELS && kids.length) {
-        const placed = kids.map((k) => place(k, depth + 1, v));
-        v.y = (placed[0].y + placed[placed.length - 1].y) / 2;
-      } else {
-        v.more = kids.length ? s.n.sum.total - 1 : 0;
-        v.y = y + ROW / 2;
-        y += ROW;
-      }
-      return v;
+  interface P { x: number; y: number }
+  const layout = $derived.by(() => {
+    const pos = new Map<string, P>();
+    const vis: N[] = [];
+    let y = 0;
+    const place = (n: N): number => {
+      vis.push(n);
+      let at: number;
+      if (n.kids.length && open.has(n.id)) { const ys = n.kids.map(place); at = (ys[0] + ys[ys.length - 1]) / 2; }
+      else { at = y; y += ROW; }
+      pos.set(n.id, { x: n.depth * COL, y: at });
+      return at;
     };
-    const parentName = focus ? nameOf(focus) : rootName;
-    for (const s of first) {
-      const nm = s.reply ? branchName(s.reply, parentName)[1] : nameOf(s.n);
-      groups.push({ label: sectionTitle(nm, parentName), learned: learned(s.n), total: s.n.sum.total, colour: colourOf(s.n), y: y + 4 });
-      y += GROUP;
-      place(s, 1, null);
-      y += 10;
+    const ys = tree.top.map((n) => { const at = place(n); y += GAP; return at; });
+    pos.set('root', { x: 0, y: ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : 0 });
+    const right = Math.max(0, ...vis.map((n) => n.depth)) * COL;
+    return { pos, vis, box: { x0: -W / 2, y0: -H / 2 - 22, x1: right + W / 2 + 40, y1: Math.max(0, y - ROW - GAP) + H / 2 + 14 } };
+  });
+
+  // positions on screen follow the layout with a short ease, so a branch unfolds out of its parent
+  let disp = $state.raw(new Map<string, P & { o: number }>());
+  let started = false;
+  $effect(() => {
+    const target = layout.pos;
+    const from = untrack(() => disp);
+    const settle = () => { disp = new Map([...target].map(([id, p]) => [id, { ...p, o: 1 }])); };
+    if (!started || reduce) { started = true; settle(); return; }
+    const origin = (id: string): P & { o: number } => {
+      for (let n = tree.all.get(id)?.parent; n; n = n.parent) { const p = from.get(n.id); if (p) return { ...p, o: 0 }; }
+      return { ...(from.get('root') ?? target.get(id)!), o: 0 };
+    };
+    const t0 = performance.now();
+    let raf = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - t0) / MS), e = 1 - (1 - t) ** 3;
+      if (t >= 1) return settle();
+      disp = new Map([...target].map(([id, p]) => { const s = from.get(id) ?? origin(id); return [id, { x: s.x + (p.x - s.x) * e, y: s.y + (p.y - s.y) * e, o: s.o + (1 - s.o) * e }]; }));
+      raf = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+  const at = (id: string) => disp.get(id) ?? { ...layout.pos.get(id)!, o: 1 };
+
+  // ---------------------------------------------------------------- the view: drag, pinch, wheel
+  let el = $state<HTMLDivElement>();
+  let vw = $state(0), vh = $state(0), sheetH = $state(0);
+  let view = $state.raw({ x: 0, y: 0, k: 1 });
+  const clampK = (k: number) => Math.min(KMAX, Math.max(KMIN, k));
+  /** keep a good part of the tree on screen */
+  function bound(v: { x: number; y: number; k: number }) {
+    const b = layout.box, m = 90;
+    return { k: v.k, x: Math.min(vw - m - b.x0 * v.k, Math.max(m - b.x1 * v.k, v.x)), y: Math.min(vh - sheetH - NAV - m - b.y0 * v.k, Math.max(m - b.y1 * v.k, v.y)) };
+  }
+  let vraf = 0;
+  function glide(to: { x: number; y: number; k: number }) {
+    cancelAnimationFrame(vraf);
+    to = bound(to);
+    if (reduce) { view = to; return; }
+    const s = view, t0 = performance.now();
+    vraf = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - t0) / MS), e = 1 - (1 - t) ** 3;
+      view = { x: s.x + (to.x - s.x) * e, y: s.y + (to.y - s.y) * e, k: s.k + (to.k - s.k) * e };
+      if (t < 1) vraf = requestAnimationFrame(tick);
+    });
+  }
+  /** the part of the canvas the sheet does not cover */
+  const clear = () => Math.max(160, vh - sheetH - NAV - 14);
+  function fit() {
+    const b = layout.box, pad = 18, room = clear() - TOP;
+    const k = clampK(Math.min((vw - pad * 2) / (b.x1 - b.x0), (room - pad * 2) / (b.y1 - b.y0), 1.1));
+    glide({ k, x: (vw - (b.x0 + b.x1) * k) / 2, y: TOP + (room - (b.y0 + b.y1) * k) / 2 });
+  }
+  /** where you start: the whole tree when it is readable at that size, otherwise the moves you can learn next */
+  function start() {
+    const b = layout.box, room = clear() - TOP;
+    const all = Math.min((vw - 36) / (b.x1 - b.x0), (room - 28) / (b.y1 - b.y0), 1);
+    if (all >= 0.72) return { k: all, x: (vw - (b.x0 + b.x1) * all) / 2, y: TOP + (room - (b.y0 + b.y1) * all) / 2 };
+    // the move before them at the left edge, so its answers fill the screen
+    const k = Math.min(1, Math.max(0.78, vw / 440));
+    const n = layout.vis.find((v) => v.state === 'next') ?? layout.vis[0];
+    const p = layout.pos.get(n?.id ?? 'root')!, q = layout.pos.get(n?.parent?.id ?? 'root')!;
+    return { k, x: 18 + (W / 2) * k - q.x * k, y: TOP + room * 0.5 - p.y * k };
+  }
+  let placed = false;
+  $effect(() => { if (!placed && vw && vh && sheetH) { placed = true; untrack(() => (view = bound(start()))); } });
+
+  function zoomAt(cx: number, cy: number, k: number) {
+    k = clampK(k);
+    const r = k / view.k;
+    view = bound({ k, x: cx - (cx - view.x) * r, y: cy - (cy - view.y) * r });
+  }
+  const pts = new Map<number, P>();
+  let moved = false;
+  function down(e: PointerEvent) {
+    cancelAnimationFrame(vraf);
+    if (pts.size === 0) moved = false;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+  function move(e: PointerEvent) {
+    const p = pts.get(e.pointerId);
+    if (!p || !el) return;
+    if (pts.size === 1) {
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      if (!moved) { moved = true; el.setPointerCapture(e.pointerId); }
+      p.x = e.clientX; p.y = e.clientY;
+      view = bound({ k: view.k, x: view.x + dx, y: view.y + dy });
+    } else if (pts.size === 2) {
+      const o = [...pts.values()].find((q) => q !== p)!;
+      const r = el.getBoundingClientRect();
+      const d0 = Math.hypot(p.x - o.x, p.y - o.y), mx0 = (p.x + o.x) / 2, my0 = (p.y + o.y) / 2;
+      p.x = e.clientX; p.y = e.clientY;
+      const d1 = Math.hypot(p.x - o.x, p.y - o.y), mx = (p.x + o.x) / 2, my = (p.y + o.y) / 2;
+      moved = true;
+      view = { ...view, x: view.x + mx - mx0, y: view.y + my - my0 };
+      if (d0 > 0) zoomAt(mx - r.left, my - r.top, view.k * (d1 / d0));
     }
-    return { nodes, groups, h: y + 20 };
+  }
+  const up = (e: PointerEvent) => { pts.delete(e.pointerId); };
+  $effect(() => {
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      cancelAnimationFrame(vraf);
+      const r = el!.getBoundingClientRect();
+      zoomAt(e.clientX - r.left, e.clientY - r.top, view.k * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0018)));
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el?.removeEventListener('wheel', wheel);
   });
-  const W = X0 + LEVELS * COL + R + 56;
 
-  const curve = (x1: number, y1: number, x2: number, y2: number) => { const mx = (x1 + x2) / 2; return `M${x1} ${y1} C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}`; };
-  const radius = (m: TreeMove) => (m.stage === 'mature' ? R + 3 : R);
+  // ---------------------------------------------------------------- selecting and folding
+  let selId = $state<string | null>(null);
+  const sel = $derived(selId ? tree.all.get(selId) ?? null : null);
+  let showKey = $state(false);
+
+  /** bring a tile into the part of the canvas that is free, moving as little as possible */
+  function reveal(p: P, sheet: number, room = 0) {
+    const k = view.k, hw = (W / 2) * k, bottom = Math.max(160, vh - sheet - NAV - 14);
+    const sx = p.x * k + view.x, sy = p.y * k + view.y;
+    const maxX = Math.max(hw + 12, vw - hw - 14 - room * k);
+    const tx = Math.min(maxX, Math.max(hw + 12, sx)), ty = Math.min(bottom - 40 * k, Math.max(TOP + 40 * k, sy));
+    return { k, x: view.x + tx - sx, y: view.y + ty - sy };
+  }
+  function pick(n: N) {
+    if (moved) return;
+    showKey = false;
+    if (selId === n.id) { selId = null; return; }
+    selId = n.id;
+    glide(reveal(layout.pos.get(n.id)!, 262));
+  }
+  function toggle(n: N, e?: Event) {
+    e?.stopPropagation();
+    if (moved) return;
+    const before = layout.pos.get(n.id)!;
+    const s = new Set(open);
+    if (s.has(n.id)) s.delete(n.id); else s.add(n.id);
+    open = s;
+    // the tile you tapped stays under your finger while the rest rearranges around it
+    const after = layout.pos.get(n.id)!;
+    const kept = { k: view.k, x: view.x - (after.x - before.x) * view.k, y: view.y - (after.y - before.y) * view.k };
+    const sx = after.x * kept.k + kept.x;
+    const want = s.has(n.id) ? Math.max((W / 2) * kept.k + 12, Math.min(sx, vw - (COL + W / 2 + 18) * kept.k)) : sx;
+    glide({ ...kept, x: kept.x + want - sx });
+  }
+  /** back to the main branches and what you have learned */
+  function foldAll() { open = firstOpen(); selId = null; showKey = false; glide(start()); }
+  function ground() { if (!moved) { selId = null; showKey = false; } }
+  const key = (fn: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
+
+  // ---------------------------------------------------------------- drawing
   const moveNo = (m: TreeMove) => (m.ply % 2 === 0 ? `${m.ply / 2 + 1}.` : `${(m.ply + 1) / 2}…`);
-  function enter(m: TreeMove) { trail = [...trail, m]; sel = null; }
-  function back(i: number) { trail = trail.slice(0, i); sel = null; }
+  const pct = (f: number) => (f < 0.01 ? '<1%' : `${Math.round(f * 100)}%`);
+  const pillText = (n: N) => (open.has(n.id) ? '–' : `+${n.m.sum.total - 1}`);
+  const pillW = (n: N) => (open.has(n.id) ? 22 : 13 + 6.4 * pillText(n).length);
+  /** a right-angled connector with rounded corners: out of the parent, along a shared trunk, into the child */
+  function elbow(x1: number, y1: number, x2: number, y2: number) {
+    const tx = x2 - 16, dy = y2 - y1;
+    if (Math.abs(dy) < 0.5) return `M${x1} ${y1}H${x2}`;
+    const r = Math.min(9, Math.abs(dy) / 2), s = Math.sign(dy);
+    return `M${x1} ${y1}H${tx - r}Q${tx} ${y1} ${tx} ${y1 + s * r}V${y2 - s * r}Q${tx} ${y2} ${tx + r} ${y2}H${x2}`;
+  }
+  const edges = $derived(layout.vis.map((n) => {
+    const a = at(n.parent?.id ?? 'root'), b = at(n.id);
+    const out = a.x + W / 2 + (n.parent ? pillW(n.parent) - 6 : 0);
+    return { n, d: elbow(out, a.y, b.x - W / 2, b.y), o: b.o };
+  }));
+  const tf = $derived(`translate(${view.x} ${view.y}) scale(${view.k})`);
 </script>
 
-<div class="wrap">
-  <nav class="trail" aria-label="Where you are in the tree">
-    <button class:on={!trail.length} onclick={() => back(0)}>{rootMove || 'Start'}</button>
-    {#each trail as t, i}
-      <span class="sep">›</span><button class:on={i === trail.length - 1} onclick={() => back(i + 1)} style="--c:{colourOf(t)}">{moveNo(t)}{t.san}</button>
-    {/each}
-  </nav>
-
-  {#key focus}
-    <div class="canvas" in:fly={{ x: 40, duration: 260, easing: cubicOut }}>
-      <svg width={W} height={view.h} viewBox="0 0 {W} {view.h}" role="img" aria-label="Skill tree of {rootName}">
-        <defs>
-          <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-        </defs>
-        <!-- branch names and counts -->
-        {#each view.groups as g}
-          <text x={16} y={g.y + 14} class="gl" fill={g.colour}>{g.label.toUpperCase()}</text>
-          <text x={16} y={g.y + 40} class="gc" fill={g.colour}>{g.learned}<tspan class="of">/{g.total} learned</tspan></text>
-        {/each}
-        <!-- edges, dim first, lit on top -->
+<div class="tree">
+  <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+  <div class="canvas" bind:this={el} bind:clientWidth={vw} bind:clientHeight={vh}
+    onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} onclick={ground}>
+    <svg width={vw} height={vh} role="group" aria-label="Skill tree of {rootName}">
+      <defs>
+        <pattern id="st-dots" width="28" height="28" patternUnits="userSpaceOnUse" patternTransform={tf}>
+          <circle cx="14" cy="14" r="1.3" fill="#2a3160" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#st-dots)" />
+      <g transform={tf}>
+        <!-- connectors: quiet ones first, the learned path on top -->
         {#each [false, true] as on}
-          {#each view.nodes as v}
-            {@const l = lit(v.m)}
-            {#if l === on}
-              {@const px = v.parent ? v.parent.x : 0}
-              {@const py = v.parent ? v.parent.y : v.y}
-              <path d={curve(px, py, v.x, v.y)} fill="none" stroke={l ? colourOf(v.m) : '#3a3f5c'} stroke-width={l ? 5 : 2.2} stroke-linecap="round" />
+          {#each edges as e (e.n.id)}
+            {#if (e.n.state === 'lit') === on}
+              <path d={e.d} fill="none" opacity={e.o} stroke-linecap="round"
+                stroke={e.n.colour} stroke-opacity={on ? 1 : e.n.state === 'next' ? 0.5 : 0.24} stroke-width={on ? 3.5 : 2} />
             {/if}
           {/each}
         {/each}
-        <!-- replies on the edges -->
-        {#each view.nodes as v}
-          {#if v.reply}
-            {@const px = v.parent ? v.parent.x : 0}
-            <g class="reply" transform="translate({v.parent ? px + (v.x - px) * 0.52 : v.x - R - 33} {v.y})">
-              <rect x="-27" y="-10" width="54" height="20" rx="10" />
-              <text y="4" text-anchor="middle">{v.reply.san} <tspan class="pc">{Math.round(v.reply.freq * 100)}%</tspan></text>
+
+        <!-- where the tree starts -->
+        <g transform="translate({at('root').x} {at('root').y})" class="root">
+          <rect x={-W / 2} y={-H / 2} width={W} height={H} rx="12" />
+          <text y="5.5" text-anchor="middle">{rootMove || 'Start'}</text>
+        </g>
+
+        {#each layout.vis as n (n.id)}
+          {@const m = n.m}
+          {@const p = at(n.id)}
+          {@const plies = PLIES[m.stage ?? 'new']}
+          <g transform="translate({p.x} {p.y})" opacity={p.o}>
+            {#if n.label}<text class="lab" x={-W / 2 + 2} y={-H / 2 - 8} fill={n.colour}>{n.label}</text>{/if}
+            <g class="tile {n.state}" role="button" tabindex="0" style="--c:{n.colour}"
+              aria-label="{moveNo(m)}{m.san}{n.reply ? ` after ${n.reply.san}` : ''}: {STAGE_NAME[m.stage ?? 'new']}{m.lapses ? `, ${m.lapses} lapses` : ''}" aria-pressed={selId === n.id}
+              onclick={(e) => { e.stopPropagation(); pick(n); }} onkeydown={key(() => pick(n))}>
+              {#if selId === n.id}<rect class="ring" x={-W / 2 - 5} y={-H / 2 - 5} width={W + 10} height={H + 10 + plies * PLY} rx="15" />{/if}
+              {#each Array(plies) as _, i}
+                <rect x={-W / 2} y={-H / 2 + (plies - i) * PLY} width={W} height={H} rx="11" fill={(plies - i) % 2 ? '#a67f4d' : '#dcc08f'} />
+              {/each}
+              <rect class="face" x={-W / 2} y={-H / 2} width={W} height={H} rx="11" />
+              {#if n.state === 'lit'}<rect x={-W / 2 + 6} y={-11} width="4" height="22" rx="2" fill={n.colour} stroke="rgba(21,25,54,.35)" stroke-width="0.6" />{/if}
+              {#if n.reply}
+                <text class="rep" x={-W / 2 + 17} y="-6">{n.reply.san}<tspan class="pc" dx="5">{pct(n.reply.freq)}</tspan></text>
+                <text class="san" x={-W / 2 + 17} y="13.5">{m.san}</text>
+              {:else}
+                <text class="san" x={-W / 2 + 17} y="5.5">{m.san}</text>
+              {/if}
+              {#if m.joins}<text class="join" x={W / 2 - 12} y="6" text-anchor="end">↪</text>{/if}
+              {#if m.lapses}
+                <g transform="translate({W / 2 - 6} {-H / 2 + 4})"><circle r="9" fill="#e5412b" stroke="#0d1024" stroke-width="2" /><text class="lap" y="3.5" text-anchor="middle">{m.lapses}</text></g>
+              {/if}
             </g>
-          {/if}
-        {/each}
-        <!-- your moves -->
-        {#each view.nodes as v}
-          {@const m = v.m}
-          {@const l = lit(m)}
-          {@const c = colourOf(m)}
-          <g class="node" transform="translate({v.x} {v.y})" role="button" tabindex="0"
-            aria-label="{moveNo(m)}{m.san}: {STAGE_NAME[m.stage ?? 'new']}{m.lapses ? `, ${m.lapses} lapses` : ''}"
-            onclick={() => (sel = sel === m ? null : m)} onkeydown={(e) => { if (e.key === 'Enter') sel = m; }}>
-            {#if sel === m}<circle r={radius(m) + 8} fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="4 4" />{/if}
-            {#if m.lapses}<circle r={radius(m) + 4.5} fill="none" stroke="#ff4a3d" stroke-width="3" />{/if}
-            <circle r={radius(m)} fill={l ? c : '#1b1f38'} stroke={l ? c : '#4a5070'} stroke-width="2.2"
-              opacity={l ? [0, 0.62, 0.84, 1][STAGE_LEVEL[m.stage ?? 'new']] : 1} filter={m.stage === 'mature' ? 'url(#glow)' : undefined} />
-            <text y="4" text-anchor="middle" class="san" fill={l ? '#11142a' : '#a3a9c9'}>{m.san}</text>
-            {#if l}
-              <g transform="translate(0 {radius(m) + 1})">
-                <rect x="-13" y="-7" width="26" height="14" rx="7" fill="#11142a" stroke={c} stroke-width="1.3" />
-                <text y="3.5" text-anchor="middle" class="lvl" fill={c}>{STAGE_LEVEL[m.stage ?? 'new']}/3</text>
+            {#if n.kids.length}
+              {@const w = pillW(n)}
+              <g class="pill" class:has={learned(m) > (lit(m) ? 1 : 0)} style="--c:{n.colour}" transform="translate({W / 2 - 6} 0)" role="button" tabindex="0"
+                aria-label={open.has(n.id) ? `Fold the moves after ${m.san}` : `Show the ${m.sum.total - 1} moves after ${m.san}`} aria-expanded={open.has(n.id)}
+                onclick={(e) => toggle(n, e)} onkeydown={key(() => toggle(n))}>
+                <rect class="hit" x="-6" y="-21" width={w + 16} height="42" />
+                <rect class="body" y="-11" width={w} height="22" rx="11" />
+                <text x={w / 2} y="3.8" text-anchor="middle">{pillText(n)}</text>
               </g>
             {/if}
           </g>
-          {#if v.more}
-            <g class="more" transform="translate({v.x + radius(m) + 6} {v.y})" role="button" tabindex="0" aria-label="{v.more} more moves below {m.san}, open them"
-              onclick={() => enter(m)} onkeydown={(e) => { if (e.key === 'Enter') enter(m); }}>
-              <rect x="0" y="-13" width="42" height="26" rx="13" stroke={learned(m) > (lit(m) ? 1 : 0) ? c : '#4a5070'} />
-              <text x="21" y="4.5" text-anchor="middle" fill={learned(m) > (lit(m) ? 1 : 0) ? c : '#a3a9c9'}>+{v.more}</text>
-            </g>
-          {:else if m.joins}
-            <text x={v.x + radius(m) + 6} y={v.y + 4} class="joins">↪</text>
-          {/if}
         {/each}
-      </svg>
-    </div>
-  {/key}
+      </g>
+    </svg>
+  </div>
 
-  {#if sel}
-    {@const m = sel}
-    {@const c = colourOf(m)}
-    <div class="info" style="--c:{c}" role="dialog" aria-label="{m.san}">
-      <div class="it">
-        <span class="mv" class:lit={lit(m)}>{moveNo(m)}{m.san}</span>
-        <span class="grow">
-          <b class="t-name">{shortName(nameOf(m))}</b>
-          <small>{STAGE_NAME[m.stage ?? 'new']}{m.lapses ? ` · ${m.lapses} lapse${m.lapses === 1 ? '' : 's'}` : ''} · {learned(m)}/{m.sum.total} learned from here{m.joins ? ' · continues in another line' : ''}</small>
-        </span>
-        <button class="x" onclick={() => (sel = null)} aria-label="Close">×</button>
-      </div>
-      <div class="ib">
-        <button onclick={() => onexplore(m)}>Explore</button>
-        <button onclick={() => ondrill(m)}>Drill</button>
-        {#if next(m).length}<button onclick={() => enter(m)}>Go deeper</button>{/if}
-      </div>
+  <div class="tools">
+    <button onclick={fit} aria-label="Fit the whole tree on screen"><Icon name="fit" size={20} /></button>
+    <button onclick={foldAll} aria-label="Fold the tree back to its main branches"><Icon name="fold" size={20} /></button>
+    <button class:on={showKey} onclick={() => (showKey = !showKey)} aria-expanded={showKey}>Key</button>
+  </div>
+  {#if showKey}
+    <div class="key" role="note">
+      <p><i class="k next"></i>You can learn this next</p>
+      <p><i class="k far"></i>Further down the line</p>
+      <p><i class="k lit p1"></i>Learning: one veneer</p>
+      <p><i class="k lit p2"></i>Young: two veneers</p>
+      <p><i class="k lit p4"></i>Mature: four veneers</p>
+      <p><i class="k dot">2</i>Times you forgot it</p>
+      <p class="how">The small line on a tile is your opponent's move and how often it is played at your level. The large one is your answer. Drag to move around, pinch to zoom.</p>
     </div>
   {/if}
+
+  <div class="sheet" bind:clientHeight={sheetH}>
+    {#if sel}
+      {@const m = sel.m}
+      {@const fresh = newCount(m)}
+      {#key sel.id}
+        <div class="one" style="--c:{sel.colour}">
+          <div class="bd"><Board fen={fenOf(child(m.epd, m.uci))} {side} lastMove={[m.uci.slice(0, 2), m.uci.slice(2, 4)]} coords={false} dark /></div>
+          <div class="grow">
+            <p class="t-name nm">{shortName(sel.name)}</p>
+            <p class="mv">{moveNo(m)}{m.san}</p>
+            {#if sel.reply}<p class="sub">Your answer to {moveNo(sel.reply)}{sel.reply.san}, played in {pct(sel.reply.freq)} of games here</p>{/if}
+            <p class="st"><Plies stage={(m.stage ?? 'new') as Stage} size={16} />{STAGE_NAME[m.stage ?? 'new']}{m.lapses ? `, forgot ${m.lapses}×` : ''}</p>
+            {#if m.sum.total > 1}<p class="sub">{learned(m)} of {m.sum.total} learned from here on</p>{:else if m.joins}<p class="sub">Continues in another line</p>{/if}
+          </div>
+          <button class="x" onclick={() => (selId = null)} aria-label="Close"><Icon name="close" size={20} /></button>
+        </div>
+      {/key}
+      <div class="acts">
+        {#if fresh}<button class="btn grow" onclick={() => onlearn(m)}>Learn {fresh}</button>{/if}
+        <button class="btn night grow" onclick={() => ondrill(m)}>Drill</button>
+        <button class="btn night grow" onclick={() => onexplore(m)}>Explore</button>
+      </div>
+    {:else}
+      {@const fresh = newCount(null)}
+      <p class="tot"><b class="t-num">{sum.total - sum.stages[0]}</b> of {sum.total} moves learned{#if sum.stages[3]}, {sum.stages[3]} mature{/if}{#if sum.lapses}, <span class="bad">{sum.lapses} forgotten</span>{/if}</p>
+      <span class="bar" role="img" aria-label="{sum.stages[3]} mature, {sum.stages[2]} young, {sum.stages[1]} learning, {sum.stages[0]} new">
+        {#each ['mature', 'young', 'learning', 'new'] as s, i}<i style="flex:{sum.stages[3 - i]};background:var(--st-{s})"></i>{/each}
+      </span>
+      <div class="acts">
+        <button class="btn grow" onclick={() => onlearn(null)} disabled={!fresh}>{fresh ? `Learn ${fresh}` : 'All learned'}</button>
+        <button class="btn night grow" onclick={() => ondrill(null)}>Drill</button>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
-  .wrap { margin: 0 -16px; background: radial-gradient(140% 60% at 0% 30%, #1d2045 0%, #0d1024 55%, #090b1a 100%); min-height: 60dvh; }
-  .trail { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 4px; overflow-x: auto; padding: 10px 16px; background: rgba(13, 16, 36, 0.94); backdrop-filter: blur(6px); scrollbar-width: none; }
-  .trail::-webkit-scrollbar { display: none; }
-  .trail button { flex: none; height: 36px; padding: 0 12px; border-radius: 12px; font-weight: 700; font-size: 14px; color: #c9cde6; background: #1b1f38; }
-  .trail button.on { background: var(--c, #e8d3a8); color: #11142a; }
-  .trail .sep { color: #5a6088; }
-  .canvas { overflow-x: auto; padding-bottom: 120px; }
+  .tree { position: relative; flex: 1; min-height: 0; }
+  .canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; border-radius: 26px 26px 0 0; background: radial-gradient(120% 70% at 10% 20%, #1a1e44 0%, #0d1024 60%, #090b1a 100%); }
+  .canvas:active { cursor: grabbing; }
   svg { display: block; }
-  .node { cursor: pointer; outline: none; }
-  .san { font: 700 12px var(--sans); letter-spacing: -0.02em; pointer-events: none; }
-  .lvl { font: 700 9px var(--sans); pointer-events: none; }
-  .reply { pointer-events: none; }
-  .reply rect { fill: #0d1024; stroke: #3a4062; stroke-width: 1; }
-  .reply text { font: 600 10.5px var(--sans); fill: #d6d9ee; }
-  .reply .pc { fill: #8a90b4; font-weight: 500; }
-  .gl { font: 650 12px var(--sans); letter-spacing: 0.11em; }
-  .gc { font: 800 24px var(--sans); }
-  .gc .of { font-size: 12px; font-weight: 600; opacity: 0.75; letter-spacing: 0.02em; }
-  .more { cursor: pointer; }
-  .more rect { fill: #11142a; stroke-width: 1.6; }
-  .more text { font: 800 12px var(--sans); }
-  .joins { font: 700 14px var(--sans); fill: #8a90b4; }
-  .info { position: fixed; z-index: 30; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 92px); background: rgba(17, 20, 42, 0.97); border: 1.5px solid var(--c); border-radius: 18px; padding: 12px; color: #e8eaf6; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5); animation: rise 200ms var(--ease) both; }
-  .it { display: flex; align-items: center; gap: 12px; }
-  .mv { flex: none; min-width: 58px; height: 44px; padding: 0 10px; border-radius: 22px; display: grid; place-items: center; font-weight: 800; font-size: 15px; background: #1b1f38; border: 2px solid #4a5070; }
-  .mv.lit { background: var(--c); border-color: var(--c); color: #11142a; }
-  .it b { display: block; font-size: 17px; font-weight: 500; line-height: 1.15; }
-  .it small { font-size: 12.5px; color: #a7acc9; }
-  .x { width: 40px; height: 40px; font-size: 24px; color: #a7acc9; flex: none; }
-  .ib { display: flex; gap: 8px; margin-top: 10px; }
-  .ib button { flex: 1; min-height: 44px; border-radius: 13px; background: #23284a; font-weight: 700; font-size: 14px; }
-  .ib button:first-child { background: var(--c); color: #11142a; }
+  text { pointer-events: none; font-family: var(--sans); }
+
+  .root rect { fill: #0d1024; stroke: #e8d3a8; stroke-width: 2; }
+  .root text { font-weight: 750; font-size: 16px; fill: #e8d3a8; }
+  .lab { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 13px; }
+
+  .tile { cursor: pointer; outline: none; }
+  .tile .face { fill: #141936; stroke: color-mix(in srgb, var(--c) 34%, #1c2248); stroke-width: 1.5; }
+  .tile .rep { font-weight: 600; font-size: 10.5px; fill: #6f76a0; }
+  .tile .pc { font-weight: 500; fill: #565d88; }
+  .tile .san { font-weight: 750; font-size: 15.5px; letter-spacing: -0.02em; fill: #8088b3; }
+  .tile .join { font-size: 14px; font-weight: 700; fill: #6f76a0; }
+  .tile.next .face { fill: #1d2350; stroke: var(--c); stroke-width: 1.8; }
+  .tile.next .rep { fill: #b3b9d8; }
+  .tile.next .pc { fill: #868db6; }
+  .tile.next .san { fill: #f3f4fc; }
+  .tile.lit .face { fill: #f1e0bf; stroke: none; }
+  .tile.lit .rep { fill: #6f4c2c; }
+  .tile.lit .pc { fill: #94714b; }
+  .tile.lit .san, .tile.lit .join { fill: #151936; }
+  .tile:focus-visible .face { stroke: #fff; stroke-width: 3; }
+  .ring { fill: none; stroke: #f4b740; stroke-width: 2.5; }
+  .lap { font-weight: 800; font-size: 10.5px; fill: #fff; }
+
+  .pill { cursor: pointer; outline: none; }
+  .pill .hit { fill: transparent; }
+  .pill .body { fill: #0d1024; stroke: #3d4577; stroke-width: 1.5; }
+  .pill text { font-weight: 750; font-size: 11px; fill: #aab0d2; }
+  .pill.has .body { stroke: var(--c); }
+  .pill.has text { fill: var(--c); }
+  .pill:focus-visible .body { stroke: #fff; stroke-width: 2.5; }
+
+  .tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 8px; }
+  .tools button { min-width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.92); border: 1px solid #2c3366; color: #d6d9ee; font-size: 12.5px; font-weight: 700; }
+  .tools button.on { background: var(--birch); color: var(--ink-fixed); border-color: var(--birch); }
+  .key { position: absolute; z-index: 6; top: 62px; right: 12px; width: min(264px, calc(100% - 24px)); padding: 14px; border-radius: 18px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13px; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); animation: rise 200ms var(--ease) both; }
+  .key p { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .key .how { display: block; margin: 12px 0 0; color: #aab0d2; line-height: 1.4; }
+  .k { flex: none; width: 30px; height: 14px; border-radius: 5px; box-sizing: border-box; }
+  .k.next { background: #1d2350; border: 1.5px solid #34e08f; }
+  .k.far { background: #141936; border: 1.5px solid #2a3162; }
+  .k.lit { background: #f1e0bf; }
+  .k.p1 { box-shadow: 0 2.5px 0 #a67f4d; }
+  .k.p2 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f; }
+  .k.p4 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f, 0 7.5px 0 #a67f4d, 0 10px 0 #dcc08f; margin-bottom: 8px; }
+  .k.dot { width: 18px; height: 18px; margin: 0 6px; border-radius: 50%; background: #e5412b; color: #fff; font-style: normal; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
+
+  .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 92px); padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
+  .one { display: flex; gap: 14px; align-items: flex-start; animation: rise 220ms var(--ease) both; }
+  .bd { flex: none; width: 124px; pointer-events: none; }
+  .nm { font-size: 17px; line-height: 1.15; color: var(--c); padding-right: 30px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mv { font-size: 26px; font-weight: 750; letter-spacing: -0.03em; line-height: 1.15; margin-top: 2px; }
+  .sub { font-size: 12.5px; line-height: 1.3; color: var(--night-ink-2); margin-top: 3px; }
+  .st { display: flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 650; margin-top: 8px; }
+  .x { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; display: grid; place-items: center; color: var(--night-ink-2); }
+  .bar { display: flex; gap: 2px; height: 6px; }
+  .bar i { border-radius: 2px; min-width: 0; }
+  .tot { font-size: 14px; color: var(--night-ink-2); margin: -2px 0 10px; }
+  .tot b { font-size: 20px; color: var(--night-ink); }
+  .tot .bad { color: #ff9a8a; }
+  .acts { display: flex; gap: 8px; margin: 14px 0 5px; }
+  .acts .btn { min-height: 46px; font-size: 15px; padding: 0 10px; border-radius: 14px; }
 </style>

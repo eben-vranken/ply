@@ -20,9 +20,10 @@
     rev?: number;
     shake?: number;
     dark?: boolean;
+    coords?: boolean;
     onmove?: (from: string, to: string) => void;
   }
-  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, onmove = () => {} }: Props = $props();
+  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, coords = true, onmove = () => {} }: Props = $props();
 
   let el = $state<HTMLDivElement>()!;
   let top = $state<HTMLDivElement>();
@@ -34,7 +35,7 @@
 
   onMount(() => {
     api = Chessground(el, {
-      coordinates: true,
+      coordinates: coords,
       animation: { enabled: true, duration: 170 },
       highlight: { lastMove: true, check: true },
       draggable: { showGhost: true },
