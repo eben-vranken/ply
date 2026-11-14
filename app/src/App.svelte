@@ -22,9 +22,14 @@
   const training = $derived(base === '/train');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const dur = reduce ? 0 : 260;
+  const mq = matchMedia('(prefers-color-scheme: dark)');
+  let systemDark = $state(mq.matches);
+  mq.addEventListener('change', (e) => (systemDark = e.matches));
 
   $effect(() => {
-    document.querySelector('meta[name=theme-color]')?.setAttribute('content', training ? '#131734' : '#eceef3');
+    const dark = app.theme === 'dark' || (app.theme === 'auto' && systemDark);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', training ? '#131734' : dark ? '#0d1024' : '#eceef3');
     navigator.storage?.persist?.();
   });
 </script>
@@ -64,12 +69,12 @@
   nav {
     position: absolute; z-index: 10; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px);
     height: 68px; display: flex; padding: 6px;
-    background: var(--ink); border-radius: 26px;
+    background: var(--bar); border-radius: 26px;
     box-shadow: 0 16px 30px -10px rgba(21, 25, 54, 0.5);
   }
   nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 20px; color: var(--night-ink-2); transition: color 160ms, background 200ms var(--ease); }
   nav .lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
   nav .ico { transition: transform 260ms var(--spring); }
-  nav button.on { color: var(--ink); background: var(--birch); }
+  nav button.on { color: var(--ink-fixed); background: var(--birch); }
   nav button.on .ico { transform: translateY(-1px) scale(1.08); }
 </style>

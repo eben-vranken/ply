@@ -123,7 +123,7 @@
 <style>
   .xsec { display: flex; flex-direction: column; gap: 3px; height: 236px; margin: 14px 0 16px; border-radius: 14px; overflow: hidden; }
   .xsec div { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; color: #fff; min-height: 30px; font-weight: 650; font-size: 14px; border-radius: 4px; transform-origin: left; animation: lay 520ms var(--ease) both; }
-  .xsec div.lt { color: var(--ink); }
+  .xsec div.lt { color: var(--ink-fixed); }
   .xsec span { display: flex; align-items: center; gap: 8px; }
   .xsec :global(svg rect) { fill: currentColor; stroke: currentColor; }
   .xsec b { font-size: 22px; }
@@ -135,7 +135,7 @@
   tbody tr { border-top: 1px solid var(--ground); }
 
   .bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
-  .bars i { flex: 1; background: var(--cobalt); border-radius: 3px 3px 1px 1px; opacity: 0.35; transform-origin: bottom; animation: grow 480ms var(--ease) both; }
+  .bars i { flex: 1; background: var(--accent-text); border-radius: 3px 3px 1px 1px; opacity: 0.35; transform-origin: bottom; animation: grow 480ms var(--ease) both; }
   .bars i.wk { opacity: 1; }
   @keyframes grow { from { transform: scaleY(0); } }
   .axis { display: flex; justify-content: space-between; font-size: 12px; color: var(--ink-3); margin-top: 8px; }
@@ -144,7 +144,7 @@
   .heat { display: flex; gap: 2px; }
   .heat div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
   .heat i { aspect-ratio: 1; border-radius: 1.5px; background: var(--ground); }
-  .heat .h1 { background: #c8d2fb; } .heat .h2 { background: #8fa3f6; } .heat .h3 { background: var(--cobalt); } .heat .h4 { background: var(--ink); }
+  .heat .h1 { background: var(--h1); } .heat .h2 { background: var(--h2); } .heat .h3 { background: var(--h3); } .heat .h4 { background: var(--h4); }
   .mins { display: flex; align-items: flex-end; gap: 3px; height: 48px; }
   .mins i { width: 6px; border-radius: 2px; background: var(--birch-3); }
   small { font-size: 14px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
@@ -158,8 +158,8 @@
   .track b { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--ink); }
   .gauge p { font-size: 12px; color: var(--ink-2); margin-top: 7px; line-height: 1.3; }
   .gauge p b { font-size: 17px; color: var(--ink); }
-  .gauge p span { display: block; color: var(--good); font-weight: 600; }
-  .gauge p span.under { color: #a85a00; }
+  .gauge p span { display: block; color: var(--good-text); font-weight: 600; }
+  .gauge p span.under { color: var(--warn-text); }
 
   .ops button { display: block; width: 100%; text-align: left; padding: 11px 0; min-height: 44px; }
   .ops button + button { border-top: 1px solid var(--ground); }
@@ -172,7 +172,7 @@
 
   .weak > button:not(.btn) { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 9px 0; min-height: 52px; }
   .weak > button:not(.btn) + button:not(.btn) { border-top: 1px solid var(--ground); }
-  .lap { width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--bad-tint); color: var(--bad); display: grid; place-items: center; font-size: 18px; }
+  .lap { width: 36px; height: 36px; flex: none; border-radius: 11px; background: var(--bad-tint); color: var(--bad-text); display: grid; place-items: center; font-size: 18px; }
   .wn { display: block; font-size: 17px; line-height: 1.15; }
   .wo { display: block; font-size: 12.5px; color: var(--ink-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 270px; }
 

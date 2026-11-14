@@ -21,7 +21,7 @@
       { k: 'replyPct', label: 'Opponent reply threshold', min: 1, max: 10, step: 1, fmt: (v) => `${v}%` },
       { k: 'band', label: 'Rating band', hint: 'Auto is chess.com rapid + 350', min: 800, max: 2000, step: 200, fmt: (v) => (v < 1000 ? 'Auto' : `${v}`) }
     ]],
-    ['Board', [{ k: 'delay', label: 'Opponent move delay', min: 0, max: 1500, step: 100, fmt: (v) => `${v} ms` }]]
+    ['Board and appearance', [{ k: 'delay', label: 'Opponent move delay', min: 0, max: 1500, step: 100, fmt: (v) => `${v} ms` }]]
   ];
   function bump(n: Num, d: number) {
     app[n.k] = Math.min(n.max, Math.max(n.min, app[n.k] + d * n.step));
@@ -72,7 +72,11 @@
           </div>
         </div>
       {/each}
-      {#if title === 'Board'}
+      {#if title === 'Board and appearance'}
+        <div class="r">
+          <p class="lb grow">Appearance</p>
+          <div class="pick">{#each ['auto', 'light', 'dark'] as const as t}<button class:on={app.theme === t} aria-pressed={app.theme === t} onclick={() => { app.theme = t; save(); }}>{t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark'}</button>{/each}</div>
+        </div>
         {#each toggles as [k, label, hint]}
           <label class="r">
             <div class="grow"><p class="lb">{label}</p>{#if hint}<p class="t-small">{hint}</p>{/if}</div>
@@ -133,10 +137,10 @@
   .txt { height: 44px; border-radius: 12px; border: 0; background: var(--ground); padding: 0 14px; text-align: right; width: 170px; user-select: text; font-weight: 600; }
   .pick { display: flex; gap: 6px; }
   .pick button { height: 44px; padding: 0 13px; border-radius: 12px; background: var(--ground); font-weight: 650; font-size: 14px; color: var(--ink-2); }
-  .pick button.on { background: var(--ink); color: #fff; }
-  .link.danger { color: var(--bad); }
+  .pick button.on { background: var(--ink); color: var(--on-ink); }
+  .link.danger { color: var(--bad-text); }
   .btn.sm { min-height: 44px; }
   .btn.bad { --face: var(--bad); --edge: #8f1f0e; }
-  .status { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; animation: rise 200ms var(--ease) both; }
+  .status { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
   .foot { text-align: center; font-size: 12.5px; color: var(--ink-3); margin-top: 26px; }
 </style>

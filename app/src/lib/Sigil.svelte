@@ -24,8 +24,8 @@
     {/each}{/each}
   </g>
   {#each segs as s (s.i)}
-    <line x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.white ? hue : 'var(--ink)'} stroke-width="3.6" stroke-linecap="round" pathLength="1" style="--i:{s.i}" />
-    <circle cx={s.x2} cy={s.y2} r="3.3" fill={s.white ? hue : 'var(--ink)'} style="--i:{s.i}" />
+    <line x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.white ? hue : 'var(--ink-fixed)'} stroke-width="3.6" stroke-linecap="round" pathLength="1" style="--i:{s.i}" />
+    <circle cx={s.x2} cy={s.y2} r="3.3" fill={s.white ? hue : 'var(--ink-fixed)'} style="--i:{s.i}" />
   {/each}
 </svg>
 

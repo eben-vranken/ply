@@ -32,6 +32,10 @@ Two rooms: the app is light and calm (cool grey ground, white cards); a training
 
 Stages also have a shape: an empty outline, then 1, 2 and 4 stacked plies.
 
+### Dark theme
+
+Follows the phone's setting by default; Settings → Appearance switches between Auto, Light and Dark. The dark theme re-points the neutral tokens only (`--ground` `#0d1024`, `--card` `#191e40`, `--ink` `#eef0fa`, `--line` `#2c3366`) plus a few helpers (`--accent-text`, `--good-text`, `--bad-text`, `--on-ink`, `--bar`, `--wash`) so text keeps AA contrast. Birch, the board, sigils and the session room are identical in both themes: the wood stays wood. `--ink-fixed` is the ink that never flips, for text on birch.
+
 ## Type
 
 - **Bricolage Grotesque** (variable) for everything functional. Display 40/700, title 28/700, head 19/650, body 16, small 13.5. Tabular figures everywhere.

@@ -137,10 +137,10 @@
 <style>
   .seg { display: flex; background: var(--card); border-radius: 14px; padding: 4px; box-shadow: var(--shadow); }
   .seg button { height: 38px; padding: 0 12px; border-radius: 10px; font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 7px; color: var(--ink-2); }
-  .seg button.on { background: var(--ink); color: #fff; }
+  .seg button.on { background: var(--ink); color: var(--on-ink); }
   .pc { width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; }
   .pc.w { background: #fff; border-color: var(--ink-3); }
-  .pc.b { background: var(--ink); border-color: var(--ink-3); }
+  .pc.b { background: var(--ink-fixed); border-color: var(--ink-3); }
   .search { display: flex; align-items: center; gap: 10px; height: 50px; padding: 0 14px; background: var(--card); border-radius: 16px; box-shadow: var(--shadow); color: var(--ink-3); }
   .search input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; height: 100%; color: var(--ink); user-select: text; }
   .search input::placeholder { color: var(--ink-3); }
@@ -153,16 +153,15 @@
   .nm { font-size: 27px; line-height: 1.08; }
   .crumbs { display: flex; gap: 4px; overflow-x: auto; margin: 10px -16px 0; padding: 0 16px; scrollbar-width: none; }
   .crumbs::-webkit-scrollbar { display: none; }
-  .crumb { flex: none; height: 34px; padding: 0 9px; border-radius: 10px; font-weight: 600; font-size: 14.5px; color: var(--ink-2); background: rgba(21, 25, 54, 0.06); }
+  .crumb { flex: none; height: 34px; padding: 0 9px; border-radius: 10px; font-weight: 600; font-size: 14.5px; color: var(--ink-2); background: var(--wash); }
   .crumb em { font-style: normal; opacity: 0.55; margin-right: 2px; font-weight: 500; }
-  .crumb.cur { background: var(--ink); color: #fff; }
+  .crumb.cur { background: var(--ink); color: var(--on-ink); }
 
   .bw { position: relative; }
-  .backbtn { position: absolute; left: -6px; bottom: 26px; width: 48px; height: 48px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; box-shadow: 0 6px 14px rgba(21, 25, 54, 0.35); }
   .acts { display: flex; gap: 10px; margin: 20px 0 6px; }
   .acts .btn { padding: 0 14px; font-size: 16px; white-space: nowrap; }
   .acts .sq { width: 52px; padding: 0; }
-  .toast { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 14px; animation: rise 200ms var(--ease) both; }
+  .toast { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
 
   .list { padding: 6px 6px 8px; margin-top: 16px; }
   .lh, .mv { display: grid; grid-template-columns: 96px 62px 1fr 44px; align-items: center; gap: 10px; padding: 0 10px; }
@@ -173,10 +172,10 @@
   .san { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: center; gap: 6px; }
   .marks { display: flex; align-items: center; gap: 4px; }
   .mk { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; flex: none; }
-  .mk.star { color: var(--cobalt); }
+  .mk.star { color: var(--accent-text); }
   .mk.dot::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
-  .mk.sw { background: var(--good-tint); color: var(--good); }
-  .mk.wr { background: var(--bad-tint); color: var(--bad); }
+  .mk.sw { background: var(--good-tint); color: var(--good-text); }
+  .mk.wr { background: var(--bad-tint); color: var(--bad-text); }
   .pct b, .ev b { display: block; font-size: 15px; }
   .pct small, .ev small { font-size: 11.5px; color: var(--ink-3); }
   .ev { text-align: right; }

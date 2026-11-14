@@ -115,7 +115,7 @@
   .pile i:nth-child(2) { background: var(--st-learning); }
   .pile i:nth-child(3) { background: var(--bad); }
 
-  .slab { position: relative; background: var(--birch); border-radius: var(--r-xl); padding: 22px 20px 34px; overflow: hidden; box-shadow: 0 18px 28px -16px rgba(111, 76, 44, 0.55); }
+  .slab { --wash: rgba(21, 25, 54, 0.08); position: relative; color: var(--ink-fixed); background: var(--birch); border-radius: var(--r-xl); padding: 22px 20px 34px; overflow: hidden; box-shadow: 0 18px 28px -16px rgba(111, 76, 44, 0.55); }
   .slab .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(#d8bb8a 0 2px, #b08a57 2px 5px, #e0c797 5px 8px, #a67f4d 8px 11px, #d2b382 11px 14px); }
   .art { position: absolute; right: -22px; top: -18px; color: var(--walnut); transform: rotate(8deg); }
   .art.done { right: 14px; top: 18px; transform: none; }
@@ -142,7 +142,7 @@
   .week .now span { border-color: var(--ink); }
   .week .now.hit span { border-color: var(--cobalt); }
 
-  .banner { width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 14px 16px; border-radius: var(--r-l); background: #fff4d6; color: var(--sun-ink); min-height: 56px; font-size: 15px; }
+  .banner { width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 14px 16px; border-radius: var(--r-l); background: var(--sun-tint); color: var(--sun-ink); min-height: 56px; font-size: 15px; }
   .banner .t-small { color: var(--sun-ink); }
   .games { margin-top: 12px; }
   .games svg { width: 100%; height: 76px; margin: 12px 0 8px; overflow: visible; }

@@ -22,6 +22,7 @@ const defaults = {
   vibration: true,
   delay: 400,
   showName: false,
+  theme: 'auto' as 'auto' | 'light' | 'dark',
   streak: 12,
   doneToday: 0,
   sessionAt: 0,
