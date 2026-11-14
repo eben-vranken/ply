@@ -27,6 +27,7 @@ const defaults = {
   // growing with rating
   rating: 0, // last chess.com rapid rating
   autoBand: 1200, // band the app is on in auto mode
+  bandSet: false, // the band has been set from a chess.com rating (later changes hold 7 days)
   pendingBand: 0, // a different band seen since pendingSince
   pendingSince: 0,
   bandNotice: '',

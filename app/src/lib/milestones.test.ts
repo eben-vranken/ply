@@ -99,6 +99,18 @@ describe.runIf(real)(`shipped data, band ${BAND}`, () => {
     expect(m.itemsFor(q).length).toBe(q.length);
   });
 
+  it('the first chess.com rating switches the band at once', async () => {
+    const { db } = await import('./db');
+    for (const name of [`tree-1400.json.gz`, `traps-1400.json.gz`]) {
+      const b = readFileSync(path(name));
+      await db.data.put({ name, bytes: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), sha256: manifest.files.find((f: { name: string }) => f.name === name).sha256, version: manifest.version });
+    }
+    await m.noteRating(1060); // + 350 = 1410 → band 1400, no 7-day wait the first time
+    expect(m.model.band).toBe(1400);
+    expect(m.depthLimit()).toBe(10);
+    await m.switchBand(1200);
+  });
+
   it('changing the band regenerates lines without losing a schedule', async () => {
     const [it] = m.itemsFor(m.todayCounts().queue.filter((i) => i.kind === 'new').slice(0, 1));
     const idx = +Object.entries(it.asks).find(([, a]) => a.intro)![0];

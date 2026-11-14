@@ -825,6 +825,19 @@ export const reviewsSince = (t: number) => db.reviews.where('at').aboveOrEqual(t
 export async function noteRating(rating: number) {
   const depthBefore = depthLimit();
   app.rating = rating;
+  // the first rating sets the band at once; later changes must hold for 7 days
+  if (!app.bandSet && app.band < 1000) {
+    app.bandSet = true; app.pendingBand = 0;
+    const b = bandFor(rating);
+    if (b !== app.autoBand) {
+      app.autoBand = b;
+      save();
+      await switchBand(b);
+      model.notice = `Your lines now follow what ${b} players play (chess.com rapid ${rating} + 350).`;
+      return;
+    }
+    save();
+  }
   // crossing 1000 / 1300 / 1600 deepens the lines; the deeper moves join the new-moves queue
   if (depthLimit() !== depthBefore) {
     regenerate();

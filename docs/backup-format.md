@@ -24,7 +24,7 @@ Dates inside FSRS card objects are ISO strings in the file; every other time is 
 
 ## settings
 
-One row, `key: "app"`, whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+One row, `key: "app"`, whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
 
 ## repertoire
 

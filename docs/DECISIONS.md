@@ -25,5 +25,6 @@ Choices made where the brief left room, or where building it showed a detail the
 | Positions for the move 10 / 15 chart | Plies 20 and 30 always get an eval | They may be the opponent's turn, which the per-move analysis skips. |
 | Opening data cache | IndexedDB only; the service worker precaches the app shell and engine, not `data/` | Avoids storing the data twice on the phone. Offline after first launch either way. |
 | Data update on mobile data | Only on Wi-Fi when the browser reports the connection type; otherwise when the app next opens on Wi-Fi | Brief: changed files download on Wi-Fi. Browsers that do not report it are treated as Wi-Fi. |
+| First chess.com rating | Sets the band at once; only later changes wait for the 7-day hold | The hold guards against rating swings; without it on the first sync you would train the 1200 default lines for a week. |
 | Promotion | Four-piece picker over the board | Brief. |
 | No chess.com name at onboarding | Band 1200 with 8-move lines | Brief defaults. |

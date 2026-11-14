@@ -109,6 +109,18 @@ describe('model on real data', () => {
     expect(m.movesAt('w', e)).toEqual(['f1c4']);
   });
 
+  it('the first chess.com rating sets the band and depth at once', async () => {
+    const { app } = await import('./state.svelte');
+    expect(app.bandSet).toBe(false);
+    await m.noteRating(850); // + 350 = 1200: the band it is already on
+    expect(m.currentBand()).toBe(1200);
+    expect(app.pendingBand).toBe(0);
+    await m.noteRating(1700); // a later change waits for 7 days
+    expect(m.currentBand()).toBe(1200);
+    expect(app.pendingBand).toBe(2000);
+    expect(m.depthLimit()).toBe(14);
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();
