@@ -11,7 +11,11 @@
         return [(flip ? 7 - f : f) * 10 + 5, (flip ? r : 7 - r) * 10 + 5];
       };
       const [x1, y1] = xy(a), [x2, y2] = xy(b);
-      return { x1, y1, x2, y2, white: i % 2 === 0, i };
+      // only a knight moves one by two: draw it as its L, the long leg first
+      const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
+      const knight = (dx === 10 && dy === 20) || (dx === 20 && dy === 10);
+      const d = knight ? `M${x1} ${y1}L${dy > dx ? `${x1} ${y2}` : `${x2} ${y1}`}L${x2} ${y2}` : `M${x1} ${y1}L${x2} ${y2}`;
+      return { d, x2, y2, white: i % 2 === 0, i };
     })
   );
 </script>
@@ -24,7 +28,7 @@
     {/each}{/each}
   </g>
   {#each segs as s (s.i)}
-    <line x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.white ? hue : 'var(--ink-fixed)'} stroke-width="3.6" stroke-linecap="round" pathLength="1" style="--i:{s.i}" />
+    <path d={s.d} fill="none" stroke={s.white ? hue : 'var(--ink-fixed)'} stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" pathLength="1" style="--i:{s.i}" />
     <circle cx={s.x2} cy={s.y2} r="3.3" fill={s.white ? hue : 'var(--ink-fixed)'} style="--i:{s.i}" />
   {/each}
 </svg>
@@ -32,7 +36,7 @@
 <style>
   svg { display: block; flex: none; border-radius: 18%; }
   svg.bare { border-radius: 0; }
-  .draw line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 420ms var(--ease) forwards; animation-delay: calc(var(--i) * 110ms + 200ms); }
+  .draw path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 420ms var(--ease) forwards; animation-delay: calc(var(--i) * 110ms + 200ms); }
   .draw circle { transform-box: fill-box; transform-origin: center; transform: scale(0); animation: dot 260ms var(--spring) forwards; animation-delay: calc(var(--i) * 110ms + 480ms); }
   @keyframes draw { to { stroke-dashoffset: 0; } }
   @keyframes dot { to { transform: scale(1); } }
