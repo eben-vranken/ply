@@ -50,6 +50,13 @@
   let arc = $state<ReturnType<NonNullable<typeof run.arcade>> | null>(null);
   const rating0 = app.arcadeRating;
   const tally = { solved: 0, missed: 0, streak: 0 };
+  // the streak is what the arcade plays for: a flame that heats up, and a cheer at 3, 5 and every 5 after
+  const streak = $derived(arc?.streak ?? 0);
+  const tier = $derived(streak >= 10 ? 3 : streak >= 3 ? 2 : streak >= 1 ? 1 : 0);
+  const goal = $derived(streak < 3 ? 3 : streak < 5 ? 5 : (Math.floor(streak / 5) + 1) * 5);
+  const from = $derived(streak < 3 ? 0 : streak < 5 ? 3 : Math.floor(streak / 5) * 5);
+  let cheer = $state<{ text: string; n: number } | null>(null);
+  let cheers = 0, lost = 0;
 
   function sync(mv?: { from: string; to: string }) {
     fen = chess.fen();
@@ -69,7 +76,7 @@
     histStart = (chess.moveNumber() - 1) * 2 + (chess.turn() === 'b' ? 1 : 0);
     for (const u of it.setup) chess.move(toMove(u));
     step = 0; wrong = false; hinted = false; playable = false; results = {}; fixing = false; showOthers = false;
-    phase = 'play'; msg = null; badge = null; shapes = []; lastMove = null; dests = null; applied = null;
+    phase = 'play'; msg = null; badge = null; shapes = []; lastMove = null; dests = null; applied = null; cheer = null;
     sync();
     timer = setTimeout(advance, 450);
   }
@@ -202,11 +209,22 @@
     phase = 'answered';
     if (arcade) {
       const rs = Object.values(results);
+      const before = arc?.streak ?? 0, was = app.arcadeRating;
       arc = run.arcade!(it, rs.length > 0 && rs.every((r) => !r.wrong && !r.hinted));
-      // a clean answer moves straight on; a miss waits so you can look at it
       if (arc.clean) tally.solved++; else tally.missed++;
       tally.streak = Math.max(tally.streak, arc.streak);
-      if (arc.clean) timer = setTimeout(next, 1100);
+      lost = arc.clean ? 0 : before;
+      if (arc.clean) {
+        const n = arc.streak, mile = n === 3 || (n >= 5 && n % 5 === 0);
+        const step = Math.floor(arc.rating / 50) > Math.floor(was / 50);
+        if (mile || step) {
+          cheer = { text: mile ? `${n} in a row` : `Rating ${Math.floor(arc.rating / 50) * 50}`, n: ++cheers };
+          if (mile && n >= 10) sfx.done();
+          buzz([18, 50, 18, 50, 60]);
+        } else buzz(n >= 3 ? [12, 40, 12] : 12);
+        // a clean answer moves straight on; a miss waits so you can look at it
+        timer = setTimeout(next, cheer ? 1700 : 1100);
+      }
     }
   }
 
@@ -286,7 +304,7 @@
   const mins = $derived(Math.max(1, Math.round((Date.now() - total.started) / 60000)));
   const gradeInfo = $derived.by(() => {
     if (arcade && arc) {
-      const sub = `Rating ${arc.rating} · streak ${arc.streak}${arc.returns ? ' · comes back soon' : ''}`;
+      const sub = arc.clean ? `Rating ${arc.rating}${arc.returns ? ' · once more later' : ''}` : `${lost >= 3 ? `Streak of ${lost} ended · ` : ''}Rating ${arc.rating} · comes back soon`;
       if (arc.back) return [arc.clean ? 'good' : 'bad', arc.clean ? 'Got it' : 'Again', sub] as const;
       return [arc.clean ? 'good' : 'bad', `${arc.delta > 0 ? '+' : '−'}${Math.abs(arc.delta)}`, sub] as const;
     }
@@ -350,8 +368,16 @@
   {:else if item}
     <header>
       <button class="x" onclick={stop} aria-label={drill || run.mode === 'learn' ? 'Stop' : 'Leave session'}><Icon name="close" /></button>
-      {#if drill || run.mode === 'learn'}
-        <p class="runtitle grow">{arcade ? `Arcade · ${app.arcadeRating}${arc?.streak ? ` · streak ${arc.streak}` : ''}` : `${drill ? 'Drill' : 'Learn'} · ${run.title}`}</p>
+      {#if arcade}
+        <div class="arcbar grow">
+          <span class="rate" aria-label="Arcade rating {app.arcadeRating}"><b class="t-num">{app.arcadeRating}</b></span>
+          <span class="flame t{tier}" aria-label="Streak {streak}">{#key streak}<span class="fl"><Icon name="flame" size={22} fill /></span>{/key}<b class="t-num">{streak}</b></span>
+          <span class="to" role="progressbar" aria-label="Towards {goal} in a row" aria-valuemin={from} aria-valuemax={goal} aria-valuenow={streak}><i class="t{tier}" style="width:{((streak - from) / (goal - from)) * 100}%"></i></span>
+          <span class="goal t-num">{goal}</span>
+        </div>
+        <button class="stopbtn" onclick={stop}>Stop</button>
+      {:else if drill || run.mode === 'learn'}
+        <p class="runtitle grow">{drill ? 'Drill' : 'Learn'} · {run.title}</p>
         <button class="stopbtn" onclick={stop}>Stop</button>
       {:else}
         <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={idx}>
@@ -384,6 +410,9 @@
 
     <div class="boardwrap">
       <Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} />
+      {#if cheer}
+        {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
+      {/if}
       {#if promo}
         <div class="promo" role="dialog" aria-label="Promote to">
           {#each ['q', 'r', 'b', 'n'] as p}
@@ -423,7 +452,7 @@
     {:else}
       <div class="answer">
         <div class="row">
-          <span class="grade {gradeInfo[0]}">{gradeInfo[1]}</span>
+          <span class="grade {gradeInfo[0]}" class:pop={arcade}>{gradeInfo[1]}</span>
           <span class="when">{gradeInfo[2]}</span>
         </div>
         {#if item.source}<p class="srcline">{item.source}</p>{/if}
@@ -458,6 +487,23 @@
   .prog i.now { background: linear-gradient(90deg, var(--birch) 50%, var(--night-3) 50%); }
   .mode { font-size: 13px; font-weight: 650; color: var(--night-ink-2); min-width: 34px; text-align: right; }
   .runtitle { font-size: 14px; font-weight: 650; color: var(--night-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .arcbar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .rate { height: 32px; padding: 0 11px; border-radius: 11px; background: var(--night-2); display: inline-grid; place-items: center; font-size: 16px; }
+  .flame { display: inline-flex; align-items: center; gap: 1px; font-size: 18px; color: #6f76a0; transition: color 200ms; }
+  .flame.t1 { color: var(--sun); }
+  .flame.t2 { color: #ff8a2a; }
+  .flame.t3 { color: #ff5a3d; filter: drop-shadow(0 0 7px rgba(255, 90, 61, 0.65)); }
+  .fl { display: inline-flex; animation: pop 340ms var(--spring) both; }
+  .to { flex: 1; min-width: 20px; height: 8px; border-radius: 4px; background: var(--night-3); overflow: hidden; }
+  .to i { display: block; height: 100%; border-radius: 4px; background: #6f76a0; transition: width 320ms var(--ease), background 200ms; }
+  .to i.t1 { background: var(--sun); }
+  .to i.t2 { background: #ff8a2a; }
+  .to i.t3 { background: #ff5a3d; }
+  .goal { font-size: 13px; font-weight: 700; color: var(--night-ink-2); }
+  .cheer { position: absolute; z-index: 6; left: 50%; top: 36%; display: flex; align-items: center; gap: 8px; padding: 12px 20px 12px 14px; border-radius: 22px; background: var(--sun); color: #3d2800; box-shadow: 0 6px 0 #c98a12, 0 18px 30px rgba(0, 0, 0, 0.45); white-space: nowrap; pointer-events: none; animation: cheer 1600ms var(--ease) both; }
+  .cheer b { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  @keyframes cheer { 0% { opacity: 0; transform: translate(-50%, 16px) scale(0.6); } 14% { opacity: 1; transform: translate(-50%, 0) scale(1.08); } 22% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -18px) scale(1); } }
+  .grade.pop { animation: pop 300ms var(--spring) both; }
   .stopbtn { height: 40px; padding: 0 16px; border-radius: 12px; background: var(--night-3); font-weight: 700; font-size: 14px; }
 
   .label { height: 58px; flex: none; padding: 4px 16px 0; display: flex; flex-direction: column; justify-content: center; }

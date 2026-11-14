@@ -513,6 +513,28 @@ export function subtreeNew(side: Side, path: string[]): MoveSpec[] {
   return [...Ls.cards.values()].filter((s) => !cards.has(s.id) && inside(s)).sort((a, b) => b.prob - a.prob || a.ply - b.ply);
 }
 
+// ---------------------------------------------------------------- search
+export interface OpeningHit { side: Side; name: string; eco: string; path: string[] }
+let hitIndex: { rev: number; rows: { side: Side; name: string; eco: string; epd: string; prob: number; hay: string }[] } | null = null;
+/** Every named opening and variation your lines pass through, matched on name, ECO code or moves. */
+export function searchOpenings(query: string): OpeningHit[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length || !D || !ctx) return [];
+  if (!hitIndex || hitIndex.rev !== model.rev) {
+    const best = new Map<string, { side: Side; name: string; eco: string; epd: string; prob: number; hay: string }>();
+    for (const side of ['w', 'b'] as Side[]) for (const p of L[side]?.pos.values() ?? []) {
+      const id = ctx.named.get(p.epd);
+      if (id === undefined) continue;
+      // several catalogue entries can share a name: keep the one you reach most often
+      const o = D.openings[id], k = side + o.name, cur = best.get(k);
+      if (!cur || p.prob > cur.prob) best.set(k, { side, name: o.name, eco: o.eco, epd: p.epd, prob: p.prob, hay: `${o.name} ${o.eco} ${o.san} ${side === 'w' ? 'white' : 'black'}`.toLowerCase().replace(/[\u2019']/g, '') });
+    }
+    hitIndex = { rev: model.rev, rows: [...best.values()].sort((a, b) => b.prob - a.prob) };
+  }
+  const clean = words.map((w) => w.replace(/[\u2019']/g, ''));
+  return hitIndex.rows.filter((r) => clean.every((w) => r.hay.includes(w))).slice(0, 40).map((r) => ({ side: r.side, name: r.name, eco: r.eco, path: pathTo(L[r.side]!, r.epd) }));
+}
+
 // ---------------------------------------------------------------- focus openings
 const focusKey = (side: Side) => (side === 'w' ? 'focusW' : 'focusB') as 'focusW' | 'focusB';
 /** The focus opening of a colour as a move path, or null. */

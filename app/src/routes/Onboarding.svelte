@@ -46,7 +46,7 @@
       {#if step === 0}
         <div class="hero" aria-hidden="true">
           <div class="tile t1"><Sigil path={S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6')} size={200} draw /></div>
-          <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={128} hue="#0f7a55" flip /></div>
+          <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={128} hue="#0f7a55" flip you="b" /></div>
           <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={104} hue="#cf331c" /></div>
         </div>
         <h1 class="t-name hl">Openings that stay learned.</h1>
@@ -59,7 +59,7 @@
           <div class="opts">
             {#each p.opts as o}
               <button class="opt" class:on={app[p.key] === o.v} aria-pressed={app[p.key] === o.v} onclick={() => (app[p.key] = o.v)}>
-                <Sigil path={o.path} hue={o.hue} flip={o.flip} size={48} />
+                <Sigil path={o.path} hue={o.hue} flip={o.flip} you={o.flip ? 'b' : 'w'} size={48} />
                 <span class="grow"><b class="t-name">{o.v}</b><small>{o.sub}</small></span>
                 <span class="radio">{#if app[p.key] === o.v}<Icon name="check" size={16} />{/if}</span>
               </button>

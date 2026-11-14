@@ -70,7 +70,7 @@
 
   <section class="slab" style="animation: rise 420ms var(--ease) both">
     {#if next}
-      <div class="art"><Sigil path={nextPath} size={176} bare draw flip={next.side === 'b'} hue="var(--cobalt)" /></div>
+      <div class="art"><Sigil path={nextPath} size={176} bare draw flip={next.side === 'b'} you={next.side} hue="var(--cobalt)" /></div>
       <p class="up">First up · {kindLine[next.kind]}</p>
       <h2 class="t-name name">{nextName.split(':')[0]}</h2>
       <p class="sub">{nextName.includes(':') ? nextName.split(': ')[1] : next.side === 'w' ? 'You play White' : 'You play Black'} {#if nextEco}<span class="eco">{nextEco}</span>{/if}</p>
@@ -97,7 +97,7 @@
     <div class="grow">
       <h3 class="t-head">Arcade</h3>
       <p class="t-small">Endless puzzles, traps and positions from your openings. Your cards stay as they are.</p>
-      <p class="arcnum"><span><b class="t-num">{app.arcadeRating}</b> rating</span><span><b class="t-num">{app.arcadeBest}</b> best streak</span><span><b class="t-num">{app.arcadeSolved}</b> solved</span></p>
+      <p class="arcnum"><span><b class="t-num">{app.arcadeRating}</b> rating</span><span class="fl"><Icon name="flame" size={17} fill /><b class="t-num">{app.arcadeBest}</b> best streak</span><span><b class="t-num">{app.arcadeSolved}</b> solved</span></p>
     </div>
     <button class="btn" onclick={playArcade} aria-label="Play Arcade"><Icon name="play" size={20} fill /></button>
   </section>
@@ -175,6 +175,8 @@
   .arc { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
   .arc .btn { flex: none; width: 60px; min-height: 60px; padding: 0; border-radius: 20px; }
   .arcnum { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+  .arcnum .fl { display: inline-flex; align-items: baseline; gap: 2px; }
+  .arcnum .fl :global(svg) { color: #f0762a; align-self: center; }
   .arcnum b { font-size: 20px; color: var(--ink); margin-right: 2px; }
   .counts { display: flex; gap: 8px; margin: 22px 0 18px; }
   .counts div { flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 16px; padding: 10px 12px 9px; }

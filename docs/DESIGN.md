@@ -7,7 +7,7 @@ Ply means a half-move, and it means a layer of veneer. The whole identity comes 
 Three ideas carry it:
 
 1. **The slab.** The board is a piece of birch plywood stained blue on the dark squares, sitting on a visible five-veneer edge. The Today hero card and every primary button share that construction: a flat face on a darker edge that you physically press down.
-2. **The sigil.** Every opening has a mark: the path its first moves trace across the 8x8 grid, inlaid in a birch tile (White's moves in the opening's colour, Black's in ink). It is generated from the moves, so every opening in the full data set gets one for free.
+2. **The sigil.** Every opening has a mark: the path its first moves trace across the 8x8 grid, inlaid in a birch tile (your moves in the opening's colour, your opponent's in ink; a knight's move is drawn as its L). It is generated from the moves, so every opening in the full data set gets one for free.
 3. **Annotation glyphs.** Feedback speaks chess: `!` correct, `?` wrong, `!?` your other branch, `??` the trap, `#` mate. Evals use Informant symbols (⩲ ± =). Shape and glyph carry the meaning, never colour alone.
 
 Two rooms: the app is light and calm (cool grey ground, white cards); a training session is a dark room (ink navy) where the board is the only bright thing. Entering a session slides the dark room up over the light one.

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { go, app } from '../lib/state.svelte';
-  import { model, focusOf, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
+  import { model, focusOf, searchOpenings, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
   import { db, type GameRow } from '../lib/db';
   import { sans, moveOrder, epdAfter, san } from '../lib/chess';
   import type { Section } from '../lib/srs/lines';
@@ -12,7 +12,9 @@
   const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
   const all = $derived(summaries());
   const isFocus = (o: OpeningSummary) => focusOf(o.side)?.join(' ') === o.path.join(' ');
-  const open = (o: OpeningSummary) => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
+  let q = $state('');
+  const hits = $derived.by(() => { void model.rev; return searchOpenings(q); });
+  const open = (o: { side: 'w' | 'b'; path: string[] }) => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
   const totals = $derived({ lines: all.reduce((n, o) => n + o.lines, 0), learned: all.reduce((n, o) => n + o.learned, 0), total: all.reduce((n, o) => n + o.total, 0) });
   const rare = $derived.by(() => { void model.rev; return rareCards(); });
   const cov = $derived.by(() => { void model.rev; return { w: Math.round(sectionCoverage('w') * 100), b: Math.round(sectionCoverage('b') * 100) }; });
@@ -54,6 +56,28 @@
     </div>
   </header>
 
+  <label class="search">
+    <Icon name="search" size={20} />
+    <input type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search your openings" aria-label="Search your openings" bind:value={q} />
+    {#if q}<button onclick={() => (q = '')} aria-label="Clear search"><Icon name="close" size={18} /></button>{/if}
+  </label>
+
+  {#if q.trim()}
+    <div class="stack">
+      {#each hits as h, i (h.side + h.name)}
+        <button class="card op" onclick={() => open(h)}>
+          <Sigil path={h.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={h.side === 'b'} you={h.side} size={48} />
+          <span class="grow">
+            <span class="t-name nm sm">{h.name}{#if h.eco}<span class="eco">{h.eco}</span>{/if}</span>
+            <span class="meta">{h.side === 'w' ? 'White' : 'Black'} · {moveOrder(sans(h.path))}</span>
+          </span>
+          <Icon name="next" size={18} />
+        </button>
+      {:else}
+        <p class="t-small none">Nothing in your lines matches “{q.trim()}”. Try part of a name, a code like C50, or moves like e4 e5 Nf3.</p>
+      {/each}
+    </div>
+  {:else}
   {#each sections as s}
     {@const ops = all.filter((o) => o.section === s)}
     <div class="sect">
@@ -69,7 +93,7 @@
     <div class="stack">
       {#each ops as o, i (o.key)}
         <button class="card op" onclick={() => open(o)}>
-          <Sigil path={o.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={o.side === 'b'} size={60} />
+          <Sigil path={o.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={o.side === 'b'} you={o.side} size={60} />
           <span class="grow">
             <span class="t-name nm">{o.name}{#if o.eco}<span class="eco">{o.eco}</span>{/if}</span>
             <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Focus</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
@@ -126,10 +150,20 @@
     <p class="grow t-small"><b style="color:var(--ink)">{rare.length} card{rare.length === 1 ? '' : 's'}</b> sit in positions your lines no longer reach at this band. They keep their schedule until you retire them.</p>
     <button class="btn quiet sm" onclick={retireRare} disabled={!rare.length}>Retire rare cards</button>
   </div>
+  {/if}
 </div>
 
 <style>
   .sc { font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: var(--ink-3); margin-left: 8px; }
+  .search { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 16px; margin-bottom: 4px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); color: var(--ink-3); }
+  .search:focus-within { outline: 3px solid var(--cobalt); outline-offset: 1px; }
+  .search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: none; font-size: 16px; color: var(--ink); user-select: text; }
+  .search input::placeholder { color: var(--ink-3); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .search button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink-2); }
+  .search + .stack { margin-top: 14px; }
+  .nm.sm { font-size: 18px; }
+  .none { padding: 6px 4px; }
   .op { display: flex; align-items: center; gap: 14px; text-align: left; width: 100%; padding: 12px 16px 12px 12px; transition: transform 120ms var(--ease); }
   .op:active { transform: scale(0.98); }
   .nm { display: block; font-size: 20px; line-height: 1.12; }

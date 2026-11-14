@@ -51,7 +51,7 @@
 <div class="room">
   <header>
     <button class="ib" onclick={() => (history.length > 1 ? history.back() : go('/repertoire'))} aria-label="Back to Repertoire"><Icon name="back" /></button>
-    <Sigil path={path.slice(0, 8)} flip={side === 'b'} size={44} />
+    <Sigil path={path.slice(0, 8)} flip={side === 'b'} you={side} size={44} />
     <div class="grow">
       <h1 class="t-name ttl">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</h1>
       <p class="ord">{#if focused}<b class="fc">Focus</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
