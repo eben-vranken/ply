@@ -1,0 +1,31 @@
+<script lang="ts">
+  // Ply's own icon set: 24px grid, 2px round strokes. Drawn for this app (GPL-3.0).
+  const P: Record<string, string> = {
+    today: 'M4 15h16M4 19h16M6 11a6 6 0 0 1 12 0',
+    explore: 'M12 3v4M12 17v4M3 12h4M17 12h4M15 9l-1.6 4.4L9 15l1.6-4.4z',
+    repertoire: 'M5 5h5v5H5zM14 5h5v5h-5zM5 14h5v5H5zM14 14h5v5h-5z',
+    stats: 'M5 20V11M12 20V4M19 20v-6',
+    settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4',
+    back: 'M15 5l-7 7 7 7',
+    close: 'M6 6l12 12M18 6L6 18',
+    next: 'M9 5l7 7-7 7',
+    hint: 'M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z',
+    undo: 'M8 5L4 9l4 4M4 9h10a6 6 0 0 1 0 12h-3',
+    search: 'M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14zM16 16l5 5',
+    star: 'M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.600 19.8l1.1-6.1L3.2 9.400l6.1-.8z',
+    sword: 'M20 4l-9 9M20 4h-4M20 4v4M8 12l4 4M5 19l4-4M4 20l1-1',
+    warn: 'M12 4l9 16H3zM12 10v5M12 17.500v.5',
+    layers: 'M12 4l9 4.500-9 4.500-9-4.500zM3 13l9 4.500 9-4.500M3 17l9 4.500 9-4.500',
+    check: 'M5 12.500l4.500 4.500L19 7',
+    play: 'M8 5l11 7-11 7z',
+    plus: 'M12 5v14M5 12h14',
+    trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
+    share: 'M12 15V4M8 8l4-4 4 4M5 13v6h14v-6',
+    wifi: 'M4 9a12 12 0 0 1 16 0M7 12.500a7.500 7.500 0 0 1 10 0M12 17v.5'
+  };
+  let { name, size = 24, fill = false }: { name: string; size?: number; fill?: boolean } = $props();
+</script>
+
+<svg width={size} height={size} viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={P[name]} /></svg>
+
+<style>svg { display: block; flex: none; }</style>
