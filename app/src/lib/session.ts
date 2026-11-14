@@ -50,6 +50,8 @@ export interface Item {
   spec?: MoveSpec;
   /** Drill: replies are drawn live from the tree, any of your moves is accepted */
   drill?: { depth: number; rare: boolean };
+  /** Arcade: what the position is, how hard it is, and whether it came back after a miss */
+  arcade?: { key: string; level: number; back?: boolean };
   /** Today item came from the daily queue (counts toward Done today) */
   today?: boolean;
 }

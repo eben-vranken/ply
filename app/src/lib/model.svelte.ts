@@ -680,66 +680,127 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
   log.push({ card: c, prev, rid });
 }
 
-// ---------------------------------------------------------------- Keep going
-/**
- * One round of extra practice for after the day's queue. It never adds opening moves:
- *  - the cards you are closest to forgetting, graded as early reviews (FSRS weighs the real elapsed time)
- *  - a few of the mistakes and traps still waiting behind the daily limits
- *  - practice lines against drawn replies through what you have learned, each ending on at most one
- *    move you have not learned yet; a correct answer changes nothing, a miss on a card grades it Again
- * `seen` holds the cards already served in this sitting, so nothing repeats.
- */
-export function extraRound(seen: Set<string>): Item[] {
-  const now = new Date();
-  const live = [...cards.values()].filter((c) => !c.suspended && !seen.has(c.id));
-  const q: QItem[] = [];
-  const weak = live.filter((c) => c.fsrs.state === 2)
-    .map((c) => [c, retrievability(c.fsrs, now, app.retention / 100)] as const)
-    .filter(([, r]) => r < 0.95).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([c]) => c);
-  for (const c of weak) {
-    seen.add(c.id);
-    q.push(c.type === 'move' ? { kind: 'line', side: c.side, path: [...(L[c.side]?.pos.has(c.epd) ? pathTo(L[c.side]!, c.epd) : c.path ?? []), c.move], due: [c.id] } : { kind: 'card', card: c });
-  }
-  for (const c of live.filter((c) => c.type === 'mistake' && c.fsrs.state === 0).sort((a, b) => b.created - a.created).slice(0, 2)) { seen.add(c.id); q.push({ kind: 'card', card: c }); }
-  const traps = newTrapSpecs.filter((t) => !seen.has(t.id)).sort((a, b) => b.score - a.score);
-  const trap = traps.find((t) => t.type !== 'puzzle') ?? traps[0];
-  if (trap) { seen.add(trap.id); q.push({ kind: 'newtrap', spec: trap }); }
-  const out = itemsFor(q);
-  // three different practice lines, the colours taking turns
-  const lines = new Set<string>();
-  for (let i = 0; i < 9 && lines.size < 3; i++) {
-    const side: Side = (i + seen.size) % 2 ? 'b' : 'w';
-    const f = focusOf(side);
-    const l = practiceLine(side, f && L[side]?.pos.has(epdAfter(f)) && Math.random() < 0.6 ? f : []);
-    const k = l ? side + l.setup.join('') + l.moves.join('') : '';
-    if (l && !lines.has(k)) { lines.add(k); out.push(l); }
-  }
-  return out;
+// ---------------------------------------------------------------- Arcade
+// An endless stream of single positions that never touches the cards: puzzles from your openings,
+// traps, the mistakes from your games and book moves from your repertoire. It has its own rating,
+// and a position you miss comes back until you get it right (a trap has to be solved twice).
+const ARC = 'ply-arcade-v1';
+interface ArcMem { miss: Record<string, number>; recent: string[] }
+function arcLoad(): ArcMem { try { return { miss: {}, recent: [], ...JSON.parse(localStorage.getItem(ARC) ?? '{}') }; } catch { return { miss: {}, recent: [] }; } }
+function arcSave(m: ArcMem) {
+  const miss = Object.fromEntries(Object.entries(m.miss).slice(-200));
+  try { localStorage.setItem(ARC, JSON.stringify({ miss, recent: m.recent.slice(-600) })); } catch { /* private mode */ }
 }
-/** A drill line cut after the first move that is not a card yet, with each asked move tied to its card. */
-function practiceLine(side: Side, path: string[]): Item | null {
-  const l = drillLine(side, path, false);
-  if (!l) return null;
-  let e = epdAfter(path), end = l.moves.length;
-  for (let i = 0; i < l.moves.length; i++) {
-    const u = l.moves[i];
-    if (l.asks[i]) {
-      const id = moveId(side, e, u);
-      // the line is fixed, so your other moves here are named, not followed
-      const other = movesAt(side, e).filter((m) => m !== u).map((m) => [m, nameOf(child(e, m))[1]] as [string, string]);
-      l.asks[i] = { card: cards.has(id) ? id : undefined, other: other.length ? other : undefined };
-      if (!cards.has(id)) { end = i + 1; break; }
-    }
-    e = child(e, u);
+export interface ArcadeResult { clean: boolean; delta: number; rating: number; streak: number; /** it was a position you had missed before */ back: boolean; /** it will come back */ returns: boolean }
+export interface Arcade { next: () => Item[]; result: (it: Item, clean: boolean) => ArcadeResult }
+
+function bookItem(s: MoveSpec): Item {
+  const path = pathTo(L[s.side]!, s.epd);
+  const known = cards.has(s.id);
+  return {
+    kind: 'drill', side: s.side, start: START_EPD, setup: path, moves: [s.move], asks: { 0: { accepted: Array.from(new Set([s.move, ...movesAt(s.side, s.epd)])) } },
+    prompt: known ? 'Your book move' : 'Guess the book move', label: labelOf(s.epd, path), order: moveOrder(sans(path), true),
+    source: known ? 'From your repertoire' : 'From your repertoire · not learned yet', note: noteAt(s.side, s.epd)
+  };
+}
+
+export function arcade(): Arcade {
+  const mem = arcLoad();
+  const recent = new Set(mem.recent);
+  let count = 0, streak = 0, turn = 0;
+  // what you missed last time comes back early in this sitting
+  const later = Object.keys(mem.miss).slice(-10).map((key, i) => ({ key, at: 2 + i * 3 }));
+  const pick = <T>(a: T[]): T | undefined => a[Math.floor(Math.random() * a.length)];
+
+  const fam: Record<Side, Set<string>> = { w: new Set(), b: new Set() };
+  for (const side of ['w', 'b'] as Side[]) for (const e of L[side]?.pos.keys() ?? []) { const o = D?.tree[e]?.o; if (o !== undefined) fam[side].add(D!.openings[o].family); }
+  const own = (D?.puzzles ?? []).filter((p) => p.families.some((id) => fam[p.fen.split(' ')[1] === 'w' ? 'b' : 'w'].has(D!.openings[id]?.family)));
+  const puzzles = own.length > 400 ? own : D?.puzzles ?? [];
+  const traps = (D?.traps ?? []).filter((t) => L[t.side]?.pos.has(t.epd) && turnOf(t.epd) === t.side && (t.kind !== 'danger' || (movesAt(t.side, t.epd).length > 0 && !movesAt(t.side, t.epd).includes(t.bait!))));
+  const specs = (['w', 'b'] as Side[]).flatMap((side) => [...(L[side]?.cards.values() ?? [])]);
+
+  const bare = (it: Item, key: string, level: number): Item => ({ ...it, card: undefined, intro: undefined, today: undefined, arcade: { key, level } });
+  /** the position behind a key: z puzzle, t trap, k mistake card, m book move */
+  function make(key: string): Item | null {
+    const id = key.slice(2);
+    if (key[0] === 'z') { const p = puzzleById.get(id); return p ? bare(puzzleItem(p, 'z' + id, false), key, p.rating) : null; }
+    if (key[0] === 't') { const t = trapById.get(id); if (!t) return null; const it = trapItem(t, 't' + id, false); return bare(it, key, t.kind === 'danger' ? 1000 : 850 + 60 * (Object.keys(it.asks).length - 1)); }
+    if (key[0] === 'k') { const c = cards.get(id); return c && c.type === 'mistake' ? bare(mistakeItem(c), key, 1100) : null; }
+    const s = L[id[0] as Side]?.cards.get(id.slice(2));
+    return s ? bare(bookItem(s), key, cards.has(s.id) ? 700 : 1250) : null;
   }
-  l.moves = l.moves.slice(0, end);
-  for (const k of Object.keys(l.asks)) if (+k >= end) delete l.asks[+k];
-  l.drill = undefined;
-  // named after where it ends, like a review line
-  const before = [...path, ...l.moves.slice(0, -1)];
-  l.label = labelOf(epdAfter(before), before);
-  l.order = moveOrder(sans(before), true);
-  return l;
+  const fresh = (keys: string[]) => { const f = keys.filter((k) => !recent.has(k)); return pick(f.length ? f : keys); };
+  function draw(kind: string): string | undefined {
+    if (kind === 't') {
+      // weighted by how often the position and the move behind the trap turn up in your games
+      const left = traps.filter((t) => !recent.has('t:' + t.id));
+      const pool = left.length ? left : traps;
+      const w = pool.map((t) => (L[t.side]?.pos.get(t.epd)?.prob ?? 0) * t.freq + 1e-9);
+      let r = Math.random() * w.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) return 't:' + pool[i].id; }
+      return pool.length ? 't:' + pool[0].id : undefined;
+    }
+    if (kind === 'k') return fresh([...cards.values()].filter((c) => c.type === 'mistake' && !c.suspended).map((c) => 'k:' + c.id));
+    if (kind === 'm') {
+      const known = specs.filter((s) => cards.has(s.id));
+      // an unlearned one comes from the moves Today will teach next
+      const soon = specs.filter((s) => !cards.has(s.id)).sort((a, b) => b.prob - a.prob || a.ply - b.ply).slice(0, 30);
+      return fresh((known.length && Math.random() < 0.5 ? known : soon.length ? soon : known).map((s) => `m:${s.side}:${s.id}`));
+    }
+    // a puzzle near your arcade rating, widening until there is a choice
+    for (const w of [90, 180, 360, 4000]) {
+      const c = puzzles.filter((p) => Math.abs(p.rating - app.arcadeRating) <= w && !recent.has('z:' + p.id));
+      if (c.length >= 8 || w === 4000) return c.length ? 'z:' + pick(c)!.id : fresh(puzzles.map((p) => 'z:' + p.id));
+    }
+  }
+  const ORDER = ['z', 't', 'z', 'k', 'z', 'm'];
+  return {
+    next() {
+      const out: Item[] = [];
+      for (let n = 0; n < 3; n++) {
+        // at most one returning position in three, so new ones keep coming
+        const due = out.some((o) => o.arcade!.back) ? -1 : later.findIndex((l) => l.at <= count + out.length);
+        let key: string | undefined, back = false;
+        if (due >= 0) { key = later.splice(due, 1)[0].key; back = true; }
+        else key = draw(ORDER[turn++ % ORDER.length]) ?? draw('z');
+        const it = key ? make(key) : null;
+        if (!it) { if (back) delete mem.miss[key!]; continue; }
+        it.arcade!.back = back;
+        recent.add(key!); mem.recent.push(key!);
+        out.push(it);
+      }
+      arcSave(mem);
+      return out;
+    },
+    result(it, clean) {
+      const a = it.arcade!;
+      count++;
+      let delta = 0;
+      // a position that came back is practice: it no longer moves the rating
+      if (!a.back) {
+        const expected = 1 / (1 + 10 ** ((a.level - app.arcadeRating) / 400));
+        delta = Math.round((app.arcadeSolved + app.arcadeMissed < 30 ? 32 : 16) * ((clean ? 1 : 0) - expected));
+        delta = clean ? Math.max(1, delta) : Math.min(-1, delta);
+        app.arcadeRating = Math.max(100, app.arcadeRating + delta);
+      }
+      streak = clean ? streak + 1 : 0;
+      if (clean) app.arcadeSolved++; else app.arcadeMissed++;
+      app.arcadeBest = Math.max(app.arcadeBest, streak);
+      let returns = false;
+      if (!clean) {
+        mem.miss[a.key] = Math.max(mem.miss[a.key] ?? 0, a.key[0] === 't' ? 2 : 1);
+        later.push({ key: a.key, at: count + (a.key[0] === 't' ? 4 : 7) });
+        returns = true;
+      } else if (a.back) {
+        const left = (mem.miss[a.key] ?? 1) - 1;
+        if (left > 0) { mem.miss[a.key] = left; later.push({ key: a.key, at: count + 10 }); returns = true; }
+        else delete mem.miss[a.key];
+      }
+      save();
+      arcSave(mem);
+      return { clean, delta, rating: app.arcadeRating, streak, back: !!a.back, returns };
+    }
+  };
 }
 
 /** Apply one finished item to the schedule. Drill never gets here. */

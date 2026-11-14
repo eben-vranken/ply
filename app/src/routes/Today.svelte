@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, go, run } from '../lib/state.svelte';
-  import { model, todayCounts, itemsFor, requeue, extraRound, allCards, grantExtraNew } from '../lib/model.svelte';
+  import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew } from '../lib/model.svelte';
   import { loadStats, type StatsData } from '../lib/stats';
   import { sync } from '../lib/import/sync.svelte';
   import type { Item } from '../lib/session';
@@ -32,7 +32,7 @@
   $effect(() => { void model.rev; void loadStats(allCards().values(), app.rollover).then((s) => (stats = s)); });
 
   function start() {
-    run.items = itemsFor(counts.queue); run.mode = 'today'; run.title = 'Today'; run.extra = false;
+    run.items = itemsFor(counts.queue); run.mode = 'today'; run.title = 'Today';
     run.more = () => requeue();
     go('/train');
   }
@@ -40,16 +40,15 @@
     grantExtraNew(5);
     const q = todayCounts().queue.filter((i) => i.kind === 'new');
     if (!q.length) return;
-    run.items = itemsFor(q); run.mode = 'today'; run.title = 'Extra new moves'; run.extra = false; run.more = () => requeue();
+    run.items = itemsFor(q); run.mode = 'today'; run.title = 'Extra new moves'; run.more = () => requeue();
     go('/train');
   }
-  /** endless rounds once the day is done: learning cards that came back first, then a fresh round */
-  function keepGoing() {
-    const seen = new Set<string>();
-    const round = () => [...requeue(), ...extraRound(seen)];
-    const first = round();
+  /** endless positions with their own rating; nothing here reaches the cards */
+  function playArcade() {
+    const a = arcade();
+    const first = a.next();
     if (!first.length) return;
-    run.items = first; run.mode = 'today'; run.title = 'Keep going'; run.extra = true; run.more = round;
+    run.items = first; run.mode = 'drill'; run.title = 'Arcade'; run.rare = false; run.more = () => a.next(); run.arcade = a.result;
     go('/train');
   }
   const kindLine: Record<string, string> = { line: 'Review', new: 'New move', punish: 'Punish', danger: 'Danger', puzzle: 'Puzzle', mistake: 'Your mistake', drill: 'Drill' };
@@ -87,12 +86,20 @@
       <h2 class="t-name name">Done for today</h2>
       <p class="sub">{nextDue ? `${nextDue.n} card${nextDue.n === 1 ? '' : 's'} come${nextDue.n === 1 ? 's' : ''} back ${whenText(nextDue.at)}.` : `Nothing else is due until tomorrow, ${rollText}.`}</p>
       <div class="row" style="margin-top:22px">
-        <button class="btn grow" onclick={keepGoing}><Icon name="play" size={18} fill /> Keep going</button>
+        <button class="btn grow" onclick={playArcade}><Icon name="sword" size={18} /> Arcade</button>
         <button class="btn quiet" onclick={extra}><Icon name="plus" size={18} /> 5 new</button>
       </div>
-      <p class="more">Keep going practises what you know for as long as you like and adds no opening moves. 5 new teaches five more.</p>
     {/if}
     <div class="edge" aria-hidden="true"></div>
+  </section>
+
+  <section class="card arc">
+    <div class="grow">
+      <h3 class="t-head">Arcade</h3>
+      <p class="t-small">Endless puzzles, traps and positions from your openings. Your cards stay as they are.</p>
+      <p class="arcnum"><span><b class="t-num">{app.arcadeRating}</b> rating</span><span><b class="t-num">{app.arcadeBest}</b> best streak</span><span><b class="t-num">{app.arcadeSolved}</b> solved</span></p>
+    </div>
+    <button class="btn" onclick={playArcade} aria-label="Play Arcade"><Icon name="play" size={20} fill /></button>
   </section>
 
   {#if sync.analysing || sync.running}
@@ -165,7 +172,10 @@
   .up { font-size: 14px; font-weight: 650; color: var(--walnut); position: relative; }
   .name { font-size: 46px; line-height: 0.98; margin-top: 4px; max-width: 250px; position: relative; }
   .sub { margin-top: 8px; font-size: 15px; color: var(--walnut); position: relative; max-width: 240px; }
-  .more { position: relative; margin-top: 16px; font-size: 13px; line-height: 1.35; color: var(--walnut); }
+  .arc { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+  .arc .btn { flex: none; width: 60px; min-height: 60px; padding: 0; border-radius: 20px; }
+  .arcnum { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+  .arcnum b { font-size: 20px; color: var(--ink); margin-right: 2px; }
   .counts { display: flex; gap: 8px; margin: 22px 0 18px; }
   .counts div { flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 16px; padding: 10px 12px 9px; }
   .counts dd { margin: 0; font-size: 30px; line-height: 1; }

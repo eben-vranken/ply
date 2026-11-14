@@ -24,6 +24,11 @@ const defaults = {
   delay: 400,
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
+  // arcade: its own rating and counts, apart from the cards
+  arcadeRating: 1000,
+  arcadeBest: 0,
+  arcadeSolved: 0,
+  arcadeMissed: 0,
   // focus openings: the moves (UCI, space separated) to the opening's position, null = none
   focusW: null as string | null,
   focusB: null as string | null,
@@ -79,8 +84,8 @@ export interface Run {
   title: string;
   /** more items when the list runs out (Learn rounds, Drill, re-queued learning cards) */
   more?: (missed: Item[]) => Promise<Item[]> | Item[];
-  /** Keep going: endless rounds after the day's queue, stopped by hand */
-  extra?: boolean;
+  /** Arcade: reports each finished position; set only for an arcade run */
+  arcade?: (it: Item, clean: boolean) => { clean: boolean; delta: number; rating: number; streak: number; back: boolean; returns: boolean };
   /** Drill: called with the summary when stopped */
   rare?: boolean;
 }

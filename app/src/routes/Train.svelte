@@ -45,8 +45,11 @@
 
   const branch = $derived(phase === 'play' ? item?.branches?.find((b) => step <= b.until) : undefined);
   const drill = $derived(run.mode === 'drill');
-  /** Keep going: endless rounds from Today, stopped by hand */
-  const extra = $derived(run.mode === 'today' && !!run.extra);
+  /** Arcade: endless positions with their own rating; nothing reaches the cards */
+  const arcade = $derived(run.mode === 'drill' && !!run.arcade);
+  let arc = $state<ReturnType<NonNullable<typeof run.arcade>> | null>(null);
+  const rating0 = app.arcadeRating;
+  const tally = { solved: 0, missed: 0, streak: 0 };
 
   function sync(mv?: { from: string; to: string }) {
     fen = chess.fen();
@@ -157,7 +160,7 @@
     if (!wrong) {
       wrong = true;
       if (drill || run.mode === 'learn') {
-        missed = [...missed, { side: it.side, epd, uci: expected, label: nameOf(epd)[1], order: it.order }];
+        missed = [...missed, { side: it.side, epd, uci: expected, label: arcade ? it.label.replace(/ \([A-E]\d\d\)$/, '') : nameOf(epd)[1], order: it.order }];
         if (run.mode === 'learn' && !roundMissed.includes(it)) roundMissed.push(it);
       }
     }
@@ -194,9 +197,17 @@
     total.cards++;
     const it = items[idx];
     if (!drill) {
-      try { applied = await applyOutcome({ item: it, results }, run.mode === 'learn' ? 'learn' : extra ? 'extra' : 'today'); } catch (e) { console.error(e); applied = null; }
+      try { applied = await applyOutcome({ item: it, results }, run.mode === 'learn' ? 'learn' : 'today'); } catch (e) { console.error(e); applied = null; }
     }
     phase = 'answered';
+    if (arcade) {
+      const rs = Object.values(results);
+      arc = run.arcade!(it, rs.length > 0 && rs.every((r) => !r.wrong && !r.hinted));
+      // a clean answer moves straight on; a miss waits so you can look at it
+      if (arc.clean) tally.solved++; else tally.missed++;
+      tally.streak = Math.max(tally.streak, arc.streak);
+      if (arc.clean) timer = setTimeout(next, 1100);
+    }
   }
 
   async function next() {
@@ -249,8 +260,7 @@
   }
   function stop() {
     clearTimeout(timer);
-    if ((drill || run.mode === 'learn') && total.asked > 0 && phase !== 'summary') { phase = 'summary'; return; }
-    if (extra && total.cards > 0 && phase !== 'complete') return complete();
+    if ((drill || run.mode === 'learn') && (total.asked > 0 || tally.solved + tally.missed > 0) && phase !== 'summary') { phase = 'summary'; return; }
     leave();
   }
   function leave() { clearTimeout(timer); go(run.mode === 'today' ? '/today' : run.title === 'Weakest cards' ? '/stats' : '/explore'); }
@@ -270,14 +280,18 @@
   onMount(() => {
     if (!items.length) { go('/today'); return; }
     load(0);
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); run.arcade = undefined; };
   });
 
   const mins = $derived(Math.max(1, Math.round((Date.now() - total.started) / 60000)));
   const gradeInfo = $derived.by(() => {
+    if (arcade && arc) {
+      const sub = `Rating ${arc.rating} · streak ${arc.streak}${arc.returns ? ' · comes back soon' : ''}`;
+      if (arc.back) return [arc.clean ? 'good' : 'bad', arc.clean ? 'Got it' : 'Again', sub] as const;
+      return [arc.clean ? 'good' : 'bad', `${arc.delta > 0 ? '+' : '−'}${Math.abs(arc.delta)}`, sub] as const;
+    }
     if (drill) return ['info', 'Drill', 'No schedule changes in Drill'] as const;
     if (!applied) return ['info', 'Done', ''] as const;
-    if (item?.kind === 'drill' && applied.rating !== 1) return ['info', 'Practice line', 'Only a miss changes your schedule'] as const;
     const when = applied.due ? `Next review ${whenText(applied.due)}` : 'Not a card yet';
     if (applied.rating === 0) return ['info', 'Learning', applied.due ? `First review ${whenText(applied.due)}` : ''] as const;
     if (applied.rating === 1) return ['bad', 'Again', when] as const;
@@ -295,7 +309,7 @@
       <div class="stackart" aria-hidden="true">
         {#each Array(Math.min(8, Math.max(3, total.cards))) as _, i}<i style="--i:{i}"></i>{/each}
       </div>
-      <h1 class="t-name">{run.mode === 'learn' ? 'All learned' : extra ? 'Good sitting' : 'Session complete'}</h1>
+      <h1 class="t-name">{run.mode === 'learn' ? 'All learned' : 'Session complete'}</h1>
       <p class="lead">{total.cards} card{total.cards === 1 ? '' : 's'} laid down. Each clean answer adds a layer.</p>
       <dl>
         <div><dd class="t-num">{total.asked}</dd><dt>moves</dt></div>
@@ -307,18 +321,24 @@
     </div>
   {:else if phase === 'summary'}
     <div class="complete summary">
-      <h1 class="t-name">{drill ? 'Drill over' : 'Round over'}</h1>
-      <p class="lead">{drill ? 'Drill only: no schedule was changed.' : 'Missed moves came back at the end of each round.'}</p>
+      <h1 class="t-name">{arcade ? `Rating ${app.arcadeRating}` : drill ? 'Drill over' : 'Round over'}</h1>
+      <p class="lead">{arcade ? `${app.arcadeRating >= rating0 ? 'Up' : 'Down'} ${Math.abs(app.arcadeRating - rating0)} this sitting. Best streak ever: ${app.arcadeBest}. Your cards were not touched; what you missed comes back next time.` : drill ? 'Drill only: no schedule was changed.' : 'Missed moves came back at the end of each round.'}</p>
       <dl>
-        <div><dd class="t-num">{total.asked}</dd><dt>moves played</dt></div>
-        <div><dd class="t-num">{total.asked ? Math.round((total.clean / total.asked) * 100) : 100}%</dd><dt>accuracy</dt></div>
-        <div><dd class="t-num">{missed.length}</dd><dt>missed</dt></div>
+        {#if arcade}
+          <div><dd class="t-num">{tally.solved}</dd><dt>solved</dt></div>
+          <div><dd class="t-num">{tally.missed}</dd><dt>missed</dt></div>
+          <div><dd class="t-num">{tally.streak}</dd><dt>best streak</dt></div>
+        {:else}
+          <div><dd class="t-num">{total.asked}</dd><dt>moves played</dt></div>
+          <div><dd class="t-num">{total.asked ? Math.round((total.clean / total.asked) * 100) : 100}%</dd><dt>accuracy</dt></div>
+          <div><dd class="t-num">{missed.length}</dd><dt>missed</dt></div>
+        {/if}
       </dl>
       {#if missed.length}
         <ul class="missed">
-          {#each missed.slice(0, 8) as m}<li><span class="q">?</span><span class="grow"><b class="t-name">{m.label}</b><small>{m.order}</small></span><b>{sanOf(m.epd, m.uci)}</b></li>{/each}
+          {#each missed.slice(arcade ? -4 : 0).slice(0, 8) as m}<li><span class="q">?</span><span class="grow"><b class="t-name">{m.label}</b><small>{m.order}</small></span><b>{sanOf(m.epd, m.uci)}</b></li>{/each}
         </ul>
-        {#if drill}
+        {#if drill && !arcade}
           <div class="row" style="gap:10px;margin-bottom:12px">
             <button class="btn night grow" onclick={again} disabled={marked >= 0}>{marked >= 0 ? `${marked} marked Again` : 'Mark missed as Again'}</button>
             {#if unknown.length}<button class="btn night grow" onclick={learnThese}>Learn these</button>{/if}
@@ -330,8 +350,8 @@
   {:else if item}
     <header>
       <button class="x" onclick={stop} aria-label={drill || run.mode === 'learn' ? 'Stop' : 'Leave session'}><Icon name="close" /></button>
-      {#if drill || run.mode === 'learn' || extra}
-        <p class="runtitle grow">{extra ? `Keep going · ${idx} done` : `${drill ? 'Drill' : 'Learn'} · ${run.title}`}</p>
+      {#if drill || run.mode === 'learn'}
+        <p class="runtitle grow">{arcade ? `Arcade · ${app.arcadeRating}${arc?.streak ? ` · streak ${arc.streak}` : ''}` : `${drill ? 'Drill' : 'Learn'} · ${run.title}`}</p>
         <button class="stopbtn" onclick={stop}>Stop</button>
       {:else}
         <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={idx}>
