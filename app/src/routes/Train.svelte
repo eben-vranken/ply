@@ -437,7 +437,9 @@
   .stopbtn { height: 40px; padding: 0 16px; border-radius: 12px; background: var(--night-3); font-weight: 700; font-size: 14px; }
 
   .label { height: 58px; flex: none; padding: 4px 16px 0; display: flex; flex-direction: column; justify-content: center; }
-  .nm { font-size: 21px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: rise 260ms var(--ease) both; }
+  /* a long name scrolls sideways under the finger; it fades out at the right edge while there is more */
+  .nm { font-size: 21px; line-height: 1.1; padding: 3px 28px 3px 0; white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; touch-action: pan-x; overscroll-behavior-x: contain; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); animation: rise 260ms var(--ease) both; }
+  .nm::-webkit-scrollbar { display: none; }
   .ord { font-size: 13px; color: var(--night-ink-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ord.quiet { font-size: 14px; font-weight: 600; }
   .also { color: #ffd98a; font-weight: 600; margin-left: 6px; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
