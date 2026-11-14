@@ -79,6 +79,8 @@ export interface Run {
   title: string;
   /** more items when the list runs out (Learn rounds, Drill, re-queued learning cards) */
   more?: (missed: Item[]) => Promise<Item[]> | Item[];
+  /** Keep going: endless rounds after the day's queue, stopped by hand */
+  extra?: boolean;
   /** Drill: called with the summary when stopped */
   rare?: boolean;
 }

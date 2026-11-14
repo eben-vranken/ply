@@ -17,7 +17,9 @@ export default defineConfig({
         description: 'Chess openings, traps and your own mistakes, on a spaced-repetition schedule.',
         theme_color: '#ECEEF3',
         background_color: '#ECEEF3',
-        display: 'standalone',
+        // fullscreen hides Android's status and navigation bars; browsers without it fall back to standalone
+        display: 'fullscreen',
+        display_override: ['fullscreen', 'standalone'],
         orientation: 'portrait',
         start_url: '/ply/',
         scope: '/ply/',

@@ -45,6 +45,8 @@
 
   const branch = $derived(phase === 'play' ? item?.branches?.find((b) => step <= b.until) : undefined);
   const drill = $derived(run.mode === 'drill');
+  /** Keep going: endless rounds from Today, stopped by hand */
+  const extra = $derived(run.mode === 'today' && !!run.extra);
 
   function sync(mv?: { from: string; to: string }) {
     fen = chess.fen();
@@ -192,7 +194,7 @@
     total.cards++;
     const it = items[idx];
     if (!drill) {
-      try { applied = await applyOutcome({ item: it, results }, run.mode === 'learn' ? 'learn' : 'today'); } catch (e) { console.error(e); applied = null; }
+      try { applied = await applyOutcome({ item: it, results }, run.mode === 'learn' ? 'learn' : extra ? 'extra' : 'today'); } catch (e) { console.error(e); applied = null; }
     }
     phase = 'answered';
   }
@@ -248,6 +250,7 @@
   function stop() {
     clearTimeout(timer);
     if ((drill || run.mode === 'learn') && total.asked > 0 && phase !== 'summary') { phase = 'summary'; return; }
+    if (extra && total.cards > 0 && phase !== 'complete') return complete();
     leave();
   }
   function leave() { clearTimeout(timer); go(run.mode === 'today' ? '/today' : run.title === 'Weakest cards' ? '/stats' : '/explore'); }
@@ -274,6 +277,7 @@
   const gradeInfo = $derived.by(() => {
     if (drill) return ['info', 'Drill', 'No schedule changes in Drill'] as const;
     if (!applied) return ['info', 'Done', ''] as const;
+    if (item?.kind === 'drill' && applied.rating !== 1) return ['info', 'Practice line', 'Only a miss changes your schedule'] as const;
     const when = applied.due ? `Next review ${whenText(applied.due)}` : 'Not a card yet';
     if (applied.rating === 0) return ['info', 'Learning', applied.due ? `First review ${whenText(applied.due)}` : ''] as const;
     if (applied.rating === 1) return ['bad', 'Again', when] as const;
@@ -291,7 +295,7 @@
       <div class="stackart" aria-hidden="true">
         {#each Array(Math.min(8, Math.max(3, total.cards))) as _, i}<i style="--i:{i}"></i>{/each}
       </div>
-      <h1 class="t-name">{run.mode === 'learn' ? 'All learned' : 'Session complete'}</h1>
+      <h1 class="t-name">{run.mode === 'learn' ? 'All learned' : extra ? 'Good sitting' : 'Session complete'}</h1>
       <p class="lead">{total.cards} card{total.cards === 1 ? '' : 's'} laid down. Each clean answer adds a layer.</p>
       <dl>
         <div><dd class="t-num">{total.asked}</dd><dt>moves</dt></div>
@@ -326,8 +330,8 @@
   {:else if item}
     <header>
       <button class="x" onclick={stop} aria-label={drill || run.mode === 'learn' ? 'Stop' : 'Leave session'}><Icon name="close" /></button>
-      {#if drill || run.mode === 'learn'}
-        <p class="runtitle grow">{drill ? 'Drill' : 'Learn'} · {run.title}</p>
+      {#if drill || run.mode === 'learn' || extra}
+        <p class="runtitle grow">{extra ? `Keep going · ${idx} done` : `${drill ? 'Drill' : 'Learn'} · ${run.title}`}</p>
         <button class="stopbtn" onclick={stop}>Stop</button>
       {:else}
         <div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax={items.length} aria-valuenow={idx}>

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, go, run } from '../lib/state.svelte';
-  import { model, todayCounts, itemsFor, requeue, allCards, grantExtraNew } from '../lib/model.svelte';
+  import { model, todayCounts, itemsFor, requeue, extraRound, allCards, grantExtraNew } from '../lib/model.svelte';
   import { loadStats, type StatsData } from '../lib/stats';
   import { sync } from '../lib/import/sync.svelte';
   import type { Item } from '../lib/session';
@@ -32,7 +32,7 @@
   $effect(() => { void model.rev; void loadStats(allCards().values(), app.rollover).then((s) => (stats = s)); });
 
   function start() {
-    run.items = itemsFor(counts.queue); run.mode = 'today'; run.title = 'Today';
+    run.items = itemsFor(counts.queue); run.mode = 'today'; run.title = 'Today'; run.extra = false;
     run.more = () => requeue();
     go('/train');
   }
@@ -40,7 +40,16 @@
     grantExtraNew(5);
     const q = todayCounts().queue.filter((i) => i.kind === 'new');
     if (!q.length) return;
-    run.items = itemsFor(q); run.mode = 'today'; run.title = 'Extra new moves'; run.more = () => requeue();
+    run.items = itemsFor(q); run.mode = 'today'; run.title = 'Extra new moves'; run.extra = false; run.more = () => requeue();
+    go('/train');
+  }
+  /** endless rounds once the day is done: learning cards that came back first, then a fresh round */
+  function keepGoing() {
+    const seen = new Set<string>();
+    const round = () => [...requeue(), ...extraRound(seen)];
+    const first = round();
+    if (!first.length) return;
+    run.items = first; run.mode = 'today'; run.title = 'Keep going'; run.extra = true; run.more = round;
     go('/train');
   }
   const kindLine: Record<string, string> = { line: 'Review', new: 'New move', punish: 'Punish', danger: 'Danger', puzzle: 'Puzzle', mistake: 'Your mistake', drill: 'Drill' };
@@ -78,9 +87,10 @@
       <h2 class="t-name name">Done for today</h2>
       <p class="sub">{nextDue ? `${nextDue.n} card${nextDue.n === 1 ? '' : 's'} come${nextDue.n === 1 ? 's' : ''} back ${whenText(nextDue.at)}.` : `Nothing else is due until tomorrow, ${rollText}.`}</p>
       <div class="row" style="margin-top:22px">
-        <button class="btn grow" onclick={() => go('/explore')}>Explore</button>
-        <button class="btn quiet grow" onclick={extra}><Icon name="plus" size={18} /> 5 more</button>
+        <button class="btn grow" onclick={keepGoing}><Icon name="play" size={18} fill /> Keep going</button>
+        <button class="btn quiet" onclick={extra}><Icon name="plus" size={18} /> 5 new</button>
       </div>
+      <p class="more">Keep going practises what you know for as long as you like and adds no opening moves. 5 new teaches five more.</p>
     {/if}
     <div class="edge" aria-hidden="true"></div>
   </section>
@@ -155,6 +165,7 @@
   .up { font-size: 14px; font-weight: 650; color: var(--walnut); position: relative; }
   .name { font-size: 46px; line-height: 0.98; margin-top: 4px; max-width: 250px; position: relative; }
   .sub { margin-top: 8px; font-size: 15px; color: var(--walnut); position: relative; max-width: 240px; }
+  .more { position: relative; margin-top: 16px; font-size: 13px; line-height: 1.35; color: var(--walnut); }
   .counts { display: flex; gap: 8px; margin: 22px 0 18px; }
   .counts div { flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 16px; padding: 10px 12px 9px; }
   .counts dd { margin: 0; font-size: 30px; line-height: 1; }

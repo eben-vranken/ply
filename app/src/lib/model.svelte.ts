@@ -303,7 +303,7 @@ export function doneToday() {
   const rs = reviewsToday.filter((r) => r.at >= t0);
   const intro = (types: CardType[]) => rs.filter((r) => r.stage === 'new' && types.includes(typeOfCard(r.cardId))).length;
   return {
-    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn').length,
+    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn' && r.mode !== 'extra').length,
     newMoves: intro(['move']),
     newTraps: intro(['punish', 'danger', 'puzzle']),
     newMistakes: intro(['mistake']),
@@ -678,6 +678,68 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
   r.id = rid;
   reviewsToday.push(r);
   log.push({ card: c, prev, rid });
+}
+
+// ---------------------------------------------------------------- Keep going
+/**
+ * One round of extra practice for after the day's queue. It never adds opening moves:
+ *  - the cards you are closest to forgetting, graded as early reviews (FSRS weighs the real elapsed time)
+ *  - a few of the mistakes and traps still waiting behind the daily limits
+ *  - practice lines against drawn replies through what you have learned, each ending on at most one
+ *    move you have not learned yet; a correct answer changes nothing, a miss on a card grades it Again
+ * `seen` holds the cards already served in this sitting, so nothing repeats.
+ */
+export function extraRound(seen: Set<string>): Item[] {
+  const now = new Date();
+  const live = [...cards.values()].filter((c) => !c.suspended && !seen.has(c.id));
+  const q: QItem[] = [];
+  const weak = live.filter((c) => c.fsrs.state === 2)
+    .map((c) => [c, retrievability(c.fsrs, now, app.retention / 100)] as const)
+    .filter(([, r]) => r < 0.95).sort((a, b) => a[1] - b[1]).slice(0, 3).map(([c]) => c);
+  for (const c of weak) {
+    seen.add(c.id);
+    q.push(c.type === 'move' ? { kind: 'line', side: c.side, path: [...(L[c.side]?.pos.has(c.epd) ? pathTo(L[c.side]!, c.epd) : c.path ?? []), c.move], due: [c.id] } : { kind: 'card', card: c });
+  }
+  for (const c of live.filter((c) => c.type === 'mistake' && c.fsrs.state === 0).sort((a, b) => b.created - a.created).slice(0, 2)) { seen.add(c.id); q.push({ kind: 'card', card: c }); }
+  const traps = newTrapSpecs.filter((t) => !seen.has(t.id)).sort((a, b) => b.score - a.score);
+  const trap = traps.find((t) => t.type !== 'puzzle') ?? traps[0];
+  if (trap) { seen.add(trap.id); q.push({ kind: 'newtrap', spec: trap }); }
+  const out = itemsFor(q);
+  // three different practice lines, the colours taking turns
+  const lines = new Set<string>();
+  for (let i = 0; i < 9 && lines.size < 3; i++) {
+    const side: Side = (i + seen.size) % 2 ? 'b' : 'w';
+    const f = focusOf(side);
+    const l = practiceLine(side, f && L[side]?.pos.has(epdAfter(f)) && Math.random() < 0.6 ? f : []);
+    const k = l ? side + l.setup.join('') + l.moves.join('') : '';
+    if (l && !lines.has(k)) { lines.add(k); out.push(l); }
+  }
+  return out;
+}
+/** A drill line cut after the first move that is not a card yet, with each asked move tied to its card. */
+function practiceLine(side: Side, path: string[]): Item | null {
+  const l = drillLine(side, path, false);
+  if (!l) return null;
+  let e = epdAfter(path), end = l.moves.length;
+  for (let i = 0; i < l.moves.length; i++) {
+    const u = l.moves[i];
+    if (l.asks[i]) {
+      const id = moveId(side, e, u);
+      // the line is fixed, so your other moves here are named, not followed
+      const other = movesAt(side, e).filter((m) => m !== u).map((m) => [m, nameOf(child(e, m))[1]] as [string, string]);
+      l.asks[i] = { card: cards.has(id) ? id : undefined, other: other.length ? other : undefined };
+      if (!cards.has(id)) { end = i + 1; break; }
+    }
+    e = child(e, u);
+  }
+  l.moves = l.moves.slice(0, end);
+  for (const k of Object.keys(l.asks)) if (+k >= end) delete l.asks[+k];
+  l.drill = undefined;
+  // named after where it ends, like a review line
+  const before = [...path, ...l.moves.slice(0, -1)];
+  l.label = labelOf(epdAfter(before), before);
+  l.order = moveOrder(sans(before), true);
+  return l;
 }
 
 /** Apply one finished item to the schedule. Drill never gets here. */

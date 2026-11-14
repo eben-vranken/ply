@@ -7,7 +7,8 @@ import type { Side } from './chess';
 export const SCHEMA_VERSION = 1;
 
 export type CardType = 'move' | 'punish' | 'danger' | 'puzzle' | 'mistake';
-export type Mode = 'today' | 'learn' | 'drill-again';
+/** 'extra' is Keep going: graded like Today, but outside the daily review limit */
+export type Mode = 'today' | 'learn' | 'drill-again' | 'extra';
 
 export interface CardRow {
   id: string;
