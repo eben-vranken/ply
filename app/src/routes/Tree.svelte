@@ -2,7 +2,7 @@
   // One opening as a skill tree (lib/SkillTree.svelte): a night room with the opening's name on top
   // and the canvas filling the rest.
   import { route, go, run } from '../lib/state.svelte';
-  import { model, openingTree, nameOf, learnRound, subtreeNew, drillLine, type TreeMove } from '../lib/model.svelte';
+  import { model, openingTree, nameOf, learnRound, subtreeNew, drillLine, focusOf, setFocus, type TreeMove } from '../lib/model.svelte';
   import { epdAfter, moveOrder, sans, type Side } from '../lib/chess';
   import type { Item } from '../lib/session';
   import Sigil from '../lib/Sigil.svelte';
@@ -39,6 +39,12 @@
     run.more = () => { const n = drillLine(side, at, false); return n ? [n] : []; };
     go('/train');
   }
+  const colour = side === 'w' ? 'White' : 'Black';
+  const focused = $derived(focusOf(side)?.join(' ') === path.join(' '));
+  function focus() {
+    setFocus(side, focused ? null : path);
+    model.notice = focused ? `${name[1]} is your ${colour} focus. About half of each day's new moves now come from it.` : `No ${colour} focus now. New moves follow what you are most likely to meet.`;
+  }
   const newCount = (m: TreeMove | null) => { void model.rev; return subtreeNew(side, from(m)).length; };
 </script>
 
@@ -48,8 +54,9 @@
     <Sigil path={path.slice(0, 8)} flip={side === 'b'} size={44} />
     <div class="grow">
       <h1 class="t-name ttl">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</h1>
-      <p class="ord">{side === 'w' ? 'White' : 'Black'}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
+      <p class="ord">{#if focused}<b class="fc">Focus</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
     </div>
+    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} aria-label={focused ? `Stop focusing on this opening` : `Make this your ${colour} focus opening`}><Icon name="star" fill={focused} /></button>
     <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore"><Icon name="explore" /></button>
   </header>
 
@@ -65,8 +72,10 @@
   .room { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--night); color: var(--night-ink); }
   header { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top) + 12px) 8px 12px; }
   .ib { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; }
+  .ib.on { color: var(--sun); }
   .ttl { font-size: 21px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ttl .eco { background: rgba(255, 255, 255, 0.12); }
   .ord { font-size: 13px; color: var(--night-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .fc { color: var(--sun); font-weight: 700; margin-right: 6px; }
   .none { padding: 24px 20px; color: var(--night-ink-2); }
 </style>

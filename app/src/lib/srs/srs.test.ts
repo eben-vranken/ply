@@ -203,6 +203,23 @@ describe('queue', () => {
     expect(probs[0]).toBeGreaterThanOrEqual(probs[1]);
   });
 
+  it('gives half of the new moves to the focus opening, the rest by probability', () => {
+    const order = [...specs].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
+    const focus = order.slice(-3);
+    const items = buildQueue(base({ newMoves: specs, focus, limits: { newMoves: 4, newTraps: 0, newMistakes: 0, maxReviews: 150 } }));
+    const ids = items.map((i) => (i.kind === 'new' ? i.spec.id : ''));
+    expect(ids.length).toBe(4);
+    expect(ids).toContain(focus[0].id);
+    expect(ids).toContain(focus[1].id);
+    expect(ids).not.toContain(focus[2].id);
+    expect(ids).toContain(order[0].id);
+    expect(ids).toContain(order[1].id);
+    // a focus opening with nothing left to learn leaves every place to probability
+    const rest = order.slice(0, -3);
+    const none = buildQueue(base({ newMoves: rest, focus, limits: { newMoves: 4, newTraps: 0, newMistakes: 0, maxReviews: 150 } }));
+    expect(none.map((i) => (i.kind === 'new' ? i.spec.id : ''))).toEqual(rest.slice(0, 4).map((s) => s.id));
+  });
+
   it('rolls the day over at the set hour', () => {
     const at = new Date(2026, 10, 14, 3, 30).getTime();
     expect(dayStart(at, 4)).toBe(new Date(2026, 10, 13, 4).getTime());

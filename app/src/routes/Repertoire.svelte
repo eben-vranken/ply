@@ -1,6 +1,6 @@
 <script lang="ts">
   import { go, app } from '../lib/state.svelte';
-  import { model, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
+  import { model, focusOf, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
   import { db, type GameRow } from '../lib/db';
   import { sans, moveOrder, epdAfter, san } from '../lib/chess';
   import type { Section } from '../lib/srs/lines';
@@ -11,6 +11,7 @@
   const STAGES = ['new', 'learning', 'young', 'mature'];
   const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
   const all = $derived(summaries());
+  const isFocus = (o: OpeningSummary) => focusOf(o.side)?.join(' ') === o.path.join(' ');
   const open = (o: OpeningSummary) => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
   const totals = $derived({ lines: all.reduce((n, o) => n + o.lines, 0), learned: all.reduce((n, o) => n + o.learned, 0), total: all.reduce((n, o) => n + o.total, 0) });
   const rare = $derived.by(() => { void model.rev; return rareCards(); });
@@ -71,7 +72,7 @@
           <Sigil path={o.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={o.side === 'b'} size={60} />
           <span class="grow">
             <span class="t-name nm">{o.name}{#if o.eco}<span class="eco">{o.eco}</span>{/if}</span>
-            <span class="meta">{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
+            <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Focus</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
             <span class="bar" role="img" aria-label="{o.stages[3]} mature, {o.stages[2]} young, {o.stages[1]} learning, {o.stages[0]} new">
               {#each [3, 2, 1, 0] as k}<i style="flex:{o.stages[k]};background:var(--st-{STAGES[k]})"></i>{/each}
             </span>
@@ -133,6 +134,7 @@
   .op:active { transform: scale(0.98); }
   .nm { display: block; font-size: 20px; line-height: 1.12; }
   .meta { display: block; font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+  .fc { display: inline-flex; align-items: center; gap: 3px; margin-right: 7px; color: var(--warn-text); font-weight: 700; vertical-align: -1px; }
   .bar { display: flex; gap: 2px; height: 6px; margin-top: 9px; }
   .bar i { border-radius: 2px; min-width: 0; }
   .cov { text-align: right; display: flex; flex-direction: column; }

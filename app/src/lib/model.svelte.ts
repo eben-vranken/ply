@@ -327,6 +327,7 @@ export function todayQueue(): QItem[] {
     cards: [...cards.values()],
     lines: L,
     newMoves: newMoveSpecs,
+    focus: focusSpecs(),
     newTraps: newTrapSpecs,
     limits: { newMoves: app.newMoves, newTraps: app.newTraps, newMistakes: app.newMistakes, maxReviews: app.maxReviews },
     done: doneToday(),
@@ -510,6 +511,34 @@ export function subtreeNew(side: Side, path: string[]): MoveSpec[] {
     return false;
   };
   return [...Ls.cards.values()].filter((s) => !cards.has(s.id) && inside(s)).sort((a, b) => b.prob - a.prob || a.ply - b.ply);
+}
+
+// ---------------------------------------------------------------- focus openings
+const focusKey = (side: Side) => (side === 'w' ? 'focusW' : 'focusB') as 'focusW' | 'focusB';
+/** The focus opening of a colour as a move path, or null. */
+export const focusOf = (side: Side): string[] | null => { const f = app[focusKey(side)]; return f === null ? null : f.split(' ').filter(Boolean); };
+export function setFocus(side: Side, path: string[] | null) {
+  app[focusKey(side)] = path ? path.join(' ') : null;
+  save();
+  bump();
+}
+/**
+ * Unlearned moves of the focus openings, in teaching order: for each colour the moves that lead
+ * to the opening and then everything below it, most probable first; the two colours take turns.
+ */
+function focusSpecs(): MoveSpec[] {
+  const per = (['w', 'b'] as Side[]).map((side) => {
+    const path = focusOf(side), Ls = L[side];
+    if (!path || !Ls || !Ls.pos.has(epdAfter(path))) return [];
+    const way = new Map<string, string>();
+    let e = START_EPD;
+    for (const u of path) { way.set(e, u); e = child(e, u); }
+    const above = newMoveSpecs.filter((s) => s.side === side && way.get(s.epd) === s.move);
+    return [...above, ...subtreeNew(side, path)].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
+  });
+  const out: MoveSpec[] = [];
+  for (let i = 0; i < Math.max(per[0].length, per[1].length); i++) for (const p of per) if (p[i]) out.push(p[i]);
+  return out;
 }
 
 /** One Learn round: 5 new moves shown Learn style, then quizzed in their lines. */

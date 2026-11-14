@@ -38,6 +38,8 @@ export interface QueueInput {
   cards: CardRow[];
   lines: Partial<Record<Side, Lines>>;
   newMoves: MoveSpec[];
+  /** unlearned moves of the focus openings, in the order to teach them; they get half of the day's new moves */
+  focus?: MoveSpec[];
   newTraps: TrapSpec[];
   limits: Limits;
   done: DoneToday;
@@ -101,9 +103,14 @@ export function buildQueue(q: QueueInput): QItem[] {
   items.push(...groupLines(due.filter((c) => c.type === 'move'), q.lines));
   // 3. due Punish, Danger and Puzzle cards
   for (const c of due.filter(isTrap).sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
-  // 4. new Move cards, highest line probability first
+  // 4. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first
   const nm = Math.max(0, q.limits.newMoves - q.done.newMoves) + (q.extraNew ?? 0);
-  for (const s of [...q.newMoves].sort((a, b) => b.prob - a.prob || a.ply - b.ply).slice(0, nm)) {
+  const byProb = (a: MoveSpec, b: MoveSpec) => b.prob - a.prob || a.ply - b.ply;
+  const open = new Set(q.newMoves.map((s) => s.id));
+  const picked = (q.focus ?? []).filter((s) => open.has(s.id)).slice(0, Math.ceil(nm / 2));
+  const taken = new Set(picked.map((s) => s.id));
+  picked.push(...[...q.newMoves].sort(byProb).filter((s) => !taken.has(s.id)).slice(0, nm - picked.length));
+  for (const s of picked.sort(byProb)) {
     const L = q.lines[s.side];
     items.push({ kind: 'new', spec: s, path: L ? pathTo(L, s.epd) : [] });
   }

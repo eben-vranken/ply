@@ -24,6 +24,9 @@ const defaults = {
   delay: 400,
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
+  // focus openings: the moves (UCI, space separated) to the opening's position, null = none
+  focusW: null as string | null,
+  focusB: null as string | null,
   // growing with rating
   rating: 0, // last chess.com rapid rating
   autoBand: 1200, // band the app is on in auto mode
