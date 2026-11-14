@@ -103,7 +103,7 @@
     <div class="sect"><h2 class="t-head">By opening</h2></div>
     <section class="card ops">
       {#each ops as o (o.key)}
-        <button onclick={() => go('/repertoire')}>
+        <button onclick={() => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`)}>
           <span class="t-name on">{o.name}<small>{o.section}</small></span>
           <span class="obar">{#each [3, 2, 1, 0] as k}<i style="flex:{o.stages[k]};background:var(--st-{STAGES[k]})"></i>{/each}</span>
           <span class="om"><b>{o.total ? Math.round((o.stages[3] / o.total) * 100) : 0}%</b> mature · <b>{o.coverage}%</b> covered</span>

@@ -4,7 +4,7 @@
 import { app, save, onSave, replaceSettings, type Settings } from './state.svelte';
 import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
-import { START_EPD, child, epdAfter, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
+import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
@@ -815,6 +815,77 @@ export function summaries(): OpeningSummary[] {
 export function sectionCoverage(side: Side): number {
   if (!ctx) return 0;
   return coverage(ctx, mine, genOpts(side));
+}
+
+// ---------------------------------------------------------------- opening skill tree
+export interface TreeMove {
+  /** position before the move */
+  epd: string;
+  /** moves from the start to `epd` */
+  path: string[];
+  uci: string;
+  san: string;
+  ply: number;
+  mine: boolean;
+  /** opponent replies: share of games at the parent position */
+  freq: number;
+  /** line probability after this move */
+  prob: number;
+  stage: Stage | null;
+  lapses: number;
+  /** the move leads into a position your lines reach by another move order */
+  joins?: boolean;
+  children: TreeMove[];
+  /** totals for this move and everything below it (your moves only) */
+  sum: { total: number; stages: [number, number, number, number]; lapses: number };
+}
+
+/** Your lines below a position as a tree of moves, with mastery totals per branch. */
+export function openingTree(side: Side, path: string[]): TreeMove[] {
+  void model.rev;
+  const Ls = L[side];
+  if (!Ls) return [];
+  const STAGES: Stage[] = ['new', 'learning', 'young', 'mature'];
+  const opts = genOpts(side);
+  // every move your lines play from a position: your moves, or the replies above the threshold
+  const movesFrom = (epd: string, ply: number): [string, number][] => {
+    const p = Ls.pos.get(epd);
+    if (!p || p.mine >= Ls.depth || !ctx!.tree[epd]) return [];
+    if (turnOf(epd) === side) return (p.moves ?? []).map((u) => [u, 1] as [string, number]);
+    return replies(ctx!, epd, ply === 0 ? opts.rootPct! : opts.replyPct, opts.minGames!).filter(([u]) => Ls.pos.has(child(epd, u)));
+  };
+  const build = (epd: string, at: string[], ply: number, prob: number): TreeMove[] =>
+    movesFrom(epd, ply).map(([u, f]) => {
+      const mine = turnOf(epd) === side;
+      const st = mine ? stageAt(side, epd, u) ?? 'new' : null;
+      const c = mine ? cards.get(moveId(side, epd, u)) : undefined;
+      const next = [...at, u];
+      const q = Ls.pos.get(child(epd, u))!;
+      // follow a position only from its most probable parent; elsewhere it is a leaf that joins another line
+      const joins = q.parent !== epd || q.via !== u;
+      const children = joins ? [] : build(q.epd, next, ply + 1, q.prob);
+      const sum = { total: 0, stages: [0, 0, 0, 0] as [number, number, number, number], lapses: 0 };
+      if (st) { sum.total++; sum.stages[STAGES.indexOf(st)]++; sum.lapses += c?.lapses ?? 0; }
+      for (const ch of children) { sum.total += ch.sum.total; ch.sum.stages.forEach((n, i) => (sum.stages[i] += n)); sum.lapses += ch.sum.lapses; }
+      return { epd, path: at, uci: u, san: san(epd, u), ply, mine, freq: f, prob: prob * f, stage: st, lapses: c?.lapses ?? 0, joins, children, sum };
+    }).sort((a, b) => b.prob - a.prob);
+  const start = epdAfter(path);
+  const p = Ls.pos.get(start);
+  return p ? build(start, path, path.length, p.prob) : [];
+}
+
+/** The name a branch is known by: the first opening name along its main line that differs from where it split. */
+export function branchName(m: TreeMove, parentName: string): [eco: string, name: string] {
+  let cur: TreeMove | undefined = m;
+  let first: [string, string] | null = null;
+  for (let i = 0; cur && i < 16; i++) {
+    const after = child(cur.epd, cur.uci);
+    const nm = nameOf(after, [...cur.path, cur.uci]);
+    first ??= nm;
+    if (nm[1] !== parentName) return nm;
+    cur = cur.children[0];
+  }
+  return first ?? ['', parentName];
 }
 
 // ---------------------------------------------------------------- reviews (Stats)

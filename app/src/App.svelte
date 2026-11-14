@@ -9,6 +9,7 @@
   import Stats from './routes/Stats.svelte';
   import Settings from './routes/Settings.svelte';
   import Train from './routes/Train.svelte';
+  import Tree from './routes/Tree.svelte';
   import Onboarding from './routes/Onboarding.svelte';
   import { model, boot } from './lib/model.svelte';
   import { autoSync } from './lib/import/sync.svelte';
@@ -26,6 +27,8 @@
     ['/settings', 'settings', 'Settings']
   ] as const;
   const base = $derived(route.path.split('?')[0]);
+  // the skill tree sits under Repertoire
+  const tabOf = (b: string) => (b === '/tree' ? '/repertoire' : b);
   const training = $derived(base === '/train');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const dur = reduce ? 0 : 260;
@@ -59,7 +62,7 @@
 {:else if !app.onboarded}
   <div out:fade={{ duration: dur }}><Onboarding /></div>
 {:else}
-  {#key base}
+  {#key base === '/tree' ? route.path : base}
     <div class="page" class:over={training}
       in:fly={{ x: training ? 0 : 28 * route.dir, y: training ? 60 : 0, duration: dur, easing: cubicOut }}
       out:fade={{ duration: dur * 0.5 }}>
@@ -69,6 +72,7 @@
       {:else if base === '/stats'}<Stats />
       {:else if base === '/settings'}<Settings />
       {:else if base === '/train'}<Train />
+      {:else if base === '/tree'}<Tree />
       {:else}<Today />{/if}
     </div>
   {/key}
@@ -79,7 +83,7 @@
   {#if !training}
     <nav transition:fly={{ y: 90, duration: dur }} aria-label="Main">
       {#each tabs as [href, icon, label]}
-        <button class:on={base === href} onclick={() => go(href)} aria-current={base === href ? 'page' : undefined}>
+        <button class:on={tabOf(base) === href} onclick={() => go(href)} aria-current={tabOf(base) === href ? 'page' : undefined}>
           <span class="ico"><Icon name={icon} size={22} /></span>
           <span class="lbl">{label}</span>
         </button>

@@ -11,7 +11,7 @@
   const STAGES = ['new', 'learning', 'young', 'mature'];
   const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
   const all = $derived(summaries());
-  const open = (o: OpeningSummary) => go(`/explore?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
+  const open = (o: OpeningSummary) => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
   const totals = $derived({ lines: all.reduce((n, o) => n + o.lines, 0), learned: all.reduce((n, o) => n + o.learned, 0), total: all.reduce((n, o) => n + o.total, 0) });
   const rare = $derived.by(() => { void model.rev; return rareCards(); });
   const cov = $derived.by(() => { void model.rev; return { w: Math.round(sectionCoverage('w') * 100), b: Math.round(sectionCoverage('b') * 100) }; });

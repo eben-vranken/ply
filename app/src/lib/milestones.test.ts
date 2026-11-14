@@ -92,6 +92,19 @@ describe.runIf(real)(`shipped data, band ${BAND}`, () => {
     console.log(s.slice(0, 10).map((x) => `${x.section} · ${x.name} ${x.eco} · ${x.lines} lines · ${x.total} moves · ${x.coverage}% covered`).join('\n'));
   });
 
+  it('the skill tree counts every move card Learn would teach, with names on branches', () => {
+    for (const [side, path] of [['w', ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4']], ['b', ['e2e4']], ['b', ['d2d4']]] as const) {
+      const roots = m.openingTree(side, [...path]);
+      const sum = { total: 0, fresh: 0 };
+      for (const r of roots) { sum.total += r.sum.total; sum.fresh += r.sum.stages[0]; }
+      expect(sum.total).toBeGreaterThan(0);
+      expect(sum.fresh).toBe(m.subtreeNew(side, [...path]).length);
+    }
+    const it = m.openingTree('w', ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4']);
+    const fork = it.find((x) => x.children.length > 1) ?? it[0];
+    expect(m.branchName(fork, 'Italian Game')[1]).toMatch(/Italian Game/);
+  });
+
   it('the Today queue respects the limits on day one', () => {
     const q = m.todayCounts().queue;
     expect(q.filter((i) => i.kind === 'new').length).toBe(10);
