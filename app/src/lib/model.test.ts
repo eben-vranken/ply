@@ -217,6 +217,24 @@ ${moves} 1-0` });
     app.lichessUser = '';
   });
 
+  it('catching up spreads a backlog without hiding it', async () => {
+    // 50 learned cards, all overdue
+    const specs = [...m.lines().w!.cards.values(), ...m.lines().b!.cards.values()].filter((s) => !m.allCards().has(s.id)).slice(0, 50);
+    const { createEmptyCard } = await import('ts-fsrs');
+    const past = Date.now() - 5 * 864e5;
+    await m.addCards(specs.map((s) => ({ id: s.id, type: 'move' as const, side: s.side, epd: s.epd, move: s.move, answer: [], line: [], label: '', fsrs: { ...createEmptyCard(new Date(past)), state: 2, scheduled_days: 3, stability: 3, reps: 2, due: new Date(past), last_review: new Date(past - 3 * 864e5) }, due: past, suspended: 0 as const, created: past, lapses: 0 })));
+    const before = m.todayCounts();
+    expect(before.dueAll).toBeGreaterThanOrEqual(50);
+    m.startCatchUp(before.dueAll, 4);
+    const c = m.todayCounts();
+    expect(m.catchUpDay()).toBe(0);
+    expect(c.dueAll).toBe(before.dueAll); // the real number stays
+    expect(c.due).toBeLessThanOrEqual(Math.ceil(before.dueAll / 4));
+    expect(c.queue.some((i) => i.kind === 'new' || i.kind === 'newtrap')).toBe(false);
+    m.stopCatchUp();
+    expect(m.todayCounts().due).toBeGreaterThan(c.due);
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();

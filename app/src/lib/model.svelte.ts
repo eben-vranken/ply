@@ -9,6 +9,7 @@ import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, oth
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
 import { rate } from './srs/grade';
+import { limitsFor, planCatchUp, dayOf } from './srs/catchup';
 import type { Item, Outcome, Ask } from './session';
 import { Chess } from 'chess.js';
 
@@ -347,7 +348,7 @@ export function todayQueue(): QItem[] {
     newMoves: newMoveSpecs,
     focus: focusSpecs(),
     newTraps: newTrapSpecs,
-    limits: { newMoves: app.newMoves, newTraps: app.newTraps, newMistakes: app.newMistakes, maxReviews: app.maxReviews },
+    limits: limitsFor({ newMoves: app.newMoves, newTraps: app.newTraps, newMistakes: app.newMistakes, maxReviews: app.maxReviews }, app.catchUp, today0()),
     done: doneToday(),
     extraNew: app.extraDay === today0() ? app.extraNew : 0,
     retrievability: (c) => retrievability(c.fsrs, new Date(now), app.retention / 100)
@@ -364,8 +365,26 @@ export function todayCounts() {
     else if (i.kind === 'card') i.card.fsrs.state === 0 ? fresh++ : due++;
     else fresh++;
   }
-  return { due, fresh, done: doneToday().all, queue: q };
+  // every due review, whether or not today's limits leave room for it: the honest number
+  let dueAll = 0;
+  for (const c of cards.values()) if (!c.suspended && c.fsrs.state !== 0 && c.due <= now()) dueAll++;
+  return { due, dueAll, fresh, done: doneToday().all, queue: q };
 }
+const now = () => Date.now();
+
+/** The catch-up plan's day (0-based) today, or null when none runs (a finished plan simply stops counting). */
+export const catchUpDay = (): number | null => dayOf(app.catchUp, today0());
+/** Spread the due backlog over `days` days; new cards wait until it is cleared. */
+export function startCatchUp(backlog: number, days: number) {
+  app.catchUp = planCatchUp(backlog, days, today0());
+  save(); bump();
+}
+export function stopCatchUp(declined = false) {
+  app.catchUp = null;
+  if (declined) app.catchUpDeclined = today0();
+  save(); bump();
+}
+export const studyDay = () => today0();
 
 // ---------------------------------------------------------------- items
 const ask = (a: Ask): Ask => a;

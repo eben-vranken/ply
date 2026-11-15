@@ -1,5 +1,7 @@
 <script lang="ts">
   import { app, go, run } from '../lib/state.svelte';
+  import { catchUpDay, startCatchUp, stopCatchUp, studyDay } from '../lib/model.svelte';
+  import { shouldOffer, suggestDays, daysAway } from '../lib/srs/catchup';
   import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew, mastering, learnRound, drillLine, type Mastery } from '../lib/model.svelte';
   import { levelOf, xpToday } from '../lib/game';
   import { countup } from '../lib/countup';
@@ -36,6 +38,12 @@
   });
 
   let stats = $state<StatsData | null>(null);
+  // catching up after time away: offered for a real backlog, and the due count stays the real one
+  const cuDay = $derived.by(() => { void model.rev; void app.catchUp; return catchUpDay(); });
+  const away = $derived(stats ? daysAway(stats.history.slice(0, -1).concat(0)) : 0);
+  const offer = $derived(cuDay === null && app.catchUpDeclined !== studyDay() && shouldOffer(counts.dueAll, app.maxReviews, away));
+  let cuDays = $state(0);
+  const cuPick = $derived(cuDays || suggestDays(counts.dueAll));
   $effect(() => { void model.rev; void loadStats(allCards().values(), app.rollover).then((s) => (stats = s)); });
 
   function start() {
@@ -138,7 +146,7 @@
       <h2 class="t-name name">{nextName.split(':')[0]}</h2>
       <p class="sub">{nextName.includes(':') ? nextName.split(': ')[1] : next.side === 'w' ? 'You play White' : 'You play Black'} {#if nextEco}<span class="eco">{nextEco}</span>{/if}</p>
       <dl class="counts">
-        <div><dd class="t-num">{counts.due}</dd><dt>Due</dt></div>
+        <div><dd class="t-num">{counts.dueAll}</dd><dt>Due{#if counts.dueAll > counts.due}<span class="share"> · {counts.due} today</span>{/if}</dt></div>
         <div><dd class="t-num">{counts.fresh}</dd><dt>New</dt></div>
         <div><dd class="t-num">{counts.done}</dd><dt>Done today</dt></div>
       </dl>
@@ -155,6 +163,26 @@
     {/if}
     <div class="edge" aria-hidden="true"></div>
   </section>
+
+  {#if cuDay !== null && app.catchUp}
+    <div class="card catch on" role="status">
+      <Icon name="layers" size={22} />
+      <p class="grow"><b>Catching up · day {cuDay + 1} of {app.catchUp.days}</b><br /><span class="t-small">{app.catchUp.perDay} reviews a day, the ones closest to slipping first. New moves wait until you are through.</span></p>
+      <button class="link" onclick={() => stopCatchUp()}>Stop</button>
+    </div>
+  {:else if offer}
+    <section class="card catch">
+      <p><b>Welcome back. {counts.dueAll} reviews piled up.</b></p>
+      <p class="t-small">Take them in one go, or spread them over a few days: an even share each day, the ones closest to slipping first, and no new moves until you are through. The due count always shows everything.</p>
+      <div class="cud" role="group" aria-label="Days to catch up over">
+        {#each [3, 5, 7] as d}<button class:on={cuPick === d} aria-pressed={cuPick === d} onclick={() => (cuDays = d)}>{d} days<small>{Math.ceil(counts.dueAll / d)} a day</small></button>{/each}
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn quiet sm" onclick={() => stopCatchUp(true)}>All at once</button>
+        <button class="btn sm grow" onclick={() => startCatchUp(counts.dueAll, cuPick)}>Catch up over {cuPick} days</button>
+      </div>
+    </section>
+  {/if}
 
   <div class="sect"><h2 class="t-head">Mastering</h2><button class="link" onclick={() => go('/repertoire')}>All openings</button></div>
   <div class="mast" class:one={ms.length < 2}>
@@ -337,6 +365,15 @@
   .counts { display: flex; gap: 8px; margin: 22px 0 18px; }
   .counts div { flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 16px; padding: 10px 12px 9px; }
   .counts dd { margin: 0; font-size: 30px; line-height: 1; }
+  .counts dt .share { font-weight: 500; }
+  .catch { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .catch.on { flex-direction: row; align-items: center; gap: 12px; background: var(--cobalt-tint); color: var(--ink); }
+  .catch.on :global(svg) { color: var(--accent-text); flex: none; }
+  .cud { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cud button { display: flex; flex-direction: column; align-items: center; padding: 9px 0 8px; border-radius: 14px; background: var(--ground); font-weight: 700; box-shadow: inset 0 0 0 2px transparent; }
+  .cud button.on { box-shadow: inset 0 0 0 2.5px var(--cobalt); }
+  .cud small { font-size: 12px; font-weight: 500; color: var(--ink-2); }
+  .catch .btn.sm { min-height: 46px; font-size: 15px; border-radius: 14px; box-shadow: 0 4px 0 var(--edge); }
   .counts dt { font-size: 12.5px; font-weight: 600; color: var(--walnut); margin-top: 3px; }
 
   .syncing { margin-top: 12px; }

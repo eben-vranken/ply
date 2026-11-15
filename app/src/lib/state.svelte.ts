@@ -53,6 +53,9 @@ const defaults = {
   pendingSince: 0,
   bandNotice: '',
   // day bookkeeping
+  // catching up after time away (srs/catchup.ts): the plan, and the study day the offer was turned down
+  catchUp: null as null | { start: number; days: number; perDay: number },
+  catchUpDeclined: 0,
   extraNew: 0,
   extraDay: 0,
   lastBackup: 0,
