@@ -10,6 +10,7 @@ import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
 import { rate } from './srs/grade';
 import { limitsFor, planCatchUp, dayOf } from './srs/catchup';
+import { setWeights } from './srs/fsrs';
 import type { Item, Outcome, Ask } from './session';
 import { Chess } from 'chess.js';
 
@@ -64,6 +65,7 @@ export async function boot() {
     navigator.storage?.persist?.();
     const stored = await db.settings.get('app');
     if (stored?.value) replaceSettings(stored.value as Partial<Settings>);
+    setWeights(app.fsrsWeights);
     onSave((s) => { void db.settings.put({ key: 'app', value: s }); });
     save();
     await loadAll(currentBand());
@@ -1246,7 +1248,7 @@ export async function noteRating(rating: number) {
 }
 
 // ---------------------------------------------------------------- reset / backup support
-export async function reloadFromDb() { if (D) await loadAll(model.band); }
+export async function reloadFromDb() { setWeights(app.fsrsWeights); if (D) await loadAll(model.band); }
 export async function resetAllProgress() {
   await db.transaction('rw', [db.cards, db.reviews, db.repertoire, db.games, db.settings, db.book], async () => {
     await Promise.all([db.cards.clear(), db.reviews.clear(), db.repertoire.clear(), db.games.clear(), db.settings.clear(), db.book.clear()]);

@@ -19,6 +19,10 @@ const defaults = {
   maxReviews: 150,
   hardSeconds: 10,
   retention: 90,
+  // FSRS weights fitted to your reviews (srs/personal.ts): null = the defaults
+  fsrsWeights: null as number[] | null,
+  fsrsFitAt: 0,
+  fsrsFitReviews: 0,
   depth: 0, // 0 = auto by rating
   replyPct: 3,
   band: 0, // 0 = auto (chess.com rapid + 350)

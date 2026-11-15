@@ -19,9 +19,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: pipeline
+          workspaces: |
+            pipeline
+            optimizer
       - run: cargo test --release
         working-directory: pipeline
+      # the FSRS optimiser shipped as app/public/fsrs/ply_optimizer.wasm (npm run optimizer rebuilds it)
+      - run: cargo test --release
+        working-directory: optimizer
   app:
     runs-on: ubuntu-latest
     steps:

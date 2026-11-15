@@ -2,12 +2,17 @@
 // 365-day maximum, fuzz on, learning steps 1m/10m, relearning 10m.
 import { fsrs, generatorParameters, createEmptyCard, Rating, State, type Card, type Grade, type FSRS } from 'ts-fsrs';
 
+/** Weights fitted to your own reviews (srs/personal.ts), or null for the defaults. */
+let weights: number[] | null = null;
+export function setWeights(w: number[] | null) { weights = w?.length === 21 ? w : null; cached = null; }
+export const weightsInUse = () => weights;
+
 let cached: { r: number; f: FSRS } | null = null;
 export function scheduler(retention = 0.9): FSRS {
   if (cached?.r !== retention) {
     cached = {
       r: retention,
-      f: fsrs(generatorParameters({ request_retention: retention, maximum_interval: 365, enable_fuzz: true, enable_short_term: true, learning_steps: ['1m', '10m'], relearning_steps: ['10m'] }))
+      f: fsrs(generatorParameters({ request_retention: retention, maximum_interval: 365, enable_fuzz: true, enable_short_term: true, learning_steps: ['1m', '10m'], relearning_steps: ['10m'], ...(weights ? { w: weights } : {}) }))
     };
   }
   return cached.f;

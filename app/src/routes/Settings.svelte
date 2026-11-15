@@ -10,6 +10,7 @@
   import { sfx, buzz } from '../lib/fx';
   import Icon from '../lib/Icon.svelte';
   import { canVibrate } from '../lib/platform';
+  import { fitMySchedule, useDefaultWeights, MIN_REVIEWS } from '../lib/srs/personal';
 
   type Num = { k: 'newMoves' | 'newTraps' | 'newMistakes' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
   const groups: [string, Num[]][] = [
@@ -98,6 +99,17 @@
     location.reload();
   }
   const summary = $derived(sync.summary);
+  // your own schedule: FSRS weights fitted to your reviews
+  let reviewCount = $state(0);
+  $effect(() => { void model.rev; void db.reviews.count().then((n) => (reviewCount = n)); });
+  let fitting = $state(false);
+  async function fit() {
+    fitting = true;
+    try {
+      const r = await fitMySchedule();
+      say(r.status === 'fitted' ? `Fitted to ${r.reviews} reviews. Your next reviews use it.` : r.status === 'too-little' ? 'Not enough reviews on later days yet to learn from.' : 'The fit did not work this time; your schedule is unchanged.');
+    } finally { fitting = false; }
+  }
 </script>
 
 
@@ -150,6 +162,18 @@
       {/if}
     </section>
   {/each}
+
+  <div class="sect"><h2 class="t-head">Your schedule</h2></div>
+  <section class="card rows">
+    <div class="r col">
+      <p class="t-small">Ply schedules with FSRS's default weights, fitted to millions of Anki reviews. Once you have {MIN_REVIEWS.toLocaleString('en')} reviews, it can fit the weights to how your own memory behaves, on this device. Cards keep their dates; the new weights apply from each card's next review.</p>
+      {#if app.fsrsWeights}<p class="t-small"><b>Using your own weights</b>, fitted to {app.fsrsFitReviews.toLocaleString('en')} reviews on {new Date(app.fsrsFitAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.</p>{/if}
+      <div class="row" style="gap:8px">
+        <button class="btn quiet grow" onclick={fit} disabled={fitting || reviewCount < MIN_REVIEWS}>{fitting ? 'Fitting…' : reviewCount < MIN_REVIEWS ? `${reviewCount.toLocaleString('en')} of ${MIN_REVIEWS.toLocaleString('en')} reviews` : app.fsrsWeights ? 'Fit again' : 'Fit to my reviews'}</button>
+        {#if app.fsrsWeights}<button class="btn quiet" onclick={() => { useDefaultWeights(); say('Back to the default weights.'); }}>Defaults</button>{/if}
+      </div>
+    </div>
+  </section>
 
   <div class="sect"><h2 class="t-head">Your games</h2></div>
   <section class="card rows">

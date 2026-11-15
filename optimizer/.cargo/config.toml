@@ -1,0 +1,4 @@
+# Bare WebAssembly has no system random source. Training seeds its own generator; the custom
+# backend in src/lib.rs only satisfies getrandom's link.
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg', 'getrandom_backend="custom"']
