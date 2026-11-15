@@ -39,6 +39,18 @@ jobs:
         working-directory: app
       - run: npm run build
         working-directory: app
+      # the smoke test plays a session in headless Chromium against the built app
+      - run: npx playwright install --with-deps chromium
+        working-directory: app
+      - run: mkdir -p smoke-shots && npm run smoke
+        working-directory: app
+        env:
+          SHOTS: smoke-shots
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-screenshots
+          path: app/smoke-shots
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:

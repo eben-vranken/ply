@@ -34,7 +34,7 @@ cargo run --release -- build --month 2026-10 --out ../app/public/data --keep-dow
 
 ## Deploy
 
-GitHub Actions runs `cargo test`, `svelte-check`, Vitest and the build on every push, and publishes `app/dist` to GitHub Pages from `main`.
+GitHub Actions runs `cargo test`, `svelte-check`, Vitest, the build and the smoke test on every push, and publishes `app/dist` to GitHub Pages from `main`.
 
 Live: https://eben-vranken.github.io/ply/
 

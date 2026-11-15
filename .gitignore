@@ -4,3 +4,4 @@ dev-dist
 *.log
 pipeline/target
 pipeline/cache
+app/smoke-shots
