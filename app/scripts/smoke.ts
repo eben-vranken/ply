@@ -127,6 +127,44 @@ const strip = await page.locator('.room .strip').innerText();
 if (!strip.includes('bxa8=N')) errors.push('play-out promotion: expected bxa8=N in ' + strip);
 step('play-out promotion: ' + (strip.includes('bxa8=N') ? 'bxa8=N' : strip.replace(/\s+/g, ' ')));
 
+// keyboard: moves typed in SAN on the Explore board, Backspace steps back; a Today card answered by typing
+await page.goto(url + '#/explore?side=w');
+await page.waitForTimeout(900);
+for (const k of ['e4', 'e5', 'nf3']) { await page.keyboard.type(k); await page.waitForTimeout(150); }
+let crumbs = (await page.locator('.crumbs').innerText()).replace(/\s+/g, ' ');
+if (!crumbs.includes('2.Nf3')) errors.push('typed moves: expected 2.Nf3 in ' + crumbs);
+await page.keyboard.press('Backspace'); await page.waitForTimeout(200);
+crumbs = (await page.locator('.crumbs').innerText()).replace(/\s+/g, ' ');
+if (crumbs.includes('Nf3')) errors.push('Backspace should step back: ' + crumbs);
+step('keyboard in Explore: ' + crumbs);
+await page.goto(url + '#/today'); await page.waitForTimeout(600);
+await page.getByRole('button', { name: /Start|Continue/ }).click();
+await page.waitForSelector('.room');
+let typedOk = false, hinted = false;
+for (let i = 0; i < 40 && !typedOk; i++) {
+  await page.waitForTimeout(300);
+  const prompt = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ');
+  const want = prompt.match(/(?:move is|Play|safe move is) ([^ .]+)/)?.[1];
+  const hintOn = await page.getByRole('button', { name: 'Hint' }).isEnabled().catch(() => false);
+  if (want && hintOn) {
+    await page.keyboard.type(want); await page.waitForTimeout(400);
+  } else if (hintOn && !hinted) {
+    // ? shows the hint; then a wrong move typed on purpose makes the trainer name the right one
+    await page.keyboard.type('?'); await page.waitForTimeout(200);
+    hinted = (await page.locator('.prompt').innerText()).includes('This piece moves');
+    const fen = await page.locator('.room .slab').getAttribute('data-fen');
+    const legal = new Chess(fen!).moves();
+    await page.keyboard.type(legal[legal.length - 1]); await page.waitForTimeout(300);
+  }
+  if (await page.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false)) {
+    await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+    typedOk = hinted && !(await page.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false));
+  }
+}
+if (!typedOk) errors.push('could not answer a card and move on with the keyboard');
+step('keyboard in a session: ' + (typedOk ? 'answered by typing, Enter moved on' : 'failed'));
+await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();
 server.httpServer.close();

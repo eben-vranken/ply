@@ -17,6 +17,8 @@
   import Board, { type Badge } from '../lib/Board.svelte';
   import Icon from '../lib/Icon.svelte';
   import Promo from '../lib/Promo.svelte';
+  import MoveInput from '../lib/MoveInput.svelte';
+  import type { KeyAction } from '../lib/keys';
 
   let items = $state<Item[]>(run.items.slice());
   let idx = $state(0);
@@ -134,6 +136,16 @@
     const p = chess.get(from as never);
     if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
     play(from + to);
+  }
+  /** keyboard: legal moves while it is your turn to answer */
+  const legalNow = () => (phase === 'play' && dests && !promo ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
+  function onkey(a: KeyAction): boolean {
+    if (phase === 'complete' || phase === 'summary') { if (a === 'next' || a === 'stop') { leave(); return true; } return false; }
+    if (a === 'hint' && phase === 'play' && dests) { hint(); return true; }
+    if (a === 'next' && phase === 'answered') { void next(); return true; }
+    if (a === 'undo' && phase === 'answered' && !drill && applied && !undone) { void undo(); return true; }
+    if (a === 'stop') { stop(); return true; }
+    return false;
   }
   function pickPromo(piece: string) { const p = promo!; promo = null; play(p.from + p.to + piece); }
   function cancelPromo() { promo = null; rev++; }
@@ -410,6 +422,7 @@
         {#if lastLine}<button class="btn big night" onclick={playOut}><Icon name="sword" size={20} /> Play it out</button>{/if}
         <button class="btn big grow sun" onclick={leave}>Done</button>
       </div>
+      <MoveInput legal={() => null} onmove={() => {}} onaction={onkey} />
     </div>
   {:else if phase === 'summary'}
     <div class="complete summary">
@@ -438,6 +451,7 @@
         {/if}
       {/if}
       <button class="btn big wide sun" onclick={leave}>Done</button>
+      <MoveInput legal={() => null} onmove={() => {}} onaction={onkey} />
     </div>
   {:else if item}
     <header>
@@ -491,6 +505,7 @@
         {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
       {/if}
       {#if promo}<Promo side={item.side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
+      <MoveInput legal={legalNow} onmove={play} onaction={onkey} dark />
     </div>
 
     {#if coach}
@@ -520,7 +535,7 @@
       </div>
       <footer>
         <button class="btn night" onclick={hint} disabled={!dests}><Icon name="hint" size={20} /> Hint</button>
-        <p class="src">{item.source ?? ''}</p>
+        <p class="src">{item.source ?? ''}<span class="keyhelp">Type a move · ? hint · Esc stop</span></p>
       </footer>
     {:else}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -549,7 +564,7 @@
       </div>
       <footer>
         {#if !drill}<button class="btn night sq" onclick={undo} disabled={undone || !applied || phase === 'replay'} aria-label="Undo grade"><Icon name="undo" size={22} /></button>{/if}
-        <button class="btn grow go {gradeInfo[0]}" class:auto onclick={next}><span>Continue</span> <Icon name="next" size={20} /></button>
+        <button class="btn grow go {gradeInfo[0]}" class:auto onclick={next}><span>Continue</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
       </footer>
     {/if}
     </div>
@@ -623,6 +638,12 @@
 
   footer { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 8px 16px 6px; }
   .src { font-size: 13px; color: var(--night-ink-2); text-align: right; flex: 1; }
+  /* keyboard hints only where there is a keyboard and a mouse */
+  .keyhelp { display: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .keyhelp { display: block; font-size: 12px; opacity: 0.75; margin-top: 2px; }
+    kbd.keyhelp { display: inline-block; position: relative; font: inherit; font-size: 12px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 0, 0, 0.18); }
+  }
 
   .answer { margin: 12px 8px 0; padding: 14px 14px 12px; border-radius: 22px; background: var(--night-2); animation: rise 280ms var(--ease) both; overflow-y: auto; border: 1.5px solid transparent; }
   .answer.good { background: #10392f; border-color: #1d6b53; }

@@ -13,8 +13,8 @@
     first?.focus({ preventScroll: true });
     const key = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k in NAMES) { e.preventDefault(); e.stopPropagation(); onpick(k); }
-      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); oncancel(); }
+      if (k in NAMES) { e.preventDefault(); e.stopImmediatePropagation(); onpick(k); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); oncancel(); }
     };
     addEventListener('keydown', key, true);
     return () => removeEventListener('keydown', key, true);

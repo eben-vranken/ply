@@ -16,6 +16,8 @@
   import Mascot from '../lib/Mascot.svelte';
   import Icon from '../lib/Icon.svelte';
   import Promo from '../lib/Promo.svelte';
+  import MoveInput from '../lib/MoveInput.svelte';
+  import type { KeyAction } from '../lib/keys';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   const side = ((q.get('side') as Side) ?? 'w');
@@ -62,6 +64,12 @@
     const p = chess.get(from as never);
     if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
     void play(from, to);
+  }
+  const legalNow = () => (!over && dests && !promo ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
+  const typed = (u: string) => void play(u.slice(0, 2), u.slice(2, 4), u[4]);
+  function onkey(a: KeyAction): boolean {
+    if (a === 'stop' || (a === 'next' && over)) { leave(); return true; }
+    return false;
   }
   function pickPromo(piece: string) { const p = promo!; promo = null; void play(p.from, p.to, piece); }
   function cancelPromo() { promo = null; rev++; }
@@ -143,6 +151,7 @@
   <div class="boardwrap">
     <Board {fen} {side} {dests} {lastMove} {badge} {check} {rev} {shake} dark {onmove} />
     {#if promo}<Promo {side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
+    <MoveInput legal={legalNow} onmove={typed} onaction={onkey} dark />
   </div>
   <div class="side">
   <div class="ev" role="img" aria-label="Evaluation {evalText} for you">

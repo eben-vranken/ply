@@ -10,6 +10,8 @@
   import Plies from '../lib/Plies.svelte';
   import MoveEditor from '../lib/MoveEditor.svelte';
   import Promo from '../lib/Promo.svelte';
+  import MoveInput from '../lib/MoveInput.svelte';
+  import type { KeyAction } from '../lib/keys';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   let side = $state<Side>((q.get('side') as Side) ?? 'w');
@@ -70,6 +72,12 @@
     const p = c.get(from as never);
     if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
     path = [...path, from + to];
+  }
+  const legalNow = () => (editing || confirmDev || promo ? null : new Chess(pos.fen).moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })));
+  function onkey(a: KeyAction): boolean {
+    if ((a === 'back' || a === 'undo') && path.length) { back(); return true; }
+    if (a === 'stop' && drillOpen) { drillOpen = false; return true; }
+    return false;
   }
   function pickPromo(piece: string) { const p = promo!; promo = null; path = [...path, p.from + p.to + piece]; }
   function cancelPromo() { promo = null; boardRev++; }
@@ -159,6 +167,7 @@
   <div class="bw" role="presentation" ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
     <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} onmove={onBoardMove} />
     {#if promo}<Promo side={pos.turn} onpick={pickPromo} oncancel={cancelPromo} />{/if}
+    <MoveInput legal={legalNow} onmove={(u) => (path = [...path, u])} onaction={onkey} />
   </div>
 
   <div class="acts">
