@@ -191,6 +191,14 @@ await page.waitForTimeout(1200);
 const imported = await page.locator('.toast').innerText().catch(() => '');
 if (!/Imported \d+ position/.test(imported)) errors.push('PGN import did not finish: ' + imported);
 step('import: ' + imported);
+// PGN export: the whole repertoire downloads as one file that reads back
+await page.getByRole('button', { name: 'Export PGN' }).click();
+const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10_000 }), page.getByRole('button', { name: 'Everything' }).click()]);
+const { readFileSync } = await import('node:fs');
+const exported = readFileSync((await dl.path())!, 'utf8');
+const games = (exported.match(/\[Event /g) ?? []).length;
+if (games !== 2 || !exported.includes('[Orientation "black"]')) errors.push('export: expected a White and a Black game');
+step(`export: ${dl.suggestedFilename()} · ${games} games · ${Math.round(exported.length / 1024)} KB`);
 
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();

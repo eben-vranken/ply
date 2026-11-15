@@ -7,6 +7,7 @@
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
   import ImportSheet from '../lib/ImportSheet.svelte';
+  import ExportSheet from '../lib/ExportSheet.svelte';
 
   const sections: Section[] = ['White', 'Black vs 1.e4', 'Black vs 1.d4', 'Black vs others'];
   const STAGES = ['new', 'learning', 'young', 'mature'];
@@ -22,8 +23,9 @@
 
   let asking = $state<Section | null>(null);
   let importing = $state(false);
+  let exporting = $state(false);
   let toast = $state('');
-  function done(msg: string) { importing = false; toast = msg; setTimeout(() => (toast = ''), 6000); }
+  function done(msg: string) { importing = false; exporting = false; toast = msg; setTimeout(() => (toast = ''), 6000); }
   let games = $state<GameRow[]>([]);
   $effect(() => { void model.rev; void db.games.orderBy('date').reverse().toArray().then((g) => (games = g)); });
   const withCards = $derived(games.filter((g) => (g.mistakes ?? []).some((id) => allCards().has(id))));
@@ -69,6 +71,7 @@
   {#if !q.trim()}
     <div class="io">
       <button class="btn quiet sm" onclick={() => (importing = true)}><Icon name="plus" size={18} /> Import PGN</button>
+      <button class="btn quiet sm" onclick={() => (exporting = true)}><Icon name="share" size={18} /> Export PGN</button>
     </div>
   {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
@@ -165,6 +168,7 @@
 </div>
 
 {#if importing}<ImportSheet onclose={() => (importing = false)} ondone={done} />{/if}
+{#if exporting}<ExportSheet onclose={() => (exporting = false)} ondone={done} />{/if}
 
 <style>
   .io { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }

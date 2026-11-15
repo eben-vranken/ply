@@ -8,6 +8,8 @@
   import Sigil from '../lib/Sigil.svelte';
   import SkillTree from '../lib/SkillTree.svelte';
   import Icon from '../lib/Icon.svelte';
+  import { exportOpening, pgnName } from '../lib/export';
+  import { shareFile } from '../lib/backup';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   const side = (q.get('side') as Side) ?? 'w';
@@ -46,6 +48,10 @@
       ? `You are mastering the ${name[1]}. About half of each day's new moves now come from the openings you master.`
       : `No longer mastering the ${name[1]}. Its cards keep their schedule.`;
   }
+  async function share() {
+    const file = pgnName(`${name[1]}-${colour}`);
+    if (await shareFile(file, exportOpening(side, path), 'application/x-chess-pgn')) model.notice = `Exported ${file}.`;
+  }
   const newCount = (m: TreeMove | null) => { void model.rev; return subtreeNew(side, from(m)).length; };
 </script>
 
@@ -58,6 +64,7 @@
       <p class="ord">{#if focused}<b class="fc">Mastering</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
     </div>
     <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop mastering this opening` : `Master this opening as ${colour}`}><Icon name="star" fill={focused} /></button>
+    <button class="ib" onclick={share} disabled={!roots.length} aria-label="Export this opening as PGN"><Icon name="share" /></button>
     <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore"><Icon name="explore" /></button>
   </header>
 

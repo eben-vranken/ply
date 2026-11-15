@@ -159,6 +159,27 @@ describe('model on real data', () => {
     expect(m.summaries().some((o) => o.name === 'First moves' && o.side === 'w' && o.total > 1)).toBe(false);
   });
 
+  it('exports the repertoire as PGN that imports back to the same moves and notes', async () => {
+    const { exportRepertoire, exportOpening } = await import('./export');
+    const { readPgn } = await import('./pgn');
+    const { plan } = await import('./import/repertoire');
+    const text = exportRepertoire('w');
+    expect(text).toContain('[Orientation "white"]');
+    const games = readPgn(text);
+    expect(games.length).toBe(1);
+    expect(games[0].error).toBeUndefined();
+    const p = plan({ games, side: null, current: () => ({ moves: [], own: false }), note: () => undefined, inTree: () => true, depth: 99 });
+    // every move of yours in the lines is in the file, with your note
+    const L = m.lines().w!;
+    for (const s of L.cards.values()) expect(p.picks.get('w|' + s.epd)?.moves).toContain(s.move);
+    const h5 = chess.epdAfter('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 h7h5'.split(' '));
+    expect(p.picks.get('w|' + h5)?.note).toBe('A rare one.');
+    // one opening starts with the moves that lead to it
+    const it = exportOpening('w', ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4']);
+    expect(it).toContain('[Opening "Italian Game"]');
+    expect(it.replace(/\s+/g, ' ')).toMatch(/1\. e4 e5 2\. Nf3 Nc6 3\. Bc4/);
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();

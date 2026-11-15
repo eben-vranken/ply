@@ -50,10 +50,12 @@ export async function restoreBackup(b: Backup) {
 export const backupName = (d = new Date()) => `ply-backup-${d.toISOString().slice(0, 10)}.json`;
 
 /** Hand the file to the Android share sheet, or download it. */
-export async function shareBackup(b: Backup): Promise<boolean> {
-  const name = backupName();
-  const blob = new Blob([JSON.stringify(b)], { type: 'application/json' });
-  const file = new File([blob], name, { type: 'application/json' });
+export const shareBackup = (b: Backup) => shareFile(backupName(), JSON.stringify(b), 'application/json');
+
+/** Hand a file to the share sheet where the browser has one, else download it. False when the sheet was dismissed. */
+export async function shareFile(name: string, text: string, type: string): Promise<boolean> {
+  const blob = new Blob([text], { type });
+  const file = new File([blob], name, { type });
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], title: name }); return true; }
   } catch (e) {
