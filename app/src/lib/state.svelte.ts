@@ -18,7 +18,10 @@ const defaults = {
   depth: 0, // 0 = auto by rating
   replyPct: 3,
   band: 0, // 0 = auto (chess.com rapid + 350)
-  timeClasses: ['Rapid'] as string[],
+  timeClasses: ['Rapid'] as string[], // Bullet, Blitz, Rapid, Classical (Lichess), Daily
+  gamesRated: 'rated' as 'rated' | 'casual' | 'both',
+  gamesFrom: '', // 'YYYY-MM-DD': import games from this day on ('' = the last three months at the first sync)
+  gamesTo: '', // 'YYYY-MM-DD': up to this day ('' = no end)
   rollover: 4,
   sounds: true,
   vibration: true,

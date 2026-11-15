@@ -5,7 +5,8 @@
   import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress } from '../lib/model.svelte';
   import { db } from '../lib/db';
   import { makeBackup, parseBackup, restoreBackup, shareBackup, type Backup } from '../lib/backup';
-  import { sync, syncNow, importPgn } from '../lib/import/sync.svelte';
+  import { sync, syncNow, importPgn, filtersChanged } from '../lib/import/sync.svelte';
+  import { TIME_CLASSES } from '../lib/import/filters';
   import { sfx, buzz } from '../lib/fx';
   import Icon from '../lib/Icon.svelte';
   import { canVibrate } from '../lib/platform';
@@ -48,8 +49,13 @@
   const toggles = ([
     ['autoNext', 'Move on after a clean answer', 'A wrong answer always waits for you'], ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
   ] as Toggle[]).filter(([k]) => k !== 'vibration' || canVibrate());
-  const classes = ['Rapid', 'Blitz', 'Daily'];
-  function flip(c: string) { app.timeClasses = app.timeClasses.includes(c) ? app.timeClasses.filter((x) => x !== c) : [...app.timeClasses, c]; save(); }
+  function flip(c: string) {
+    const next = app.timeClasses.includes(c) ? app.timeClasses.filter((x) => x !== c) : [...app.timeClasses, c];
+    if (!next.length) return say('Keep at least one time control.');
+    app.timeClasses = next; filtersChanged();
+  }
+  function setRated(r: typeof app.gamesRated) { app.gamesRated = r; filtersChanged(); }
+  function setDay(k: 'gamesFrom' | 'gamesTo', v: string) { app[k] = v; filtersChanged(); }
 
   let status = $state('');
   let confirm = $state('');
@@ -146,9 +152,20 @@
     <p class="t-small intro">Ply fetches your games when you open it once a day or tap Sync now, and analyses them on this device. Nothing else is sent.</p>
     <label class="r"><p class="lb grow">chess.com</p><input class="txt" placeholder="username" bind:value={app.username} onchange={save} autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="chess.com username" /></label>
     <label class="r"><p class="lb grow">Lichess</p><input class="txt" placeholder="username" bind:value={app.lichessUser} onchange={() => { app.lichessUser = app.lichessUser.trim(); save(); }} autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Lichess username" /></label>
+    <div class="r col">
+      <div><p class="lb">Time controls</p><p class="t-small">Classical is Lichess only</p></div>
+      <div class="pick wrap">{#each TIME_CLASSES as c}<button class:on={app.timeClasses.includes(c)} aria-pressed={app.timeClasses.includes(c)} onclick={() => flip(c)}>{c}</button>{/each}</div>
+    </div>
     <div class="r">
-      <p class="lb grow">Time classes</p>
-      <div class="pick">{#each classes as c}<button class:on={app.timeClasses.includes(c)} aria-pressed={app.timeClasses.includes(c)} onclick={() => flip(c)}>{c}</button>{/each}</div>
+      <p class="lb grow">Games</p>
+      <div class="pick">{#each [['rated', 'Rated'], ['casual', 'Casual'], ['both', 'Both']] as const as [k, l]}<button class:on={app.gamesRated === k} aria-pressed={app.gamesRated === k} onclick={() => setRated(k)}>{l}</button>{/each}</div>
+    </div>
+    <div class="r col">
+      <div><p class="lb">Dates</p><p class="t-small">{app.gamesFrom ? '' : 'Without a start, the first sync takes the last three months. '}A change applies from the next sync.</p></div>
+      <div class="dates">
+        <label><span class="t-small">From</span><input type="date" class="txt" value={app.gamesFrom} max={app.gamesTo || undefined} onchange={(e) => setDay('gamesFrom', (e.target as HTMLInputElement).value)} /></label>
+        <label><span class="t-small">To</span><input type="date" class="txt" value={app.gamesTo} min={app.gamesFrom || undefined} onchange={(e) => setDay('gamesTo', (e.target as HTMLInputElement).value)} /></label>
+      </div>
     </div>
     <div class="r col">
       <button class="btn quiet wide" onclick={syncClick} disabled={sync.running}><Icon name="wifi" size={20} /> {sync.running ? 'Syncing…' : 'Sync now'}</button>
@@ -224,6 +241,10 @@
   input[role='switch']:checked::after { transform: translateX(22px); }
   .txt { height: 44px; border-radius: 12px; border: 0; background: var(--ground); padding: 0 14px; text-align: right; width: 170px; user-select: text; font-weight: 600; }
   .pick { display: flex; gap: 6px; }
+  .pick.wrap { flex-wrap: wrap; }
+  .dates { display: flex; gap: 10px; }
+  .dates label { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+  .dates .txt { width: 100%; text-align: left; }
   .pick button { height: 44px; padding: 0 13px; border-radius: 12px; background: var(--ground); font-weight: 650; font-size: 14px; color: var(--ink-2); }
   .pick button.on { background: var(--ink); color: var(--on-ink); }
   .link.danger { color: var(--bad-text); }

@@ -6,7 +6,8 @@ import { archives, monthGames, rapidRating, lastMonths, monthOf, monthStart, win
 import { parsePgn, splitPgns, sideOf, findMistakes, type PlyAnalysis, type ParsedGame } from './mistakes';
 import { Engine } from '../engine/stockfish';
 import { epdOf, hashId, sans, moveOrder, child, START_EPD, turnOf, winPct, type Side } from '../chess';
-import { lichessRapid, lichessGames, lichessRow, SPEEDS } from './lichess';
+import { lichessRapid, lichessGames, lichessRow } from './lichess';
+import { keepGame, lichessPerfs, monthInRange, fromMs, toMs, type GameFilters } from './filters';
 import { lines, movesAt, labelOf, lapse, addCards, noteRating, openingAt, data } from '../model.svelte';
 import { moveId } from '../srs/lines';
 import { createEmptyCard } from '../srs/fsrs';
@@ -21,7 +22,16 @@ export const sync = $state({
   summary: null as null | { imported: number; lapsed: string[]; uncovered: number; mistakes: number }
 });
 
-const CLASS: Record<string, string> = { Rapid: 'rapid', Blitz: 'blitz', Daily: 'daily' };
+const filters = (): GameFilters => ({ rated: app.gamesRated, classes: app.timeClasses, from: app.gamesFrom, to: app.gamesTo });
+/** 'YYYY/MM' of a 'YYYY-MM-DD' day */
+const monthOfDay = (d: string) => d.slice(0, 7).replace('-', '/');
+
+/** A filter changed: the next sync goes over the whole window again (games already here are skipped). */
+export function filtersChanged() {
+  app.syncedArchives = [];
+  app.lichessSince = 0;
+  save();
+}
 
 
 export async function autoSync() {
@@ -56,12 +66,13 @@ async function syncChesscom() {
   // the first sync takes the last three months; later syncs only newer months, never older history
   if (!app.syncedArchives.length) app.syncFrom = monthOf(lastMonths(all, 3)[0] ?? '') || windowStart();
   else if (!app.syncFrom) app.syncFrom = windowStart();
-  const months = monthsToSync(all, app.syncedArchives, app.syncFrom);
-  const want = new Set(app.timeClasses.map((c) => CLASS[c]));
+  // a start date of your own replaces the three-month window
+  const F = filters();
+  const months = monthsToSync(all, app.syncedArchives, F.from ? monthOfDay(F.from) : app.syncFrom).filter((m) => monthInRange(monthOf(m), F));
   const fresh: GameRow[] = [];
   for (const m of months) {
     for (const g of await monthGames(m)) {
-      if (!g.rated || !want.has(g.time_class) || (g.rules && g.rules !== 'chess')) continue;
+      if ((g.rules && g.rules !== 'chess') || !keepGame({ rated: g.rated, timeClass: g.time_class, date: g.end_time * 1000 }, F)) continue;
       if (await db.games.get(g.url)) continue;
       const colour: Side = g.white.username.toLowerCase() === app.username.toLowerCase() ? 'w' : 'b';
       const me = colour === 'w' ? g.white : g.black;
@@ -90,13 +101,15 @@ async function syncLichess() {
   }
   sync.text = 'Fetching your Lichess games';
   if (!app.lichessFrom) app.lichessFrom = monthStart(windowStart());
-  const since = Math.max(app.lichessFrom, app.lichessSince + 1);
-  const perfTypes = app.timeClasses.map((c) => SPEEDS[c]).filter(Boolean);
-  const games = await lichessGames(user, { since, rated: true, perfTypes }, (n) => (sync.text = `Fetching your Lichess games · ${n}`), wait);
+  const F = filters();
+  const since = Math.max(F.from ? fromMs(F.from) : app.lichessFrom, app.lichessSince + 1);
+  const until = F.to ? toMs(F.to) : undefined;
+  const rated = F.rated === 'both' ? undefined : F.rated === 'rated';
+  const games = await lichessGames(user, { since, until, rated, perfTypes: lichessPerfs(F.classes) }, (n) => (sync.text = `Fetching your Lichess games · ${n}`), wait);
   const fresh: GameRow[] = [];
   for (const g of games) {
     const row = lichessRow(g, user);
-    if (row && !(await db.games.get(row.url))) fresh.push(row);
+    if (row && keepGame({ rated: g.rated, timeClass: g.speed, date: row.date }, F) && !(await db.games.get(row.url))) fresh.push(row);
   }
   // the export is newest first; next time only games after the newest one seen
   const newest = Math.max(app.lichessSince, ...games.map((g) => g.createdAt));
@@ -161,7 +174,7 @@ async function importGames(rows: GameRow[]) {
 async function dropOutsideWindow() {
   if (!app.syncFrom && app.syncedArchives.length) { app.syncFrom = windowStart(); save(); }
   if (!app.syncFrom) return;
-  const from = monthStart(app.syncFrom);
+  const from = app.gamesFrom ? fromMs(app.gamesFrom) : monthStart(app.syncFrom);
   const old = await db.games.where('analyzed').equals(0).filter((g) => g.date < from && g.url.includes('chess.com/')).primaryKeys();
   if (old.length) await db.games.bulkDelete(old);
 }
