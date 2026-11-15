@@ -15,6 +15,7 @@
   import Board, { type Badge } from '../lib/Board.svelte';
   import Mascot from '../lib/Mascot.svelte';
   import Icon from '../lib/Icon.svelte';
+  import Promo from '../lib/Promo.svelte';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   const side = ((q.get('side') as Side) ?? 'w');
@@ -55,9 +56,18 @@
     if (!mine) msg = { tone: 'info', text: `The book line ends here. Play your next ${GOAL} moves.` };
   }
 
-  async function onmove(from: string, to: string) {
+  /** a pawn reaching the last rank asks which piece it becomes */
+  let promo = $state<{ from: string; to: string } | null>(null);
+  function onmove(from: string, to: string) {
     const p = chess.get(from as never);
-    const mv = chess.move({ from, to, promotion: p?.type === 'p' && (to[1] === '8' || to[1] === '1') ? 'q' : undefined });
+    if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
+    void play(from, to);
+  }
+  function pickPromo(piece: string) { const p = promo!; promo = null; void play(p.from, p.to, piece); }
+  function cancelPromo() { promo = null; rev++; }
+
+  async function play(from: string, to: string, promotion?: string) {
+    const mv = chess.move({ from, to, promotion });
     mv.captured ? sfx.capture() : sfx.move();
     dests = null; mine++; sync(mv);
     if (chess.isCheckmate()) { badge = { square: mv.to, glyph: '#', tone: 'good' }; cp = 10000; return finish(); }
@@ -132,6 +142,7 @@
   </div>
   <div class="boardwrap">
     <Board {fen} {side} {dests} {lastMove} {badge} {check} {rev} {shake} dark {onmove} />
+    {#if promo}<Promo {side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
   </div>
   <div class="ev" role="img" aria-label="Evaluation {evalText} for you">
     <span class="track"><i style="width:{bar}%"></i></span><b class="t-num">{evalText}</b>
@@ -170,7 +181,7 @@
   .label { height: 58px; flex: none; padding: 4px 16px 0; display: flex; flex-direction: column; justify-content: center; }
   .nm { font-size: 21px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ord { font-size: 13px; color: var(--night-ink-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .boardwrap { padding: 0 8px; flex: none; }
+  .boardwrap { padding: 0 8px; flex: none; position: relative; }
   .ev { display: flex; align-items: center; gap: 10px; padding: 12px 16px 0; }
   .track { flex: 1; height: 10px; border-radius: 5px; background: #0b0e24; overflow: hidden; box-shadow: inset 0 0 0 1px var(--night-3); }
   .track i { display: block; height: 100%; background: var(--birch); border-radius: 5px; transition: width 500ms var(--ease); }

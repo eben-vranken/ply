@@ -16,6 +16,7 @@
   import Mascot from '../lib/Mascot.svelte';
   import Board, { type Badge } from '../lib/Board.svelte';
   import Icon from '../lib/Icon.svelte';
+  import Promo from '../lib/Promo.svelte';
 
   let items = $state<Item[]>(run.items.slice());
   let idx = $state(0);
@@ -378,7 +379,6 @@
     location.replace(`${location.pathname}${location.search}#/play?side=${lastLine.side}&p=${encodeURIComponent([...lastLine.setup, ...lastLine.moves].join(' '))}`);
   }
   const histSans = $derived(hist);
-  const PIECES = import.meta.glob('../assets/pieces/mpchess/*.svg', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
   const playedSan = $derived(item?.played ? sanOf(epdAfter(item.setup, item.start.split(' ').slice(0, 4).join(' ')), item.played.uci) : '');
 </script>
 
@@ -488,16 +488,7 @@
       {#if cheer}
         {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
       {/if}
-      {#if promo}
-        <div class="promo" role="dialog" aria-label="Promote to">
-          {#each ['q', 'r', 'b', 'n'] as p}
-            <button onclick={() => pickPromo(p)} aria-label={{ q: 'Queen', r: 'Rook', b: 'Bishop', n: 'Knight' }[p]}>
-              <img src={PIECES[`../assets/pieces/mpchess/${item.side}${p.toUpperCase()}.svg`]} alt="" />
-            </button>
-          {/each}
-          <button class="cancel" onclick={cancelPromo} aria-label="Cancel"><Icon name="close" size={20} /></button>
-        </div>
-      {/if}
+      {#if promo}<Promo side={item.side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
     </div>
 
     {#if coach}
@@ -606,10 +597,6 @@
   .branch b { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .boardwrap { padding: 0 8px; flex: none; position: relative; }
-  .promo { position: absolute; inset: 0 8px; z-index: 20; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(13, 16, 36, 0.72); border-radius: 10px; animation: rise 160ms var(--ease) both; }
-  .promo button { width: 68px; height: 68px; border-radius: 18px; background: var(--birch); display: grid; place-items: center; box-shadow: 0 6px 0 var(--birch-3); }
-  .promo img { width: 54px; height: 54px; }
-  .promo .cancel { width: 48px; height: 48px; background: var(--night-3); color: var(--night-ink); box-shadow: none; }
 
   .prompt { min-height: 62px; padding: 14px 16px 0; flex: none; }
   .ask { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }

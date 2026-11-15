@@ -103,6 +103,30 @@ await page.waitForTimeout(2500);
 step('play it out: ' + (await page.locator('.room .msg').innerText().catch(() => 'no message')).replace(/\s+/g, ' ') + ' | eval ' + (await page.locator('.room .ev b').innerText().catch(() => '?')));
 await shot('play');
 
+// promotion: the pawn on b7 takes on a8 and becomes a knight, on the Explore board and in Play it out
+const PROMO = 'e2e4%20d7d5%20e4d5%20c7c6%20d5c6%20g8f6%20c6b7%20b8d7';
+const promote = async (scope: string) => {
+  const b = (await page.locator(`${scope} cg-board`).boundingBox())!;
+  const c = b.width / 8;
+  await page.mouse.click(b.x + 1.5 * c, b.y + 1.5 * c); await page.waitForTimeout(80); // b7
+  await page.mouse.click(b.x + 0.5 * c, b.y + 0.5 * c); await page.waitForTimeout(300); // a8
+  await page.getByRole('dialog', { name: 'Promote to' }).getByRole('button', { name: 'Knight' }).click();
+  await page.waitForTimeout(400);
+};
+await page.goto(url + '#/explore?side=w&p=' + PROMO);
+await page.waitForTimeout(900);
+await promote('.bw');
+const crumb = await page.locator('.crumb.cur').innerText();
+if (!crumb.includes('bxa8=N')) errors.push('explore promotion: expected bxa8=N, got ' + crumb);
+step('explore promotion: ' + crumb.replace(/\s+/g, ''));
+await page.goto(url + '#/play?side=w&p=' + PROMO);
+await page.waitForTimeout(2500);
+await promote('.room');
+await page.waitForTimeout(600);
+const strip = await page.locator('.room .strip').innerText();
+if (!strip.includes('bxa8=N')) errors.push('play-out promotion: expected bxa8=N in ' + strip);
+step('play-out promotion: ' + (strip.includes('bxa8=N') ? 'bxa8=N' : strip.replace(/\s+/g, ' ')));
+
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();
 server.httpServer.close();

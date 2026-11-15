@@ -34,6 +34,7 @@ Everything in `docs/BRIEF.md` is built. The app runs on real data built by the p
 Work from build-order steps 1 and 2 of `reports/Ply subscription readiness gaps.md`. Everything here is part of the free tier.
 
 - **Arcade memory in the backup:** the positions Arcade brings back after a miss lived in localStorage, outside IndexedDB and the backup. They are now a `settings` row (`key: "arcade"`), moved over on first launch; backup format 2 (`docs/backup-format.md`).
+- **Promotion choice everywhere:** Play it out and the Explore board always made a queen. Both now open the trainer's four-piece picker (`lib/Promo.svelte`, also keys q / r / b / n and Escape). `npm run smoke` underpromotes to a knight on both boards.
 
 ## Data build 2026-10 (14 Nov 2026)
 

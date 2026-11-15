@@ -9,6 +9,7 @@
   import Icon from '../lib/Icon.svelte';
   import Plies from '../lib/Plies.svelte';
   import MoveEditor from '../lib/MoveEditor.svelte';
+  import Promo from '../lib/Promo.svelte';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   let side = $state<Side>((q.get('side') as Side) ?? 'w');
@@ -62,12 +63,16 @@
 
   function say(t: string) { toast = t; setTimeout(() => (toast = ''), 2800); }
   const back = () => { if (path.length) path = path.slice(0, -1); };
+  let promo = $state<{ from: string; to: string } | null>(null);
+  let boardRev = $state(0);
   function onBoardMove(from: string, to: string) {
     const c = new Chess(fenOf(epd));
     const p = c.get(from as never);
-    const promo = p?.type === 'p' && (to[1] === '8' || to[1] === '1') ? 'q' : '';
-    path = [...path, from + to + promo];
+    if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
+    path = [...path, from + to];
   }
+  function pickPromo(piece: string) { const p = promo!; promo = null; path = [...path, p.from + p.to + piece]; }
+  function cancelPromo() { promo = null; boardRev++; }
 
   // ---------- Learn from here
   function learn() {
@@ -149,7 +154,8 @@
   </div>
 
   <div class="bw" role="presentation" ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
-    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} onmove={onBoardMove} />
+    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} onmove={onBoardMove} />
+    {#if promo}<Promo side={pos.turn} onpick={pickPromo} oncancel={cancelPromo} />{/if}
   </div>
 
   <div class="acts">
