@@ -98,6 +98,8 @@ export function readPgn(text: string): PgnGame[] {
 
 function build(headers: Record<string, string>, body: Tok[]): PgnGame {
   const game: PgnGame = { headers, moves: [] };
+  const variant = headers.Variant ?? 'Standard';
+  if (!/^(standard|from position)$/i.test(variant)) { game.error = `A ${variant} game: Ply reads standard chess only`; return game; }
   const fen = headers.SetUp === '1' || headers.FEN ? headers.FEN : undefined;
   const start = fen ?? START_FEN;
   if (fen && fen.split(' ').slice(0, 4).join(' ') !== START_FEN.split(' ').slice(0, 4).join(' ')) game.setup = true;

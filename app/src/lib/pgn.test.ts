@@ -53,6 +53,9 @@ describe('reading PGN', () => {
     expect(g.setup).toBe(true);
     expect(g.moves[0].san).toBe('Nf3');
   });
+  it('says when a game is not standard chess', () => {
+    expect(readPgn('[Variant "Crazyhouse"]\n\n1. e4 e5 *')[0].error).toMatch(/Crazyhouse game/);
+  });
   it('cleans Lichess commands out of comments', () => {
     expect(cleanComment(' [%clk 0:05:00] Good [%csl Rd4] move ')).toBe('Good move');
   });

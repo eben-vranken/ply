@@ -179,6 +179,7 @@ await page.keyboard.press('Escape'); await page.waitForTimeout(400);
 // PGN import: a Black repertoire pasted without an Orientation header, with a variation and a comment
 await page.goto(url + '#/repertoire'); await page.waitForTimeout(700);
 await page.getByRole('button', { name: 'Import PGN' }).click();
+await page.getByRole('button', { name: 'Paste', exact: true }).click();
 await page.getByLabel('PGN').fill('1. e4 c6 2. d4 d5 3. e5 (3. exd5 cxd5 { The Exchange. }) 3... Bf5 4. Nf3 e6 *');
 await page.getByRole('button', { name: 'Read the PGN' }).click();
 await page.getByRole('button', { name: 'I play Black' }).click();

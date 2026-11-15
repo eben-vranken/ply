@@ -6,10 +6,13 @@
   import { currentAt, noteAt, data, depthLimit, importRepertoire, model } from './model.svelte';
   import { moveOrder, sans, san as sanOf, type Side } from './chess';
   import Icon from './Icon.svelte';
+  import { studyPgn, studyRef } from './import/lichess';
 
   let { onclose, ondone }: { onclose: () => void; ondone: (msg: string) => void } = $props();
 
-  let source = $state<'paste' | 'file'>('paste');
+  let source = $state<'paste' | 'file' | 'study'>('study');
+  let studyUrl = $state('');
+  let waiting = $state('');
   let text = $state('');
   let fileName = $state('');
   let games = $state<PgnGame[] | null>(null);
@@ -36,6 +39,14 @@
     fileName = f.name;
     text = await f.text();
     read();
+  }
+  async function fetchStudy() {
+    error = ''; busy = true; waiting = 'Asking Lichess for the study…';
+    try {
+      text = await studyPgn(studyUrl, (ms) => (waiting = `Lichess asked Ply to slow down. Trying again in ${Math.round(ms / 1000)} seconds…`));
+      read();
+    } catch (e) { error = e instanceof Error ? e.message : String(e); }
+    finally { busy = false; waiting = ''; }
   }
   function read() {
     error = '';
@@ -70,10 +81,16 @@
   {#if !games}
     <p class="t-small">PGN with your lines: one game or many, variations and comments included. Your moves become your repertoire, the opponent's moves your lines, and comments your notes.</p>
     <div class="seg" role="group" aria-label="Where from">
+      <button class:on={source === 'study'} onclick={() => (source = 'study')}>Lichess study</button>
       <button class:on={source === 'paste'} onclick={() => (source = 'paste')}>Paste</button>
       <button class:on={source === 'file'} onclick={() => (source = 'file')}>File</button>
     </div>
-    {#if source === 'paste'}
+    {#if source === 'study'}
+      <input class="url" type="url" inputmode="url" bind:value={studyUrl} placeholder="https://lichess.org/study/…" aria-label="Lichess study address" autocapitalize="off" autocomplete="off" spellcheck="false" />
+      <p class="t-small">A public study: every chapter, or just the one in the address. This is the only time Ply contacts Lichess, and only when you tap the button.</p>
+      <button class="btn wide" onclick={fetchStudy} disabled={busy || !studyRef(studyUrl)}>{busy ? 'Fetching…' : 'Fetch the study'}</button>
+      {#if waiting}<p class="t-small" role="status">{waiting}</p>{/if}
+    {:else if source === 'paste'}
       <textarea rows="8" bind:value={text} placeholder={'[Orientation "white"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 …'} aria-label="PGN"></textarea>
       <button class="btn wide" onclick={read} disabled={!text.trim()}>Read the PGN</button>
     {:else}
@@ -148,6 +165,7 @@
   .hd { display: flex; align-items: center; justify-content: space-between; }
   .x { width: 44px; height: 44px; display: grid; place-items: center; margin-right: -10px; }
   textarea { width: 100%; border: 0; border-radius: 16px; background: var(--card); padding: 12px 14px; font: 13px/1.45 ui-monospace, monospace; color: var(--ink); resize: vertical; }
+  .url { height: 52px; border: 0; border-radius: 16px; background: var(--card); padding: 0 14px; font-size: 16px; color: var(--ink); width: 100%; }
   .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .seg { display: flex; background: var(--card); border-radius: 14px; padding: 4px; box-shadow: var(--shadow); align-self: flex-start; }
   .q .seg { margin-top: 10px; box-shadow: none; background: var(--ground); }
