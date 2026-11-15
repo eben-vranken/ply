@@ -149,7 +149,12 @@ const reached = (side: Side, epd: string) => !!D?.tree[epd] || !!(turnOf(epd) ==
 function starterRows(section: Section): RepRow[] {
   const rows: RepRow[] = [];
   const at = (side: Side, path: string[], move: string) => rows.push({ side, epd: epdAfter(path), moves: [move] });
-  if (section === 'White') {
+  // an opening picked from the full list: your moves along its main line
+  const along = (side: Side, path: string) => { let e = START_EPD; for (const u of path.split(' ').filter(Boolean)) { if (turnOf(e) === side) rows.push({ side, epd: e, moves: [u] }); e = child(e, u); } };
+  if (section === 'White' && app.whitePath) along('w', app.whitePath);
+  else if (section === 'Black vs 1.e4' && app.blackE4Path) along('b', app.blackE4Path);
+  else if (section === 'Black vs 1.d4' && app.blackD4Path) along('b', app.blackD4Path);
+  else if (section === 'White') {
     if (app.white === "Queen's Gambit") { at('w', [], 'd2d4'); at('w', ['d2d4', 'd7d5'], 'c2c4'); }
     else { at('w', [], 'e2e4'); at('w', ['e2e4', 'e7e5'], 'g1f3'); at('w', ['e2e4', 'e7e5', 'g1f3', 'b8c6'], 'f1c4'); }
   } else if (section === 'Black vs 1.e4') {

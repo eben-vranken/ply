@@ -9,6 +9,10 @@ const defaults = {
   white: 'Italian Game',
   blackE4: '1...e5',
   blackD4: "Queen's Gambit Declined",
+  // an opening picked from the full list in onboarding: its moves (UCI, space separated), '' = the named choice above
+  whitePath: '',
+  blackE4Path: '',
+  blackD4Path: '',
   newMoves: 10,
   newTraps: 5,
   newMistakes: 10,

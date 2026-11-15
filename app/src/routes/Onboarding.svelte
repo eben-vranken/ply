@@ -1,6 +1,8 @@
 <script lang="ts">
   import { app, save } from '../lib/state.svelte';
-  import { chooseStarter, summaries, isFocus, toggleFocus } from '../lib/model.svelte';
+  import { chooseStarter, summaries, isFocus, toggleFocus, switchBand, model } from '../lib/model.svelte';
+  import OpeningPicker from '../lib/OpeningPicker.svelte';
+  import type { Side } from '../lib/chess';
   import { GOALS } from '../lib/game';
   import { syncNow } from '../lib/import/sync.svelte';
   import Sigil from '../lib/Sigil.svelte';
@@ -9,15 +11,15 @@
   let step = $state(0);
   const S = (s: string) => s.split(' '); // UCI
   const picks = [
-    { key: 'white' as const, title: 'As White', opts: [
+    { key: 'white' as const, pathKey: 'whitePath' as const, slot: 'white' as const, title: 'As White', opts: [
       { v: 'Italian Game', sub: '1.e4, Giuoco Piano', path: S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5'), hue: '#2b4bee', flip: false },
       { v: "Queen's Gambit", sub: '1.d4 and 2.c4', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#7a3fc4', flip: false }
     ] },
-    { key: 'blackE4' as const, title: 'As Black against 1.e4', opts: [
+    { key: 'blackE4' as const, pathKey: 'blackE4Path' as const, slot: 'e4' as const, title: 'As Black against 1.e4', opts: [
       { v: '1...e5', sub: 'Open games', path: S('e2e4 e7e5 g1f3 b8c6 f1b5 a7a6'), hue: '#cf331c', flip: true },
       { v: 'Sicilian Defense', sub: '1...c5', path: S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4'), hue: '#0b7f93', flip: true }
     ] },
-    { key: 'blackD4' as const, title: 'As Black against 1.d4', opts: [
+    { key: 'blackD4' as const, pathKey: 'blackD4Path' as const, slot: 'd4' as const, title: 'As Black against 1.d4', opts: [
       { v: "Queen's Gambit Declined", sub: '1...d5 and 2...e6', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#0f7a55', flip: true },
       { v: "King's Indian", sub: '1...Nf6 and 2...g6', path: S('d2d4 g8f6 c2c4 g7g6 b1c3 f8g7'), hue: '#b9770a', flip: true }
     ] }
@@ -28,17 +30,28 @@
     { k: 'maxReviews' as const, label: 'Most reviews a day', max: 999, note: 'The rest roll to tomorrow', step: 10, min: 20 }
   ];
   const bump = (l: (typeof limits)[number], d: number) => { app[l.k] = Math.min(l.max, Math.max(l.min ?? 0, app[l.k] + d * (l.step ?? 1))); };
+  // "Something else": the full list of openings for one slot
+  let picking = $state<(typeof picks)[number] | null>(null);
+  const choose = (p: (typeof picks)[number], v: string, path = '') => { app[p.key] = v; app[p.pathKey] = path; };
+  // your level, on Lichess's scale (the bands); a synced rating replaces it
+  const LEVELS: [number, string][] = [[1000, 'Beginner'], [1200, '1200'], [1400, '1400'], [1600, '1600'], [1800, '1800'], [2000, '2000+']];
+  let level = $state(1200);
   let busy = $state(false);
   async function finish() {
     busy = true;
     app.username = app.username.trim();
     app.lichessUser = app.lichessUser.trim();
+    // the level sets the band and the line depth until a chess.com or Lichess rating comes in
+    app.autoBand = level;
+    if (level !== 1200 || app.rating) app.rating = level - 350;
     save();
+    if (level !== model.band) await switchBand(level);
     await chooseStarter();
     // the openings you picked are the ones you are mastering: they feed the daily cards first
     const all = summaries();
     const pick = (sec: string, name: string) => all.find((o) => o.section === sec && o.path.length && o.family.startsWith(name)) ?? all.find((o) => o.section === sec && o.path.length);
-    for (const o of [pick('White', app.white), pick('Black vs 1.e4', app.blackE4), pick('Black vs 1.d4', app.blackD4)]) if (o && !isFocus(o.side, o.path)) toggleFocus(o.side, o.path);
+    const own = (side: Side, path: string) => (path ? { side, path: path.split(' ') } : null);
+    for (const o of [own('w', app.whitePath) ?? pick('White', app.white), own('b', app.blackE4Path) ?? pick('Black vs 1.e4', app.blackE4), own('b', app.blackD4Path) ?? pick('Black vs 1.d4', app.blackD4)]) if (o && !isFocus(o.side, o.path)) toggleFocus(o.side, o.path);
     app.onboarded = true; save();
     if (app.username || app.lichessUser) void syncNow();
   }
@@ -64,12 +77,16 @@
           <h2 class="gh">{p.title}</h2>
           <div class="opts">
             {#each p.opts as o}
-              <button class="opt" class:on={app[p.key] === o.v} aria-pressed={app[p.key] === o.v} onclick={() => (app[p.key] = o.v)}>
+              <button class="opt" class:on={app[p.key] === o.v && !app[p.pathKey]} aria-pressed={app[p.key] === o.v && !app[p.pathKey]} onclick={() => choose(p, o.v)}>
                 <Sigil path={o.path} hue={o.hue} flip={o.flip} you={o.flip ? 'b' : 'w'} size={48} />
                 <span class="grow"><b class="t-name">{o.v}</b><small>{o.sub}</small></span>
-                <span class="radio">{#if app[p.key] === o.v}<Icon name="check" size={16} />{/if}</span>
+                <span class="radio">{#if app[p.key] === o.v && !app[p.pathKey]}<Icon name="check" size={16} />{/if}</span>
               </button>
             {/each}
+            <button class="opt other" class:on={!!app[p.pathKey]} aria-pressed={!!app[p.pathKey]} onclick={() => (picking = p)}>
+              <span class="plus"><Icon name={app[p.pathKey] ? 'check' : 'search'} size={20} /></span>
+              <span class="grow">{#if app[p.pathKey]}<b class="t-name">{app[p.key]}</b><small>Tap to pick another</small>{:else}<b>Something else</b><small>Any opening, by name or moves</small>{/if}</span>
+            </button>
           </div>
         {/each}
       {:else if step === 2}
@@ -98,7 +115,12 @@
         <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Your games are fetched from chess.com or Lichess and analysed on this device; Ply has no server and keeps no account.</p>
         <input class="name" placeholder="chess.com username" aria-label="chess.com username" bind:value={app.username} autocapitalize="off" autocomplete="off" spellcheck="false" />
         <input class="name two" placeholder="Lichess username" aria-label="Lichess username" bind:value={app.lichessUser} autocapitalize="off" autocomplete="off" spellcheck="false" />
-        <p class="t-small" style="margin-top:12px">Either or both. Leave them empty to start at the 1200 band with 8-move lines.</p>
+        <p class="t-small" style="margin-top:12px">Either or both, or neither.</p>
+        <h2 class="gh">Your level</h2>
+        <div class="levels" role="group" aria-label="Your level">
+          {#each LEVELS as [v, l]}<button class:on={level === v} aria-pressed={level === v} onclick={() => (level = v)}>{l}</button>{/each}
+        </div>
+        <p class="t-small" style="margin-top:8px">Roughly your Lichess rapid rating (chess.com is about 350 lower). Lines follow what players at this level play. Once your games sync, your rating takes over.</p>
       {/if}
     </div>
   {/key}
@@ -110,6 +132,11 @@
     </button>
   </footer>
 </div>
+
+{#if picking}
+  {@const p = picking}
+  <OpeningPicker slot={p.slot} onclose={() => (picking = null)} onpick={(o) => { choose(p, o.name, o.path.join(' ')); picking = null; }} />
+{/if}
 
 <style>
   .ob { position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 18px) max(20px, calc((100% - 560px) / 2)) calc(env(safe-area-inset-bottom) + 22px); background: var(--ground); transition: background 400ms var(--ease), color 400ms; overflow: hidden; }
@@ -136,6 +163,11 @@
   .opt small { font-size: 13px; color: var(--ink-2); }
   .radio { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; color: #fff; flex: none; }
   .opt.on .radio { background: var(--cobalt); border-color: var(--cobalt); }
+  .opt.other .plus { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--ground); color: var(--accent-text); flex: none; }
+  .opt.other b:not(.t-name) { display: block; font-size: 17px; font-weight: 650; }
+  .levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .levels button { height: 48px; border-radius: 14px; background: var(--card); font-weight: 650; box-shadow: inset 0 0 0 2px transparent; }
+  .levels button.on { box-shadow: inset 0 0 0 2.5px var(--cobalt); }
   .lim { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 20px; padding: 14px 12px 14px 16px; margin-top: 12px; }
   .lim:first-of-type { margin-top: 24px; }
   .ll { font-weight: 650; font-size: 17px; }
