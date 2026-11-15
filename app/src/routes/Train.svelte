@@ -382,7 +382,7 @@
   const playedSan = $derived(item?.played ? sanOf(epdAfter(item.setup, item.start.split(' ').slice(0, 4).join(' ')), item.played.uci) : '');
 </script>
 
-<div class="room">
+<div class="room" class:board={phase !== 'complete' && phase !== 'summary'}>
   {#if phase === 'complete'}
     <div class="complete">
       <div class="confetti" aria-hidden="true">{#each CONFETTI as c}<i style="left:{c.x}%;width:{c.w}px;background:{c.c};animation-delay:{c.d}ms;--r:{c.r}deg"></i>{/each}</div>
@@ -462,6 +462,7 @@
       {/if}
     </header>
 
+    <div class="lab">
     <div class="label">
       {#if phase !== 'play'}
         <p class="t-name nm">{item.label}</p>
@@ -482,6 +483,7 @@
         {#each item.others as o}<p>{o}</p>{/each}
       </div>
     {/if}
+    </div>
 
     <div class="boardwrap">
       <Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} />
@@ -494,6 +496,7 @@
     {#if coach}
       <button class="coach" onclick={() => (coach = '')} aria-label="Birch says: {coach} Tap to dismiss"><Mascot size={46} /><span>{coach}</span></button>
     {/if}
+    <div class="side">
     {#if phase === 'play'}
       <div class="prompt" aria-live="polite">
         {#if msg}
@@ -549,6 +552,7 @@
         <button class="btn grow go {gradeInfo[0]}" class:auto onclick={next}><span>Continue</span> <Icon name="next" size={20} /></button>
       </footer>
     {/if}
+    </div>
   {/if}
 </div>
 
@@ -655,7 +659,7 @@
   .note.inl { font-size: 16px; color: var(--night-ink-2); margin-left: 38px; animation: rise 260ms var(--ease) 120ms both; }
   .trap { color: #ffd98a; gap: 8px; margin-top: 2px; }
 
-  .complete { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 20px 8px; }
+  .complete { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 0 20px 8px; width: 100%; max-width: 560px; margin: 0 auto; }
   .summary { justify-content: flex-start; padding-top: 40px; overflow-y: auto; }
   .stackart { flex: 1; display: flex; flex-direction: column-reverse; align-items: center; padding-bottom: 44px; gap: 6px; justify-content: center; }
   .stackart i { width: calc(300px - var(--i) * 14px); height: 34px; border-radius: 11px; background: var(--birch); animation: drop 520ms var(--spring) both; animation-delay: calc(var(--i) * 110ms + 150ms); }
@@ -679,6 +683,30 @@
   .lbar i { display: block; height: 100%; border-radius: 5px; background: var(--sun); animation: lgrow 900ms var(--ease) 500ms both; transform-origin: left; }
   @keyframes lgrow { from { transform: scaleX(0); } }
   .complete { position: relative; }
+
+  /* a tablet held upright: one column as on the phone, centred, with the board as large as the height allows */
+  @media (orientation: portrait) and (min-width: 560px) {
+    .room { padding-left: max(0px, calc((100% - 760px) / 2)); padding-right: max(0px, calc((100% - 760px) / 2)); }
+    .boardwrap { width: min(100%, calc(100vh - 420px)); width: min(100%, calc(100dvh - 420px)); margin: 0 auto; }
+  }
+  /* landscape windows (desktop, tablets and phones on their side): the board on the left at the screen's height, the rest beside it */
+  .lab, .side { display: contents; }
+  @media (orientation: landscape) and (min-width: 560px) {
+    .room.board {
+      --bw: min(calc(100vh - 86px), 60vw, 820px);
+      --bw: min(calc(100dvh - 86px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 60vw, 820px);
+      display: grid; grid-template-columns: calc(var(--bw) + 16px) minmax(300px, 520px); grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-areas: 'head head' 'board lab' 'board side'; justify-content: center;
+    }
+    .room.board header { grid-area: head; }
+    .room.board .lab { display: block; grid-area: lab; position: relative; }
+    .room.board .boardwrap { grid-area: board; align-self: start; }
+    .room.board .side { display: flex; flex-direction: column; grid-area: side; min-height: 0; overflow-y: auto; }
+    .room.board .label { height: auto; min-height: 58px; padding-top: 8px; }
+    .room.board .others { top: 100%; }
+    .room.board .answer { margin: 12px 16px 0 8px; }
+    .room.board .coach { left: auto; right: 16px; width: min(440px, calc(100% - 32px)); }
+  }
   .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
   .confetti i { position: absolute; top: -20px; height: 14px; border-radius: 3px; opacity: 0; animation: fall 2600ms cubic-bezier(0.3, 0.6, 0.6, 1) both; }
   @keyframes fall { 0% { opacity: 1; transform: translateY(0) rotate(var(--r)); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(78vh) rotate(calc(var(--r) + 540deg)); } }

@@ -472,7 +472,7 @@
   .k.p4 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f, 0 7.5px 0 #a67f4d, 0 10px 0 #dcc08f; margin-bottom: 8px; }
   .k.dot { width: 18px; height: 18px; margin: 0 6px; border-radius: 50%; background: #e5412b; color: #fff; font-style: normal; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
 
-  .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
+  .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); max-width: 600px; margin: 0 auto; padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
   .one { display: flex; gap: 14px; align-items: flex-start; animation: rise 220ms var(--ease) both; }
   .bd { flex: none; width: 124px; pointer-events: none; }
   .nm { font-size: 17px; line-height: 1.15; color: var(--c); padding-right: 30px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

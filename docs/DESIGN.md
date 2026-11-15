@@ -52,6 +52,16 @@ Slab button (`.btn`, variants quiet / sun / night, sizes default / big), card, c
 
 Added with the real build, in the same language: the first-launch screen (night ground, four birch veneers laying themselves down while the data downloads, a sun progress bar), the bottom sheet for changing your move (MoveEditor: every move with frequency, W/D/L and eval, ★ to make it yours, + for a second move), the promotion picker (four birch tiles over a dimmed board), the Learn / Drill header with a Stop button, the Drill summary (missed positions as a night card list), the Not-your-repertoire dialog, an ink notice bar for band changes and data updates, and the skill tree: its own night room, a dotted canvas you drag and pinch, growing left to right from the opening's position. Each tile is one of your moves with the reply it answers in small type above it; right-angled connectors with rounded corners join them. One colour per main branch (green, sun, coral, cobalt, violet, cyan…) tints its connectors and outlines, and the branch's name sits over its first tile in Newsreader italic. A tile has three states: outlined in its branch colour when you can learn it next, dim when it is further down the line, and birch once learned, sitting on one, two or four veneers for learning, young and mature (the Plies shape, so stage never depends on colour alone). A red count marks lapses. A "+N" pill on a tile unfolds the moves after it in place (300 ms, the tapped tile stays under the finger); the tree opens folded to its main branches plus whatever is learned. Tapping a tile opens a sheet with the position on a small board, the stage, and Learn / Drill / Explore from that move; with nothing selected the sheet shows the opening's totals.
 
+## Wide screens
+
+The phone in portrait is the design; everything below only adds room around it and never changes it (`npm run layouts` captures every main screen at five sizes into `docs/screenshots/layouts/`).
+
+- **Wider than 560 px:** the app fills the window. List screens (Today, Repertoire, Stats, Settings) read as one centred 680 px column; the tab bar, notices, sheets and dialogs keep their phone width, centred.
+- **Landscape windows (desktop, tablets and phones on their side):** the trainer and Play it out become two columns: the board on the left, as tall as the window allows, and the name, prompt, move list and actions in a column beside it. Explore puts the board, its name, breadcrumbs and Learn / Drill on the left (held in place while the moves and traps scroll on the right).
+- **A phone on its side (under 540 px tall):** the tab bar becomes a slim rail of icons on the right edge, so it never covers the board.
+- **A tablet held upright:** one column, as on the phone, centred, with the board as large as the height allows.
+- Layout wrappers (`.pane`, `.lab`, `.side`) are `display: contents` on the phone, so the phone's DOM order, spacing and animations are untouched.
+
 ## The game layer
 
 Ply is the Duolingo of chess openings on top of an honest schedule. The schedule (FSRS) decides what you see; the game layer only rewards doing it and never changes a card.

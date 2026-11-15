@@ -115,11 +115,11 @@
   .boot.err .mark i { animation: none; }
   .boot .bar { width: 220px; height: 8px; border-radius: 4px; background: var(--night-3); overflow: hidden; }
   .boot .bar i { display: block; height: 100%; background: var(--sun); transition: width 200ms; }
-  .notice { position: absolute; z-index: 40; top: calc(env(safe-area-inset-top) + 10px); left: 12px; right: 12px; padding: 14px 16px; border-radius: 18px; background: var(--ink); color: var(--on-ink); font-size: 14.5px; text-align: left; box-shadow: var(--shadow); }
+  .notice { position: absolute; z-index: 40; top: calc(env(safe-area-inset-top) + 10px); left: 12px; right: 12px; max-width: 520px; margin: 0 auto; padding: 14px 16px; border-radius: 18px; background: var(--ink); color: var(--on-ink); font-size: 14.5px; text-align: left; box-shadow: var(--shadow); }
   .page { position: absolute; inset: 0; }
   .page.over { z-index: 20; }
   nav {
-    position: absolute; z-index: 10; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px);
+    position: absolute; z-index: 10; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); max-width: 520px; margin: 0 auto;
     height: 68px; display: flex; padding: 6px;
     background: var(--bar); border-radius: 26px;
     box-shadow: 0 16px 30px -10px rgba(21, 25, 54, 0.5);
@@ -130,4 +130,9 @@
   nav .ico { transition: transform 260ms var(--spring); }
   nav button.on { color: var(--ink-fixed); background: var(--birch); }
   nav button.on .ico { transform: translateY(-1px) scale(1.08); }
+  /* a phone on its side: a slim rail on the right instead of a bar over half the board */
+  @media (orientation: landscape) and (max-height: 539px) and (min-width: 560px) {
+    nav { left: auto; right: max(8px, env(safe-area-inset-right)); top: 8px; bottom: 8px; width: 64px; height: auto; max-width: none; margin: 0; flex-direction: column; border-radius: 22px; }
+    nav .lbl { display: none; }
+  }
 </style>

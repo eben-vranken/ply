@@ -5,3 +5,4 @@ dev-dist
 pipeline/target
 pipeline/cache
 app/smoke-shots
+docs/screenshots/layouts

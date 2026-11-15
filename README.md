@@ -20,6 +20,7 @@ npm run check    # svelte-check
 npm run build
 npm run smoke    # plays a session in headless Chromium (after build)
 npm run shots    # screenshots into docs/screenshots (after build)
+npm run layouts  # main screens at phone, landscape, tablet and desktop sizes (after build)
 ```
 
 ## Data pipeline (`pipeline/`)

@@ -58,7 +58,7 @@
 
 <style>
   .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(13, 16, 36, 0.45); animation: fadein 200ms both; }
-  .sheet { position: fixed; z-index: 61; left: 0; right: 0; bottom: 0; max-height: 86vh; overflow-y: auto; background: var(--ground); border-radius: 26px 26px 0 0; padding: 8px 16px calc(env(safe-area-inset-bottom) + 20px); animation: up 300ms var(--ease) both; }
+  .sheet { position: fixed; z-index: 61; left: 0; right: 0; bottom: 0; max-width: 640px; margin: 0 auto; max-height: 86vh; overflow-y: auto; background: var(--ground); border-radius: 26px 26px 0 0; padding: 8px 16px calc(env(safe-area-inset-bottom) + 20px); animation: up 300ms var(--ease) both; }
   @keyframes up { from { transform: translateY(100%); } }
   @keyframes fadein { from { opacity: 0; } }
   .grab { width: 42px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 10px; }

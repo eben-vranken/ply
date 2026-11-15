@@ -110,7 +110,7 @@
 </div>
 
 <style>
-  .ob { position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 18px) 20px calc(env(safe-area-inset-bottom) + 22px); background: var(--ground); transition: background 400ms var(--ease), color 400ms; overflow: hidden; }
+  .ob { position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 18px) max(20px, calc((100% - 560px) / 2)) calc(env(safe-area-inset-bottom) + 22px); background: var(--ground); transition: background 400ms var(--ease), color 400ms; overflow: hidden; }
   .ob.night { background: var(--night); color: var(--night-ink); }
   .dots { display: flex; gap: 6px; }
   .dots i { flex: 1; height: 6px; border-radius: 3px; background: rgba(120, 128, 170, 0.3); transition: background 300ms; }

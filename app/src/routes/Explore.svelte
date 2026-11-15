@@ -121,7 +121,8 @@
   const coveredReply = (u: string) => pos.turn !== side && ctx ? replies(ctx, epd, app.replyPct / 100, 50).some(([m]) => m === u) : false;
 </script>
 
-<div class="screen">
+<div class="screen ex">
+  <div class="pane top">
   <header class="screen-head">
     <h1 class="t-display">Explore</h1>
     <div class="seg" role="group" aria-label="Playing as">
@@ -142,7 +143,9 @@
       {/each}
     </ul>
   {/if}
+  </div>
 
+  <div class="pane a">
   <div class="where">
     <p class="t-name nm">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</p>
     <div class="crumbs">
@@ -175,7 +178,9 @@
     </div>
   {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
+  </div>
 
+  <div class="pane b">
   <section class="card list">
     {#if rows.length}
       <div class="lh"><span>Move</span><span>Played</span><span>Results</span><span>Eval</span></div>
@@ -237,6 +242,7 @@
       {/each}
     </ul>
   {/if}
+  </div>
 </div>
 
 {#if editing}<MoveEditor {side} {epd} onclose={() => (editing = false)} />{/if}
@@ -326,7 +332,42 @@
   .plist li + li { border-top: 1px solid var(--ground); }
   .pn { display: block; font-size: 16px; line-height: 1.15; }
   .sheet-bg { position: fixed; inset: 0; z-index: 60; background: rgba(13, 16, 36, 0.45); }
-  .dialog { position: fixed; z-index: 61; left: 16px; right: 16px; top: 22%; padding: 20px; animation: rise 220ms var(--ease) both; }
+  .dialog { position: fixed; z-index: 61; left: 16px; right: 16px; top: 22%; max-width: 480px; margin: 0 auto; padding: 20px; animation: rise 220ms var(--ease) both; }
+
+  /* wide screens: the board and its actions stay on the left at the screen's height, the moves and traps beside it */
+  @media (orientation: landscape) and (min-width: 760px) and (min-height: 540px) {
+    .screen.ex {
+      /* room above for the name and moves, below for the buttons and the tab bar */
+      --bw: min(calc(100vh - 320px), 54vw, 760px);
+      --bw: min(calc(100dvh - 320px - env(safe-area-inset-bottom)), 54vw, 760px);
+      display: grid; grid-template-columns: var(--bw) minmax(340px, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'a top' 'a b';
+      column-gap: 28px; align-items: start; padding-left: max(16px, calc((100% - 1260px) / 2)); padding-right: max(16px, calc((100% - 1260px) / 2));
+    }
+    .ex .pane { display: block; }
+    .ex .top { grid-area: top; }
+    .ex .a { grid-area: a; position: sticky; top: 0; }
+    .ex .b { grid-area: b; }
+    .ex .where { margin-top: 4px; }
+    .ex .crumbs { margin: 10px 0 0; padding: 0; flex-wrap: wrap; }
+    .ex .list { margin-top: 0; }
+  }
+  /* a phone on its side: board on the left, everything else scrolls beside it */
+  @media (orientation: landscape) and (max-height: 539px) and (min-width: 560px) {
+    .screen.ex {
+      --bw: min(calc(100vh - 110px), 40vw);
+      --bw: min(calc(100dvh - 110px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 40vw);
+      display: grid; grid-template-columns: var(--bw) minmax(300px, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'a top' 'a b';
+      column-gap: 20px; align-items: start; padding-top: calc(env(safe-area-inset-top) + 12px);
+      padding-left: max(16px, env(safe-area-inset-left));
+    }
+    .ex .pane { display: block; }
+    .ex .top { grid-area: top; }
+    .ex .a { grid-area: a; }
+    .ex .b { grid-area: b; }
+    .ex .where { margin-top: 0; }
+    .ex .where .nm { font-size: 20px; }
+    .ex .crumbs { margin: 6px 0 0; padding: 0; }
+  }
   .dialog ul { margin: 10px 0 0; padding-left: 18px; font-size: 15px; }
   .dialog li { margin: 4px 0; }
 </style>

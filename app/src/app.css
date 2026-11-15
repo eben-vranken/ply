@@ -186,8 +186,11 @@ cg-board square.check { background: radial-gradient(circle, rgba(207, 51, 28, 0.
 .cg-wrap coords.ranks coord { padding-top: 2px; }
 .cg-wrap coords.files coord { text-align: right; padding-right: 3px; }
 
+/* layout panes only group a screen's parts on wide screens; on a phone they are not boxes at all */
+.pane { display: contents; }
+
 /* a screen lays its parts down one after another */
-.screen > * { animation: rise 420ms var(--ease) both; }
+.screen > *, .screen > .pane > * { animation: rise 420ms var(--ease) both; }
 .screen > *:nth-child(2) { animation-delay: 45ms; }
 .screen > *:nth-child(3) { animation-delay: 90ms; }
 .screen > *:nth-child(4) { animation-delay: 135ms; }
@@ -197,6 +200,17 @@ cg-board square.check { background: radial-gradient(circle, rgba(207, 51, 28, 0.
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.18); } 100% { transform: scale(1); } }
 @keyframes shake { 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+
+/* Wider than a phone (tablets, desktop, a phone on its side): the app takes the whole window, list screens
+   read as a centred column and the board screens put the board beside the rest (DESIGN.md, "Wide screens"). */
+@media (min-width: 560px) {
+  #app { max-width: none; }
+  .screen { padding-left: max(16px, calc((100% - 680px) / 2)); padding-right: max(16px, calc((100% - 680px) / 2)); }
+}
+/* a phone on its side: the tab bar is a rail on the right (App.svelte), so screens keep clear of it */
+@media (orientation: landscape) and (max-height: 539px) and (min-width: 560px) {
+  .screen { padding-right: calc(max(16px, env(safe-area-inset-right)) + 76px); padding-bottom: 40px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }

@@ -144,6 +144,7 @@
     <Board {fen} {side} {dests} {lastMove} {badge} {check} {rev} {shake} dark {onmove} />
     {#if promo}<Promo {side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
   </div>
+  <div class="side">
   <div class="ev" role="img" aria-label="Evaluation {evalText} for you">
     <span class="track"><i style="width:{bar}%"></i></span><b class="t-num">{evalText}</b>
   </div>
@@ -169,6 +170,7 @@
     </div>
     <footer><p class="src">The opponent plays what your level plays, then Stockfish. Cards are not touched.</p></footer>
   {/if}
+  </div>
 </div>
 
 <style>
@@ -201,4 +203,26 @@
   .gt { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; line-height: 1.15; }
   .xp { display: inline-block; margin-left: 6px; font-size: 13.5px; color: var(--sun); vertical-align: 2px; }
   .sub { font-size: 14.5px; line-height: 1.35; color: var(--night-ink-2); margin-top: 5px; }
+
+  /* a tablet held upright: one column as on the phone, centred, with the board as large as the height allows */
+  @media (orientation: portrait) and (min-width: 560px) {
+    .room { padding-left: max(0px, calc((100% - 760px) / 2)); padding-right: max(0px, calc((100% - 760px) / 2)); }
+    .boardwrap { width: min(100%, calc(100vh - 420px)); width: min(100%, calc(100dvh - 420px)); margin: 0 auto; }
+  }
+  /* landscape windows (desktop, tablets and phones on their side): the board on the left, the rest beside it (as in the trainer) */
+  .side { display: contents; }
+  @media (orientation: landscape) and (min-width: 560px) {
+    .room {
+      --bw: min(calc(100vh - 86px), 60vw, 820px);
+      --bw: min(calc(100dvh - 86px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 60vw, 820px);
+      display: grid; grid-template-columns: calc(var(--bw) + 16px) minmax(300px, 520px); grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-areas: 'head head' 'board lab' 'board side'; justify-content: center;
+    }
+    header { grid-area: head; }
+    .label { grid-area: lab; height: auto; min-height: 58px; }
+    .boardwrap { grid-area: board; align-self: start; }
+    .side { display: flex; flex-direction: column; grid-area: side; min-height: 0; overflow-y: auto; }
+    .strip { flex-wrap: wrap; }
+    .end { margin: 14px 16px 0 8px; }
+  }
 </style>
