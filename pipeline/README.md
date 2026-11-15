@@ -34,6 +34,14 @@ Each stage's result is cached, so a stopped build continues where it left off. D
 - **Traps.** For every move with frequency ≥ 3% and win% loss ≥ 15 (Lichess formula): a Punish card after the move; with frequency ≥ 5%, also a Danger card before it. A Punish answer follows the engine line while the punishing side's moves stay forcing (captures and checks), up to 3 moves.
 - **Size budget.** If a band's tree is over 25 MB gzipped, it is cut again at 100 games, then doubled until it fits.
 
+## Counting positions
+
+```
+cargo run --release -- positions --data ../app/public/data [--at 50,200,1000]
+```
+
+Reads `manifest.json` and every band's tree and prints the distinct positions (by EPD, so transpositions and bands count once) and position + move pairs, and how many reach each game count, by the most games in one band and by games summed over the bands. It writes nothing.
+
 ## Options
 
 `ply-data build --help` lists them: sources can be overridden with local paths (`--games`, `--evals`, `--puzzles`, `--openings`), and thresholds (`--min-games`, `--min-edge`, `--max-games`, `--sf-depth`, `--sf-procs`, `--budget-mb`) changed for experiments. `--limit-games N` stops the game stream early for a quick test build.

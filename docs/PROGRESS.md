@@ -55,6 +55,17 @@ Work from build-order steps 1 and 2 of `reports/Ply subscription readiness gaps.
 - **Streak freezes** (`lib/streak.ts`): earned by playing, never sold. Every 7 study days in a row earn one (at most 2 held); a day without study while you hold one uses it, and the streak survives that day without growing. They are worked out from the review log alone, so they need no storage and a restored backup brings them back exactly (the Stats window is the last 371 days). Shown on Today (a snowflake count beside the streak, frozen days in the week strip, Birch saying when one covered yesterday), on the session-complete screen when one is earned, and on Stats (freezes held, days saved this year, frozen days in the calendar). Checked by restoring a backup with 14 study days and a missed yesterday: 14-day streak, one freeze used, one held.
 - **Wider onboarding** (`lib/OpeningPicker.svelte`): the first run still offers two openings per colour, so tapping straight through is as short as before. A third button, Something else, opens every opening family where the defining move is yours (95 for White, the most played at your band first) with search over all 3,865 named variations by name, ECO code or moves; only openings the band's data reaches are listed. Your moves along the chosen line become your starter repertoire and it becomes an opening you master. The last step adds your level (Beginner, 1200 … 2000+ on Lichess's scale): it sets the band and line depth until a synced chess.com or Lichess rating replaces it. Checked in Chromium: picking the London System at 1600 gives a 1600-band repertoire mastering it.
 
+### Position counts (`ply-data positions`, data 2026-10)
+
+Distinct positions across the six band trees, deduplicated by EPD (the FEN without move counters; the trees are keyed that way, so transpositions and bands count once). "One band" uses a position's most games in any band; "summed" adds the bands. Every position has at least 50 games in some band because the trees are pruned at 50.
+
+| | Total | ≥ 50 games (one band / summed) | ≥ 200 | ≥ 1,000 |
+| --- | --- | --- | --- | --- |
+| Positions | 115,110 | 115,110 / 115,110 | 26,572 / 59,102 | 4,770 / 15,852 |
+| Position + move pairs | 319,212 | 114,369 / 182,457 | 25,792 / 72,298 | 4,538 / 15,439 |
+
+Per band: 47,054 (1000) · 50,720 (1200) · 53,976 (1400) · 57,129 (1600) · 62,116 (1800) · 68,214 (2000).
+
 ## Data build 2026-10 (14 Nov 2026)
 
 | Stage | Result |

@@ -10,6 +10,7 @@ mod emit;
 mod evals;
 mod games;
 mod openings;
+mod positions;
 mod source;
 mod traps;
 
@@ -32,6 +33,18 @@ struct Cli {
 enum Cmd {
     /// Run every stage and write the app data files.
     Build(Build),
+    /// Count the distinct positions in the band trees and how many reach 50, 200 and 1,000 games.
+    Positions(Positions),
+}
+
+#[derive(Parser)]
+struct Positions {
+    /// Directory with manifest.json and tree-<band>.json.gz (the app's public/data)
+    #[arg(long, default_value = "../app/public/data")]
+    data: PathBuf,
+    /// Game counts to report
+    #[arg(long, value_delimiter = ',', default_value = "50,200,1000")]
+    at: Vec<u64>,
 }
 
 #[derive(Parser)]
@@ -87,6 +100,13 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
         Cmd::Build(b) => build(b),
+        Cmd::Positions(p) => {
+            let m: emit::Manifest = serde_json::from_reader(std::fs::File::open(p.data.join("manifest.json")).context("manifest.json")?)?;
+            let trees = m.bands.iter().map(|&b| Ok((b, positions::read_tree(&p.data.join(format!("tree-{b}.json.gz")))?))).collect::<Result<Vec<_>>>()?;
+            println!("Data {} ({} bands)\n", m.version, m.bands.len());
+            positions::print(&positions::count(&trees, &p.at));
+            Ok(())
+        }
     }
 }
 

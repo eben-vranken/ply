@@ -8,14 +8,14 @@ use sha2::{Digest, Sha256};
 use std::io::Write;
 use std::path::Path;
 
-#[derive(Serialize)]
+#[derive(Serialize, serde::Deserialize)]
 pub struct FileEntry {
     pub name: String,
     pub bytes: u64,
     pub sha256: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, serde::Deserialize)]
 pub struct Manifest {
     pub version: String,
     pub month: String,
