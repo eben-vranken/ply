@@ -60,7 +60,8 @@
   let status = $state('');
   let confirm = $state('');
   let asking = $state(false);
-  let pending = $state<Backup | null>(null);
+  // raw: a deep $state proxy cannot be stored in IndexedDB (DataCloneError on import)
+  let pending = $state.raw<Backup | null>(null);
   let pasting = $state(false);
   let pgn = $state('');
   let pasteSide = $state<'auto' | 'w' | 'b'>('auto');
@@ -82,7 +83,8 @@
     if (s) Object.assign(app, DEFAULTS, s);
     save();
     await reloadFromDb();
-    say('Backup imported. Lines regenerated.');
+    // the reload shows the loading screen, which unmounts this one: the app-wide notice carries the message
+    model.notice = 'Backup imported. Lines regenerated.';
   }
   async function paste() {
     try { const n = await importPgn(pgn, pasteSide); say(n ? `${n} game${n === 1 ? '' : 's'} imported. Analysing.` : 'No new games in that text.'); pgn = ''; pasting = false; }

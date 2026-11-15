@@ -201,6 +201,16 @@ const games = (exported.match(/\[Event /g) ?? []).length;
 if (games !== 2 || !exported.includes('[Orientation "black"]')) errors.push('export: expected a White and a Black game');
 step(`export: ${dl.suggestedFilename()} · ${games} games · ${Math.round(exported.length / 1024)} KB`);
 
+// backup: export from Settings, then import the same file through the Settings screen
+await page.goto(url + '#/settings'); await page.waitForTimeout(600);
+const [bk] = await Promise.all([page.waitForEvent('download', { timeout: 10_000 }), page.getByRole('button', { name: 'Export backup' }).click()]);
+const bkPath = (await bk.path())!;
+await page.locator('input[type=file][accept*=json]').setInputFiles({ name: bk.suggestedFilename(), mimeType: 'application/json', buffer: readFileSync(bkPath) });
+await page.getByRole('button', { name: 'Replace and import' }).click();
+const restored = await page.getByText('Backup imported').waitFor({ timeout: 15_000 }).then(() => true, () => false);
+if (!restored) errors.push('backup import from Settings did not finish');
+step('backup: exported ' + bk.suggestedFilename() + (restored ? ' and imported back' : ', import FAILED'));
+
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();
 server.httpServer.close();
