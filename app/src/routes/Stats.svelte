@@ -68,7 +68,8 @@
       <div class="grow">
         <p class="t-head">Level {lvl.level} · {lvl.rank}</p>
         <div class="lbar" role="progressbar" aria-valuemin="0" aria-valuemax={lvl.span} aria-valuenow={lvl.into}><i style="width:{(lvl.into / lvl.span) * 100}%"></i></div>
-        <p class="t-small">{app.xp.toLocaleString('en')} XP · {lvl.span - lvl.into} to level {lvl.level + 1} · {S.streak} day streak</p>
+        <p class="t-small">{app.xp.toLocaleString('en')} XP · {lvl.span - lvl.into} to level {lvl.level + 1} · {S.streak} day streak{S.freezes ? ` · ${S.freezes} streak freeze${S.freezes === 1 ? '' : 's'}` : ''}</p>
+        <p class="t-small">Every 7 days in a row earns a streak freeze (up to 2). A missed day uses one instead of ending the streak.{S.frozen.size ? ` Freezes have saved ${S.frozen.size} day${S.frozen.size === 1 ? '' : 's'} this year.` : ''}</p>
       </div>
     </section>
 
@@ -118,7 +119,7 @@
     <div class="sect"><h2 class="t-head">Past year</h2><span class="t-small">reviews per day</span></div>
     <section class="card">
       <div class="heat" role="img" aria-label="Review calendar">
-        {#each weeks as w}<div>{#each w as n}<i class="h{heat(n)}"></i>{/each}</div>{/each}
+        {#each weeks as w, wi}<div>{#each w as n, di}<i class="h{heat(n)}" class:ice={S.frozen.has(wi * 7 + di)}></i>{/each}</div>{/each}
       </div>
       <div class="row" style="margin-top:14px;align-items:flex-end">
         <div class="grow"><p class="t-small">Time spent, last 14 days</p><p class="t-num" style="font-size:26px">{Math.round(S.minutes.reduce((a, b) => a + b, 0) / 14)} <small>min a day</small></p></div>
@@ -233,6 +234,7 @@
   .heat { display: flex; gap: 2px; }
   .heat div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
   .heat i { aspect-ratio: 1; border-radius: 1.5px; background: var(--ground); }
+  .heat .ice { background: #7cc4ef; }
   .heat .h1 { background: var(--h1); } .heat .h2 { background: var(--h2); } .heat .h3 { background: var(--h3); } .heat .h4 { background: var(--h4); }
   .mins { display: flex; align-items: flex-end; gap: 3px; height: 48px; }
   .mins i { width: 6px; border-radius: 2px; background: var(--birch-3); }

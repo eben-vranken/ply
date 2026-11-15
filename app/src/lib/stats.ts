@@ -2,6 +2,7 @@
 import { db, type CardRow, type ReviewRow, type CardType } from './db';
 import { stageOf, type Stage } from './srs/fsrs';
 import { dayStart } from './srs/queue';
+import { streakOf } from './streak';
 
 const DAY = 864e5;
 export const TYPES: CardType[] = ['move', 'punish', 'danger', 'puzzle', 'mistake'];
@@ -18,7 +19,11 @@ export interface StatsData {
   retention7: number | null;
   streak: number;
   longest: number;
+  /** streak freezes held now, and the days (history indexes) one covered (lib/streak.ts) */
+  freezes: number;
+  frozen: Set<number>;
   week: boolean[]; // Mon..Sun this week
+  weekFrozen: boolean[];
   weakest: { card: CardRow; lapses: number }[];
   games: { months: string[]; m10: number[]; m15: number[]; rating: (number | null)[] };
   /** your last 10 analysed games against the 20 before them */
@@ -57,13 +62,12 @@ export async function loadStats(cards: Iterable<CardRow>, rollover: number, unkn
     if (d >= 0 && d < 371) { history[d]++; ms[d] += Math.min(r.ms, 120_000); }
   }
   const minutes = ms.slice(-14).map((x) => Math.round(x / 60000));
-  // streak: consecutive study days ending today (or yesterday, if today is still open)
-  let streak = 0;
-  for (let i = 370 - (history[370] ? 0 : 1); i >= 0 && history[i]; i--) streak++;
-  let longest = 0, run = 0;
-  for (const h of history) { run = h ? run + 1 : 0; longest = Math.max(longest, run); }
+  // streak: consecutive study days ending today (or yesterday, if today is still open); freezes earned
+  // by every 7 days in a row cover a missed day (lib/streak.ts)
+  const { streak, longest, held: freezes, frozen } = streakOf(history);
   const dow = (new Date(now).getDay() + 6) % 7;
   const week = Array.from({ length: 7 }, (_, i) => i <= dow && history[370 - (dow - i)] > 0);
+  const weekFrozen = Array.from({ length: 7 }, (_, i) => i <= dow && frozen.has(370 - (dow - i)));
   // retention: first-try correct on reviews of young and mature cards
   const scored = reviews.filter((r) => r.mode !== 'drill-again' && (r.stage === 'young' || r.stage === 'mature'));
   const since = (d: number) => scored.filter((r) => r.at >= now - d * DAY);
@@ -101,7 +105,7 @@ export async function loadStats(cards: Iterable<CardRow>, rollover: number, unkn
   const report = games.length >= 3 ? { recent: rep(games.slice(-10)), before: games.length >= 15 ? rep(games.slice(-30, -10)) : null } : null;
   return {
     report,
-    totals, suspended, forecast, history, minutes, retention, retention7, streak, longest, week, weakest,
+    totals, suspended, forecast, history, minutes, retention, retention7, streak, longest, freezes, frozen, week, weekFrozen, weakest,
     games: {
       months: months.map((m) => m.split(' ')[0]),
       m10: months.map((m) => avg(byMonth.get(m)!.m10)),

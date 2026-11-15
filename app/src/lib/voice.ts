@@ -8,12 +8,13 @@ const pick = (xs: string[], salt = 0) => xs[(Math.floor(Date.now() / 864e5) + sa
 export interface Say { mood: Mood; text: string }
 
 /** Birch's line at the top of Today. */
-export function greet(s: { streak: number; lit: boolean; left: number; done: number; goal: boolean; fresh: boolean; mins: number }): Say {
+export function greet(s: { streak: number; lit: boolean; left: number; done: number; goal: boolean; fresh: boolean; mins: number; froze?: boolean }): Say {
   const h = new Date().getHours();
   if (s.fresh) return { mood: 'cheer', text: `I'm Birch. Your first session takes about ${s.mins} minutes: I show you a move, you play it back, and I bring it round again just before you would forget it.` };
   if (!s.left && s.done) return s.goal
     ? { mood: 'cheer', text: pick(['Queue cleared and goal reached. That is a proper day.', 'All done, goal and all. Go and play a game.', 'Nothing left to review. I would call that a clean sheet.']) }
     : { mood: 'idle', text: pick(['Reviews are done. A round of Arcade would finish the daily goal.', 'The queue is empty. Fancy a few new moves in an opening you are mastering?']) };
+  if (!s.lit && s.froze && s.streak) return { mood: 'wow', text: `A streak freeze covered yesterday, so your ${s.streak} day streak is still alive. Today counts again: about ${s.mins} minutes.` };
   if (!s.lit && s.streak >= 2) return h >= 20
     ? { mood: 'wow', text: `${s.streak} days in a row, and today is nearly over. ${s.mins} minutes keeps it alive.` }
     : { mood: 'idle', text: pick([`Day ${s.streak + 1} is waiting. About ${s.mins} minutes.`, `${s.streak} days and counting. Shall we make it ${s.streak + 1}?`, `Your moves from yesterday are ready to be asked again. ${s.mins} minutes.`]) };

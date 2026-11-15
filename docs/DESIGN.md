@@ -74,6 +74,10 @@ Ply is the Duolingo of chess openings on top of an honest schedule. The schedule
 - **Session complete.** Veneer confetti, XP counting up, the level bar filling, streak and daily-goal pills; a new level takes over the headline.
 - **Trophies.** Fourteen, on Stats, derived from what you have done (moves learned, mature moves, streaks, Arcade, level). Earned ones are birch slabs; the rest show how far along they are.
 
+### Streak freezes
+
+A freeze is ice blue (#7cc4ef on its tiles, #2a8fcf as text) with a six-armed snowflake icon: beside the flame on Today's streak pill, in the week strip and the Stats calendar for a day it covered, and as a chip on the session-complete screen when one is earned. Every 7 days in a row earns one, 2 at most; they are never sold.
+
 ## Icons
 
 Own set, 24 px grid, 2 px round strokes, drawn in `src/lib/Icon.svelte`.

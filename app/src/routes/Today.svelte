@@ -72,7 +72,7 @@
   const goalPct = $derived(Math.min(1, xp / app.goal));
   const lit = $derived(stats?.week[todayIdx] ?? false);
   const mins = $derived(Math.max(1, Math.round((counts.due * 8 + counts.fresh * 25) / 60)));
-  const say = $derived(greet({ streak: stats?.streak ?? 0, lit, left: counts.queue.length, done: counts.done, goal: goalPct >= 1, fresh: allCards().size === 0 && counts.done === 0, mins }));
+  const say = $derived(greet({ streak: stats?.streak ?? 0, lit, left: counts.queue.length, done: counts.done, goal: goalPct >= 1, fresh: allCards().size === 0 && counts.done === 0, mins, froze: !!stats?.frozen.has(369) }));
   const rep = $derived(stats?.report ?? null);
   const delta = $derived(rep?.before && rep.recent.eval10 !== null && rep.before.eval10 !== null ? rep.recent.eval10 - rep.before.eval10 : null);
   const proof = $derived.by(() => {
@@ -113,6 +113,7 @@
     <div class="hud">
       <div class="pillb" class:lit aria-label="{stats?.streak ?? 0} day streak{lit ? '' : ', nothing done yet today'}">
         <Icon name="flame" size={20} fill /><b class="t-num">{stats?.streak ?? 0}</b>
+        {#if stats?.freezes}<span class="frz" title="Streak freezes: a missed day uses one instead of ending the streak"><Icon name="freeze" size={15} /><b class="t-num">{stats.freezes}</b></span>{/if}
       </div>
       <div class="pillb lv" aria-label="Level {lvl.level}, {lvl.rank}">
         <span class="pc" aria-hidden="true">{lvl.level}</span><b>{lvl.rank}</b>
@@ -240,12 +241,13 @@
       <div class="week">
         {#each week as d, i}
           {@const hit = stats?.week[i] ?? false}
-          <div class:hit class:now={i === todayIdx}>
-            <span>{#if hit}<Icon name="check" size={13} />{/if}</span>{d}
+          {@const ice = stats?.weekFrozen[i] ?? false}
+          <div class:hit class:ice class:now={i === todayIdx}>
+            <span>{#if hit}<Icon name="check" size={13} />{:else if ice}<Icon name="freeze" size={13} />{/if}</span>{d}
           </div>
         {/each}
       </div>
-      <p class="t-small" style="margin-top:10px">Longest streak {stats?.longest ?? 0} day{stats?.longest === 1 ? '' : 's'}</p>
+      <p class="t-small" style="margin-top:10px">Longest streak {stats?.longest ?? 0} day{stats?.longest === 1 ? '' : 's'}{stats?.freezes ? ` · ${stats.freezes} freeze${stats.freezes === 1 ? '' : 's'}` : ''}</p>
     </section>
   </div>
 
@@ -388,6 +390,9 @@
   .week div { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; color: var(--ink-3); }
   .week span { width: 17px; height: 26px; border-radius: 6px; border: 1.6px solid var(--line); display: grid; place-items: center; color: #fff; }
   .week .hit span { background: var(--cobalt); border-color: var(--cobalt); }
+  .week .ice span { background: #7cc4ef; border-color: #7cc4ef; color: #0b3a57; }
+  .frz { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1.5px solid var(--line); color: #2a8fcf; }
+  .frz b { font-size: 15px !important; color: #2a8fcf !important; }
   .week .now { color: var(--ink); }
   .week .now span { border-color: var(--ink); }
   .week .now.hit span { border-color: var(--cobalt); }

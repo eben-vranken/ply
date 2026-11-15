@@ -79,6 +79,8 @@
   let levelUp = $state<Level | null>(null);
   let goalHit = $state(false);
   let streak0 = -1;
+  let held0 = -1;
+  let freezeWon = $state(false);
   let streakNow = $state(0);
   let streakGrew = $state(false);
   const PRAISE = ['Nice', 'Spot on', 'Clean', 'Exactly', 'Well played', 'Just right'];
@@ -336,7 +338,7 @@
     clearTimeout(timer);
     phase = drill || (run.mode === 'learn' && missed.length) ? 'summary' : 'complete';
     levelUp ? sfx.level() : sfx.done(); buzz([30, 60, 30]);
-    void loadStats(allCards().values(), app.rollover).then((s) => { streakNow = s.streak; streakGrew = streak0 >= 0 && s.streak > streak0; });
+    void loadStats(allCards().values(), app.rollover).then((s) => { streakNow = s.streak; streakGrew = streak0 >= 0 && s.streak > streak0; freezeWon = held0 >= 0 && s.freezes > held0; });
   }
   function stop() {
     clearTimeout(timer);
@@ -360,7 +362,7 @@
 
   onMount(() => {
     if (!items.length) { go('/today'); return; }
-    void loadStats(allCards().values(), app.rollover).then((s) => (streak0 = s.streak));
+    void loadStats(allCards().values(), app.rollover).then((s) => { streak0 = s.streak; held0 = s.freezes; });
     load(0);
     return () => { clearTimeout(timer); run.arcade = undefined; };
   });
@@ -416,6 +418,7 @@
       </div>
       <p class="streakline">
         {#if streakGrew}<span class="won"><Icon name="flame" size={18} fill /> {streakNow} day streak</span>{/if}
+        {#if freezeWon}<span class="won ice"><Icon name="freeze" size={16} /> Streak freeze earned</span>{/if}
         {#if goalHit}<span class="won goal"><Icon name="check" size={16} /> Daily goal reached</span>{:else if !streakGrew}{xpToday()} of {app.goal} XP today. {run.mode === 'learn' ? 'These moves are now in your reviews.' : 'Progress is saved after every card.'}{/if}
       </p>
       <div class="row" style="gap:10px">
@@ -697,6 +700,7 @@
   .streakline { font-size: 15px; color: var(--night-ink-2); margin-bottom: 22px; display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; align-items: center; }
   .won { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px 0 10px; border-radius: 99px; background: #ff8a2a; color: #3d1a00; font-weight: 750; animation: pop 460ms var(--spring) 900ms both; }
   .won.goal { background: #1fb47a; color: #fff; animation-delay: 1100ms; }
+  .won.ice { background: #7cc4ef; color: #0b3a57; animation-delay: 1000ms; }
   .xpt dd { color: var(--sun); }
   .lvl { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 13.5px; color: var(--night-ink-2); }
   .lvl .lb b { color: var(--night-ink); }
