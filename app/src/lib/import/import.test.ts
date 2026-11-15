@@ -70,6 +70,11 @@ describe('backup format', () => {
     expect(() => parseBackup(JSON.stringify({ ...good, schemaVersion: 99 }))).toThrow(/newer/);
     expect(() => parseBackup(JSON.stringify({ ...good, tables: { ...good.tables, cards: undefined } }))).toThrow(/cards/);
   });
+  it("still imports a backup with Keep going's 'extra' reviews, as Today reviews", () => {
+    const review = { id: 1, cardId: 'm1', at: 1, rating: 3, ms: 900, mode: 'extra', stage: 'young' };
+    const b = parseBackup(JSON.stringify({ ...good, tables: { ...good.tables, reviews: [review] } }));
+    expect(b.tables.reviews[0].mode).toBe('today');
+  });
   it('names the file by date', () => {
     expect(backupName(new Date('2026-11-14T10:00:00Z'))).toBe('ply-backup-2026-11-14.json');
   });

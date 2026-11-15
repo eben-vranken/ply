@@ -4,7 +4,7 @@ import type { Card as FsrsCard } from 'ts-fsrs';
 import type { Side } from './chess';
 
 /** Dexie schema version: every change to the stores bumps it and adds a version() block. */
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 /**
  * Backup file format (docs/backup-format.md, `schemaVersion`): bumps whenever what the
  * file holds changes shape. Every older version stays importable.
@@ -16,8 +16,12 @@ export const BACKUP_VERSION = 2;
 export interface ArcadeMemory { miss: Record<string, number>; recent: string[] }
 
 export type CardType = 'move' | 'punish' | 'danger' | 'puzzle' | 'mistake';
-/** 'extra' is Keep going: graded like Today, but outside the daily review limit */
-export type Mode = 'today' | 'learn' | 'drill-again' | 'extra';
+export type Mode = 'today' | 'learn' | 'drill-again';
+/**
+ * Keep going (removed) logged its reviews as 'extra': real reviews of due cards, graded like
+ * Today. Old databases and backups can still hold the value; it reads as 'today'.
+ */
+export const LEGACY_MODES: Record<string, Mode> = { extra: 'today' };
 
 export interface CardRow {
   id: string;
@@ -124,6 +128,8 @@ export class PlyDB extends Dexie {
       games: 'url, date, analyzed',
       data: 'name'
     });
+    // 2: reviews logged by Keep going ('extra') become ordinary 'today' reviews
+    this.version(2).stores({}).upgrade((tx) => tx.table('reviews').toCollection().modify((r: { mode: string }) => { if (r.mode in LEGACY_MODES) r.mode = LEGACY_MODES[r.mode]; }));
   }
 }
 

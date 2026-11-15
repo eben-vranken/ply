@@ -106,11 +106,13 @@ interface ReviewRow {
   at: number;                       // epoch ms
   rating: 1 | 2 | 3 | 4;            // Again, Hard, Good, Easy (Easy is never given)
   ms: number;                       // time taken
-  mode: 'today' | 'learn' | 'drill-again' | 'extra'; // extra = Keep going, outside the daily review limit
+  mode: 'today' | 'learn' | 'drill-again';
   stage: 'new' | 'learning' | 'young' | 'mature'; // before this review
   prev?: object | null;             // FSRS card before the review (for Undo grade)
 }
 ```
+
+Files written while the Keep going mode existed (November 2026) can hold `mode: 'extra'`: reviews of due cards graded like Today. They import as `'today'`.
 
 ## games
 

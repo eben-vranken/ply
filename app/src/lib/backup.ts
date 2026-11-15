@@ -1,6 +1,6 @@
 // Backup export / import (docs/backup-format.md). One JSON file with every
 // user table; the baked opening data is left out and re-downloaded.
-import { db, BACKUP_VERSION, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow } from './db';
+import { db, BACKUP_VERSION, LEGACY_MODES, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow } from './db';
 
 export interface Backup {
   app: 'ply';
@@ -27,6 +27,7 @@ export function parseBackup(text: string): Backup {
     c.fsrs.due = new Date(c.fsrs.due);
     if (c.fsrs.last_review) c.fsrs.last_review = new Date(c.fsrs.last_review);
   }
+  for (const r of j.tables.reviews) if (r.mode in LEGACY_MODES) r.mode = LEGACY_MODES[r.mode];
   for (const r of j.tables.reviews) if (r.prev) { r.prev.due = new Date(r.prev.due); if (r.prev.last_review) r.prev.last_review = new Date(r.prev.last_review); }
   return j;
 }

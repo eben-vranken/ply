@@ -304,7 +304,7 @@ export function doneToday() {
   const rs = reviewsToday.filter((r) => r.at >= t0);
   const intro = (types: CardType[]) => rs.filter((r) => r.stage === 'new' && types.includes(typeOfCard(r.cardId))).length;
   return {
-    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn' && r.mode !== 'extra').length,
+    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn').length,
     newMoves: intro(['move']),
     newTraps: intro(['punish', 'danger', 'puzzle']),
     newMistakes: intro(['mistake']),
