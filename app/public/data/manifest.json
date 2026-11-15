@@ -1,14 +1,16 @@
 {
-  "version": "2026-10-ddd7893",
+  "version": "2026-10-c4c049b",
   "month": "2026-10",
-  "built": "2026-11-14",
+  "built": "2026-11-15",
   "bands": [
     1000,
     1200,
     1400,
     1600,
     1800,
-    2000
+    2000,
+    2200,
+    2400
   ],
   "files": [
     {
@@ -18,63 +20,83 @@
     },
     {
       "name": "tree-1000.json.gz",
-      "bytes": 1545269,
-      "sha256": "be55dc66fb0e28f914341f535402cc4dd2cfb0fbb432c4acf22e73e79533b31d"
+      "bytes": 1545191,
+      "sha256": "bf734bc410395d9213d4b2fa176b4366a6355f2de9a2cee798eaaecff2e4d498"
     },
     {
       "name": "traps-1000.json.gz",
-      "bytes": 150886,
-      "sha256": "5d7574760d14148515aadd8f21613c1474836e947577a997c3a716138451eaa1"
+      "bytes": 150882,
+      "sha256": "a2463b98154c74881ee39fba456dc8aa72045e211d7c253e3011fe9fbab8aee6"
     },
     {
       "name": "tree-1200.json.gz",
-      "bytes": 1643139,
-      "sha256": "d7d0824d38b8b3659d58f1e069342e79fca28ba9084782275b98d6428b6fa0cb"
+      "bytes": 1643072,
+      "sha256": "babf03be4dd45897debf157a3418ff540b65a0c0b17c6535fe5f51b36bed2449"
     },
     {
       "name": "traps-1200.json.gz",
-      "bytes": 140387,
-      "sha256": "d69b20a6848763ba6621b686a0dd432cdee30376cc854bf44fac8bbd93f6d034"
+      "bytes": 140562,
+      "sha256": "5fcf629729b459c72bdebfad16bdcfdcc5c31c944bd241f6c379e8163cd96c0a"
     },
     {
       "name": "tree-1400.json.gz",
-      "bytes": 1726745,
-      "sha256": "014d9d6f6562791c746dbbf2923531e8409118b98e102ad2d437d66654006b12"
+      "bytes": 1726643,
+      "sha256": "dcc90ef32f9814eb81dde4cb733a3281c42e75cdfcc9a73af104cc894feb39a6"
     },
     {
       "name": "traps-1400.json.gz",
-      "bytes": 116222,
-      "sha256": "b4444f0e3fdb640edae2d7340cbee692ea41ec233906c3950a6f5b6a8a0da989"
+      "bytes": 116221,
+      "sha256": "2cc48c31df07e04d623ff8104c5c2646b3079ddffb0ff2c40c3b2342110a4ff4"
     },
     {
       "name": "tree-1600.json.gz",
-      "bytes": 1809095,
-      "sha256": "29b4a48d4a418049e2a129ad08276ea6afc9e6c6943fc90211f6ad537d3bb019"
+      "bytes": 1808925,
+      "sha256": "3554571ebe7ed78e616f9e5ef8ca6c5150600c7964856b4026c808694bf976ac"
     },
     {
       "name": "traps-1600.json.gz",
-      "bytes": 92879,
-      "sha256": "c3dde8e4e396b5c584bf072454f6b1a02bece02427ded8e4f3cf28797c11fcff"
+      "bytes": 92979,
+      "sha256": "c533698b521792251a44f820912ada4940cbfc8b6eb0a3ccb5ab8d3a9076b07a"
     },
     {
       "name": "tree-1800.json.gz",
-      "bytes": 1944381,
-      "sha256": "3e1e11ac3214ddb850845f8588f94a9dcb24a2c0473f4c14af5b1e1e7e2aea8d"
+      "bytes": 1943783,
+      "sha256": "31f4f62d73cba1a6b967eb19c2e4476042530497a58919a8caf0aff79df94ea5"
     },
     {
       "name": "traps-1800.json.gz",
-      "bytes": 70666,
-      "sha256": "35af4331319db24dece94886c50db15f580c0ac0cefabe68b0aa3069005c0451"
+      "bytes": 71193,
+      "sha256": "9dd3ee10edb57573febb5e11f95d95ca52fc64466e2dcf4bba2017a0643702c4"
     },
     {
       "name": "tree-2000.json.gz",
-      "bytes": 2115551,
-      "sha256": "23fc3ad580ef9fef33d96db3e099bb319aabe4395953adcfb4a331fe55d60684"
+      "bytes": 2112333,
+      "sha256": "6dd09fd379e0dd2e3c23a24acc4d21d03b89918490364abc77a6bc68a74e2127"
     },
     {
       "name": "traps-2000.json.gz",
-      "bytes": 48001,
-      "sha256": "425448a711579733dd989606cdc6c498b46829da8349fa46cf8dc3223164dfce"
+      "bytes": 50150,
+      "sha256": "c35b337d5d1ae8e3c0678f6dff864fdf530a58f5d251e1e5ca16e684f5562448"
+    },
+    {
+      "name": "tree-2200.json.gz",
+      "bytes": 2349062,
+      "sha256": "3507f6f66465c552c9b8c8864de83c507ba4d3cc099e70bf52574305894bc31d"
+    },
+    {
+      "name": "traps-2200.json.gz",
+      "bytes": 27961,
+      "sha256": "432e26c647664fef3d32cbfeb49b586e8439bce0bda67c0400bcb59d6c31be09"
+    },
+    {
+      "name": "tree-2400.json.gz",
+      "bytes": 1286600,
+      "sha256": "3cb132b9d5a74c5cc08e46a2339cf21d1ab6b88c394f03fc49d65110ee510f0d"
+    },
+    {
+      "name": "traps-2400.json.gz",
+      "bytes": 9496,
+      "sha256": "b09fbaa581f053feacb91fd31e0a795eaecc5972ca9ead2b1dcbe126fe1e8c95"
     },
     {
       "name": "puzzles.json.gz",
