@@ -1,6 +1,7 @@
 <script lang="ts">
   import { app, save } from '../lib/state.svelte';
-  import { chooseStarter } from '../lib/model.svelte';
+  import { chooseStarter, summaries, isFocus, toggleFocus } from '../lib/model.svelte';
+  import { GOALS } from '../lib/game';
   import { syncNow } from '../lib/import/sync.svelte';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
@@ -33,6 +34,10 @@
     app.username = app.username.trim();
     save();
     await chooseStarter();
+    // the openings you picked are the ones you are mastering: they feed the daily cards first
+    const all = summaries();
+    const pick = (sec: string, name: string) => all.find((o) => o.section === sec && o.path.length && o.family.startsWith(name)) ?? all.find((o) => o.section === sec && o.path.length);
+    for (const o of [pick('White', app.white), pick('Black vs 1.e4', app.blackE4), pick('Black vs 1.d4', app.blackD4)]) if (o && !isFocus(o.side, o.path)) toggleFocus(o.side, o.path);
     app.onboarded = true; save();
     if (app.username) void syncNow();
   }
@@ -52,8 +57,8 @@
         <h1 class="t-name hl">Openings that stay learned.</h1>
         <p class="lead">Ply drills the lines people at your rating really play, the traps inside them, and the mistakes from your own games. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
       {:else if step === 1}
-        <h1 class="t-title">Pick a repertoire</h1>
-        <p class="lead">Every line is built in. You can change any move later.</p>
+        <h1 class="t-title">What are you mastering?</h1>
+        <p class="lead">These openings feed your daily cards first. Every other line is built in too, and you can add or swap openings whenever you like.</p>
         {#each picks as p}
           <h2 class="gh">{p.title}</h2>
           <div class="opts">
@@ -79,6 +84,14 @@
             </div>
           </div>
         {/each}
+        <div class="lim goalrow">
+          <div class="grow"><p class="ll">Daily goal</p><p class="t-small">XP for every answer. Hit it to keep your streak honest</p></div>
+        </div>
+        <div class="goals" role="group" aria-label="Daily goal">
+          {#each GOALS as g, i}
+            <button class:on={app.goal === g} aria-pressed={app.goal === g} onclick={() => (app.goal = g)}><b class="t-num">{g}</b><small>{['Casual', 'Regular', 'Serious', 'Intense'][i]}</small></button>
+          {/each}
+        </div>
       {:else}
         <h1 class="t-title">Your chess.com name</h1>
         <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Nothing leaves this phone.</p>
@@ -124,6 +137,12 @@
   .lim { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 20px; padding: 14px 12px 14px 16px; margin-top: 12px; }
   .lim:first-of-type { margin-top: 24px; }
   .ll { font-weight: 650; font-size: 17px; }
+  .goalrow { background: none; padding: 8px 2px 0; }
+  .goals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+  .goals button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 10px 0 9px; border-radius: 16px; background: var(--card); box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 160ms; }
+  .goals button.on { box-shadow: inset 0 0 0 2.5px var(--cobalt); }
+  .goals b { font-size: 20px; }
+  .goals small { font-size: 12px; color: var(--ink-2); }
   .stepper { display: flex; align-items: center; background: var(--ground); border-radius: 14px; padding: 3px; }
   .stepper button { width: 46px; height: 46px; border-radius: 11px; background: var(--card); font-size: 22px; font-weight: 600; box-shadow: 0 2px 0 var(--line); }
   .stepper output { min-width: 54px; text-align: center; font-size: 22px; }

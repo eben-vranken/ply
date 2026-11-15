@@ -52,6 +52,18 @@ Slab button (`.btn`, variants quiet / sun / night, sizes default / big), card, c
 
 Added with the real build, in the same language: the first-launch screen (night ground, four birch veneers laying themselves down while the data downloads, a sun progress bar), the bottom sheet for changing your move (MoveEditor: every move with frequency, W/D/L and eval, ★ to make it yours, + for a second move), the promotion picker (four birch tiles over a dimmed board), the Learn / Drill header with a Stop button, the Drill summary (missed positions as a night card list), the Not-your-repertoire dialog, an ink notice bar for band changes and data updates, and the skill tree: its own night room, a dotted canvas you drag and pinch, growing left to right from the opening's position. Each tile is one of your moves with the reply it answers in small type above it; right-angled connectors with rounded corners join them. One colour per main branch (green, sun, coral, cobalt, violet, cyan…) tints its connectors and outlines, and the branch's name sits over its first tile in Newsreader italic. A tile has three states: outlined in its branch colour when you can learn it next, dim when it is further down the line, and birch once learned, sitting on one, two or four veneers for learning, young and mature (the Plies shape, so stage never depends on colour alone). A red count marks lapses. A "+N" pill on a tile unfolds the moves after it in place (300 ms, the tapped tile stays under the finger); the tree opens folded to its main branches plus whatever is learned. Tapping a tile opens a sheet with the position on a small board, the stage, and Learn / Drill / Explore from that move; with nothing selected the sheet shows the opening's totals.
 
+## The game layer
+
+Ply is the Duolingo of chess openings on top of an honest schedule. The schedule (FSRS) decides what you see; the game layer only rewards doing it and never changes a card.
+
+- **Mastering.** You pick the openings you are mastering, any number per colour: at first launch, in Settings → Mastering, or with the star on an opening's tree. About half of each day's new moves come from them. Today shows one card per mastered opening with its sigil, a mastery percentage (learning counts a quarter, young half, mature in full), the stage bar and a Learn button.
+- **XP, levels, daily goal.** About 10 XP for a clean answer, less for a corrected one, a bonus from 3 and 5 clean in a row. Levels need 100, 200, 300… XP and carry a rank every four levels (Pawn, Knight, Bishop, Rook, Queen, King). The daily goal (50 / 100 / 150 / 250 XP) is the sun ring at the top of Today.
+- **Streak.** The flame is grey until today counts, then orange and alive. A finished session that extends the streak says so.
+- **Combo.** Clean answers in a row show a flame in the session header; at 3 the progress bar catches fire, and 3, 5, 10… get a cheer.
+- **Answer panel.** After each card a panel in the grade's colour (green Good, sun Hard, red Again) with a word of feedback, the grade, the next review and the XP; the Continue button takes the same colour. A clean answer with nothing to read moves on by itself while the button fills (Settings can turn that off); a touch holds it.
+- **Session complete.** Veneer confetti, XP counting up, the level bar filling, streak and daily-goal pills; a new level takes over the headline.
+- **Trophies.** Fourteen, on Stats, derived from what you have done (moves learned, mature moves, streaks, Arcade, level). Earned ones are birch slabs; the rest show how far along they are.
+
 ## Icons
 
 Own set, 24 px grid, 2 px round strokes, drawn in `src/lib/Icon.svelte`.
@@ -68,7 +80,7 @@ Own set, 24 px grid, 2 px round strokes, drawn in `src/lib/Icon.svelte`.
 | Bottom sheet | 300 ms rise, 200 ms dim | `--ease` |
 | First-launch veneers | 1.4 s alternate while loading | `--ease` (the one loop, only while waiting) |
 
-Only actions get motion; nothing loops except the first-launch loader. `prefers-reduced-motion` collapses everything to instant.
+Only actions get motion, with four small exceptions that mark what is alive: the first-launch loader, the lit streak flame, the ring around Today's Start button and the tiles you can learn next in the tree. Screens lay their parts down in a 45 ms stagger; a correct move flashes its square green and throws eight sparks; every slab button ticks under the finger. `prefers-reduced-motion` collapses everything to instant.
 
 ## Sound and haptics
 

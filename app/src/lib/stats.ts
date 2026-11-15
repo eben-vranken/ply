@@ -7,6 +7,7 @@ const DAY = 864e5;
 export const TYPES: CardType[] = ['move', 'punish', 'danger', 'puzzle', 'mistake'];
 export const STAGES: Stage[] = ['new', 'learning', 'young', 'mature'];
 
+export interface GamesRep { games: number; win: number; eval10: number | null; covered: number }
 export interface StatsData {
   totals: Record<CardType, [number, number, number, number]>;
   suspended: number;
@@ -20,6 +21,8 @@ export interface StatsData {
   week: boolean[]; // Mon..Sun this week
   weakest: { card: CardRow; lapses: number }[];
   games: { months: string[]; m10: number[]; m15: number[]; rating: (number | null)[] };
+  /** your last 10 analysed games against the 20 before them */
+  report: { recent: GamesRep; before: GamesRep | null } | null;
   spark10: number[];
   spark15: number[];
   avg10: number | null;
@@ -91,7 +94,13 @@ export async function loadStats(cards: Iterable<CardRow>, rollover: number, unkn
   const last30 = games.slice(-30);
   const spark10 = last30.map((g) => mine(g, 20)).filter((x): x is number => x !== null).map(clampEval);
   const spark15 = last30.map((g) => mine(g, 30)).filter((x): x is number => x !== null).map(clampEval);
+  const rep = (gs: typeof games): GamesRep => {
+    const e = gs.map((g) => mine(g, 20)).filter((x): x is number => x !== null).map(clampEval);
+    return { games: gs.length, win: Math.round((gs.filter((g) => g.result === 'win').length / gs.length) * 100), eval10: e.length ? avg(e) : null, covered: Math.round((gs.filter((g) => !g.uncovered).length / gs.length) * 100) };
+  };
+  const report = games.length >= 3 ? { recent: rep(games.slice(-10)), before: games.length >= 15 ? rep(games.slice(-30, -10)) : null } : null;
   return {
+    report,
     totals, suspended, forecast, history, minutes, retention, retention7, streak, longest, week, weakest,
     games: {
       months: months.map((m) => m.split(' ')[0]),

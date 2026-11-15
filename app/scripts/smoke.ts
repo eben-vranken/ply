@@ -26,6 +26,9 @@ try { await page.waitForSelector('h1:text("Today")', { timeout: 15_000 }); }
 catch (e) { await shot('failure'); console.log('FAILED to reach Today'); console.log(errors.join(String.fromCharCode(10))); console.log(await page.locator('body').innerText()); process.exit(1); }
 await page.waitForTimeout(800);
 await shot('today');
+// a clean answer moves on by itself; the script wants every answer screen to wait
+await page.goto(url + '#/settings'); await page.getByText('Move on after a clean answer').click(); await page.waitForTimeout(300);
+await page.goto(url + '#/today'); await page.waitForTimeout(500);
 step('today: ' + (await page.locator('.counts').innerText()).replace(/\s+/g, ' '));
 
 // play the Today session: one deliberately wrong move per question, then the move the app names
@@ -45,10 +48,10 @@ const playSan = async (san: string) => {
 let answered = 0, asked = 0;
 for (let i = 0; i < 400 && answered < 12; i++) {
   if (await page.getByText(/Session complete|All learned/).isVisible().catch(() => false)) break;
-  if (await page.getByRole('button', { name: 'Next', exact: true }).isVisible().catch(() => false)) {
+  if (await page.getByRole('button', { name: 'Continue', exact: true }).isVisible().catch(() => false)) {
     answered++;
     if (answered === 1) await shot('answer');
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.waitForTimeout(500);
     continue;
   }
@@ -92,6 +95,13 @@ await page.locator('.stopbtn').click();
 await page.waitForTimeout(500);
 await shot('drill-summary');
 await page.waitForTimeout(500);
+
+await page.goto(url + '#/play?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4%20f8c5');
+await page.waitForTimeout(2500);
+await playSan('c3');
+await page.waitForTimeout(2500);
+step('play it out: ' + (await page.locator('.room .msg').innerText().catch(() => 'no message')).replace(/\s+/g, ' ') + ' | eval ' + (await page.locator('.room .ev b').innerText().catch(() => '?')));
+await shot('play');
 
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();

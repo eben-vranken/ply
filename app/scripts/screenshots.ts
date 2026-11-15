@@ -48,15 +48,18 @@ await page.getByText('Continue').click(); await shot('03-limits');
 await page.getByText('Continue').click(); await shot('04-username');
 await page.getByText('Skip and start').click();
 await page.locator('h1:text("Today")').waitFor({ timeout: 60_000 });
-await shot('05-today');
+await shot('05-today'); await shot('05-today-2', 620);
+// a clean answer moves on by itself; the script wants every answer screen to wait
+await page.goto(url + '#/settings'); await page.getByText('Move on after a clean answer').click(); await page.waitForTimeout(300);
+await page.goto(url + '#/today'); await page.waitForTimeout(500);
 
 await page.getByRole('button', { name: /Start|Continue/ }).click();
 await page.waitForSelector('.room');
 let cards = 0, asks = 0;
 const kinds: Record<string, string> = { 'New move': '06-train-new-move', 'They blundered. Punish it': '10-train-punish', 'Careful. Find the safe move': '11-train-danger', 'Find the best line': '13-train-puzzle' };
 for (let i = 0; i < 900 && cards < 15; i++) {
-  if (await page.getByText('Session complete').isVisible().catch(() => false)) break;
-  if (await page.getByRole('button', { name: 'Next', exact: true }).isVisible().catch(() => false)) {
+  if (await page.locator('.complete:not(.summary)').isVisible().catch(() => false)) { await shot('14-session-complete'); break; }
+  if (await page.getByRole('button', { name: 'Continue', exact: true }).isVisible().catch(() => false)) {
     cards++;
     const grade = await text('.answer .grade');
     if (await page.getByText(/See why .* loses/).isVisible().catch(() => false) && !taken.has('12-train-danger-replay')) {
@@ -66,7 +69,7 @@ for (let i = 0; i < 900 && cards < 15; i++) {
       await shot('12-train-danger-replay');
     } else if (grade.includes('Again')) await shot('09-train-again');
     else if (grade.includes('Good') || grade.includes('Learning')) await shot('08-train-answer');
-    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await page.getByRole('button', { name: 'Continue', exact: true }).click();
     await page.waitForTimeout(600);
     continue;
   }
@@ -105,18 +108,19 @@ await page.goto(url + '#/explore?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4%20g8f
 await page.goto(url + '#/repertoire'); await shot('18-repertoire'); await shot('18-repertoire-2', 900);
 await page.goto(url + '#/tree?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4'); await shot('18-tree');
 await page.locator('.canvas g.pill[aria-expanded=false]').first().click(); await shot('18-tree-2');
-await page.locator('.canvas g.tile').first().click(); await shot('18-tree-3');
+await page.getByText('Next up').click(); await shot('18-tree-3');
 await page.locator('.canvas').click({ position: { x: 12, y: 300 } }); await page.getByLabel('Fit the whole tree on screen').click(); await shot('18-tree-4');
 await page.goto(url + '#/tree?side=b&p=e2e4'); await shot('18-tree-black');
+await page.goto(url + '#/play?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4%20f8c5'); await page.waitForTimeout(2500); await playSan('c3'); await page.waitForTimeout(2500); await shot('18-play');
 await page.goto(url + '#/stats'); await shot('19-stats'); await shot('19-stats-2', 760); await shot('19-stats-3', 1500);
 await page.goto(url + '#/settings'); await shot('20-settings'); await shot('20-settings-2', 900);
 await page.goto(url + '#/explore?side=w&p=e2e4%20e7e5%20g1f3%20b8c6'); await page.waitForTimeout(600);
 await page.getByText(/Change your move|Edit your moves/).click(); await shot('21-move-editor');
 
 // dark mode
-await page.evaluate(() => { const s = JSON.parse(localStorage.getItem('ply-state-v1') || '{}'); s.theme = 'dark'; localStorage.setItem('ply-state-v1', JSON.stringify(s)); });
+await page.goto(url + '#/settings'); await page.getByRole('button', { name: 'Dark', exact: true }).click();
 for (const [r, n] of [['today', '22-dark-today'], ['explore?side=w&p=e2e4%20e7e5', '23-dark-explore'], ['repertoire', '24-dark-repertoire'], ['stats', '25-dark-stats'], ['settings', '26-dark-settings']]) {
-  await page.goto(url + '#/' + r); await page.reload(); await page.locator('nav').waitFor(); await shot(n);
+  await page.goto(url + '#/' + r); await page.locator('nav').waitFor(); await shot(n);
 }
 
 // app icons

@@ -24,14 +24,15 @@
     onexplore: (m: TreeMove) => void;
     ondrill: (m: TreeMove | null) => void;
     onlearn: (m: TreeMove | null) => void;
+    onplay: (m: TreeMove) => void;
   }
-  let { roots, rootName, rootMove = '', side, sum, newCount, onexplore, ondrill, onlearn }: Props = $props();
+  let { roots, rootName, rootMove = '', side, sum, newCount, onexplore, ondrill, onlearn, onplay }: Props = $props();
 
   const PALETTE = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
   const TRUNK = '#e8d3a8';
   const W = 112, H = 44, COL = 164, ROW = 68, GAP = 22, PLY = 2.5;
   const KMIN = 0.22, KMAX = 1.6, MS = 300;
-  const NAV = 92; // the floating tab bar under the sheet
+  const NAV = 0; // the tree has the whole screen: the tab bar is hidden here
   const TOP = 60; // the row of tools over the canvas
   const PLIES: Record<string, number> = { new: 0, learning: 1, young: 2, mature: 4 };
   const STAGE_NAME: Record<string, string> = { new: 'Not learned yet', learning: 'Learning', young: 'Young', mature: 'Mature' };
@@ -251,6 +252,14 @@
   }
   /** back to the main branches and what you have learned */
   function foldAll() { open = firstOpen(); selId = null; showKey = false; glide(start()); }
+  /** jump to the move you can learn next */
+  function nextUp() {
+    const n = layout.vis.find((v) => v.state === 'next');
+    if (!n) return;
+    showKey = false; selId = n.id;
+    glide(reveal(layout.pos.get(n.id)!, 262));
+  }
+  const hasNext = $derived(layout.vis.some((v) => v.state === 'next'));
   function ground() { if (!moved) { selId = null; showKey = false; } }
   const key = (fn: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
 
@@ -345,6 +354,7 @@
   </div>
 
   <div class="tools">
+    {#if hasNext}<button class="nx" onclick={nextUp}><Icon name="next" size={16} /> Next up</button>{/if}
     <button onclick={fit} aria-label="Fit the whole tree on screen"><Icon name="fit" size={20} /></button>
     <button onclick={foldAll} aria-label="Fold the tree back to its main branches"><Icon name="fold" size={20} /></button>
     <button class:on={showKey} onclick={() => (showKey = !showKey)} aria-expanded={showKey}>Key</button>
@@ -381,7 +391,8 @@
       <div class="acts">
         {#if fresh}<button class="btn grow" onclick={() => onlearn(m)}>Learn {fresh}</button>{/if}
         <button class="btn night grow" onclick={() => ondrill(m)}>Drill</button>
-        <button class="btn night grow" onclick={() => onexplore(m)}>Explore</button>
+        <button class="btn night grow" onclick={() => onplay(m)}>Play</button>
+        <button class="btn night sqb" onclick={() => onexplore(m)} aria-label="Open in Explore"><Icon name="explore" size={20} /></button>
       </div>
     {:else}
       {@const fresh = newCount(null)}
@@ -389,6 +400,15 @@
       <span class="bar" role="img" aria-label="{sum.stages[3]} mature, {sum.stages[2]} young, {sum.stages[1]} learning, {sum.stages[0]} new">
         {#each ['mature', 'young', 'learning', 'new'] as s, i}<i style="flex:{sum.stages[3 - i]};background:var(--st-{s})"></i>{/each}
       </span>
+      {#if tree.top.length > 1}
+        <div class="chs" aria-label="Chapters">
+          {#each tree.top as n, i (n.id)}
+            <button style="--c:{n.colour}" class:done={learned(n.m) === n.m.sum.total} onclick={(e) => { e.stopPropagation(); moved = false; pick(n); }}>
+              <small>Chapter {i + 1}</small><span>{tail(n.name)}</span><b class="t-num">{learned(n.m)}/{n.m.sum.total}</b>
+            </button>
+          {/each}
+        </div>
+      {/if}
       <div class="acts">
         <button class="btn grow" onclick={() => onlearn(null)} disabled={!fresh}>{fresh ? `Learn ${fresh}` : 'All learned'}</button>
         <button class="btn night grow" onclick={() => ondrill(null)}>Drill</button>
@@ -415,6 +435,8 @@
   .tile .san { font-weight: 750; font-size: 15.5px; letter-spacing: -0.02em; fill: #8088b3; }
   .tile .join { font-size: 14px; font-weight: 700; fill: #6f76a0; }
   .tile.next .face { fill: #1d2350; stroke: var(--c); stroke-width: 1.8; }
+  .tile.next .face { animation: nextp 1.9s ease-in-out infinite; }
+  @keyframes nextp { 50% { stroke-width: 3.4; fill: #232a60; } }
   .tile.next .rep { fill: #b3b9d8; }
   .tile.next .pc { fill: #868db6; }
   .tile.next .san { fill: #f3f4fc; }
@@ -436,6 +458,7 @@
 
   .tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 8px; }
   .tools button { min-width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.92); border: 1px solid #2c3366; color: #d6d9ee; font-size: 12.5px; font-weight: 700; }
+  .tools .nx { display: flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; color: var(--sun); }
   .tools button.on { background: var(--birch); color: var(--ink-fixed); border-color: var(--birch); }
   .key { position: absolute; z-index: 6; top: 62px; right: 12px; width: min(264px, calc(100% - 24px)); padding: 14px; border-radius: 18px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13px; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); animation: rise 200ms var(--ease) both; }
   .key p { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
@@ -449,7 +472,7 @@
   .k.p4 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f, 0 7.5px 0 #a67f4d, 0 10px 0 #dcc08f; margin-bottom: 8px; }
   .k.dot { width: 18px; height: 18px; margin: 0 6px; border-radius: 50%; background: #e5412b; color: #fff; font-style: normal; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
 
-  .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 92px); padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
+  .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
   .one { display: flex; gap: 14px; align-items: flex-start; animation: rise 220ms var(--ease) both; }
   .bd { flex: none; width: 124px; pointer-events: none; }
   .nm { font-size: 17px; line-height: 1.15; color: var(--c); padding-right: 30px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -462,6 +485,15 @@
   .tot { font-size: 14px; color: var(--night-ink-2); margin: -2px 0 10px; }
   .tot b { font-size: 20px; color: var(--night-ink); }
   .tot .bad { color: #ff9a8a; }
+  .acts .sqb { flex: none; width: 48px; padding: 0; }
+  .chs { display: flex; gap: 8px; overflow-x: auto; margin: 12px -14px 0; padding: 0 14px 2px; scrollbar-width: none; }
+  .chs::-webkit-scrollbar { display: none; }
+  .chs button { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 116px; max-width: 170px; padding: 8px 12px 9px; border-radius: 14px; background: #141936; border: 1.5px solid color-mix(in srgb, var(--c) 55%, #1c2248); text-align: left; }
+  .chs small { font-size: 11px; font-weight: 650; color: var(--c); }
+  .chs span { font-family: var(--serif); font-style: italic; font-size: 15px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .chs b { font-size: 12.5px; color: var(--night-ink-2); }
+  .chs .done { background: var(--birch); border-color: var(--birch); color: var(--ink-fixed); }
+  .chs .done small, .chs .done b { color: var(--walnut); }
   .acts { display: flex; gap: 8px; margin: 14px 0 5px; }
   .acts .btn { min-height: 46px; font-size: 15px; padding: 0 10px; border-radius: 14px; }
 </style>

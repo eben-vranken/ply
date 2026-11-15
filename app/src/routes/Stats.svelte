@@ -4,6 +4,8 @@
   import { loadStats, TYPES, STAGES, type StatsData } from '../lib/stats';
   import { moveOrder, sans } from '../lib/chess';
   import Plies from '../lib/Plies.svelte';
+  import Icon from '../lib/Icon.svelte';
+  import { levelOf } from '../lib/game';
 
   const NAMES = ['New', 'Learning', 'Young', 'Mature'];
   const TNAMES: Record<string, string> = { move: 'Move', punish: 'Punish', danger: 'Danger', puzzle: 'Puzzle', mistake: 'Mistake' };
@@ -24,6 +26,29 @@
   const linePath = (v: (number | null)[], y: (n: number) => number) => v.map((n, i) => (n === null ? '' : `${i ? 'L' : 'M'}${gx(i)} ${y(n)}`)).join(' ');
   const fmt = (x: number | undefined) => (x === undefined ? '—' : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1));
   const target = $derived(app.retention);
+  const lvl = $derived(levelOf(app.xp));
+  // trophies come straight from what you have done: nothing is stored for them
+  const trophies = $derived.by(() => {
+    const learned = byStage[1] + byStage[2] + byStage[3], mature = byStage[3], longest = S?.longest ?? 0;
+    const t = (icon: string, name: string, what: string, have: number, need: number) => ({ icon, name, what, have: Math.min(have, need), need, won: have >= need });
+    return [
+      t('layers', 'First layer', 'Learn a move', learned, 1),
+      t('layers', 'Fifty deep', 'Learn 50 moves', learned, 50),
+      t('layers', 'Bookworm', 'Learn 250 moves', learned, 250),
+      t('layers', 'Walking book', 'Learn 1000 moves', learned, 1000),
+      t('check', 'Seasoned', '10 mature moves', mature, 10),
+      t('check', 'Hardwood', '100 mature moves', mature, 100),
+      t('flame', 'One week', '7 day streak', longest, 7),
+      t('flame', 'One month', '30 day streak', longest, 30),
+      t('flame', 'Hundred days', '100 day streak', longest, 100),
+      t('sword', 'Sharp', 'Arcade rating 1200', app.arcadeRating, 1200),
+      t('sword', 'Tactician', 'Arcade rating 1500', app.arcadeRating, 1500),
+      t('star', 'On a roll', '10 in a row in Arcade', app.arcadeBest, 10),
+      t('star', 'Knighted', 'Reach level 5', lvl.level, 5),
+      t('star', 'Royalty', 'Reach level 17', lvl.level, 17)
+    ];
+  });
+  const won = $derived(trophies.filter((x) => x.won).length);
   function drill() {
     if (!S?.weakest.length) return;
     run.items = drillItemsFor(S.weakest.map((w) => w.card)); run.mode = 'drill'; run.title = 'Weakest cards'; run.more = undefined;
@@ -38,8 +63,29 @@
   </header>
 
   {#if S}
+    <section class="card prof">
+      <span class="badge t-num" aria-hidden="true">{lvl.level}</span>
+      <div class="grow">
+        <p class="t-head">Level {lvl.level} · {lvl.rank}</p>
+        <div class="lbar" role="progressbar" aria-valuemin="0" aria-valuemax={lvl.span} aria-valuenow={lvl.into}><i style="width:{(lvl.into / lvl.span) * 100}%"></i></div>
+        <p class="t-small">{app.xp.toLocaleString('en')} XP · {lvl.span - lvl.into} to level {lvl.level + 1} · {S.streak} day streak</p>
+      </div>
+    </section>
+
+    <div class="sect"><h2 class="t-head">Trophies</h2><span class="t-small">{won} of {trophies.length}</span></div>
+    <section class="troph">
+      {#each trophies as t}
+        <div class="tr" class:won={t.won}>
+          <span class="ti"><Icon name={t.icon} size={22} fill={t.won && t.icon !== 'check' && t.icon !== 'sword' && t.icon !== 'layers'} /></span>
+          <b>{t.name}</b>
+          <small>{t.what}</small>
+          {#if !t.won}<span class="tp"><i style="width:{(t.have / t.need) * 100}%"></i></span>{/if}
+        </div>
+      {/each}
+    </section>
+
+    <div class="sect"><h2 class="t-head">Your deck, in layers</h2></div>
     <section class="card">
-      <h2 class="t-head">Your deck, in layers</h2>
       {#if all}
         <div class="xsec" role="img" aria-label="Cards by stage: {byStage[3]} mature, {byStage[2]} young, {byStage[1]} learning, {byStage[0]} new">
           {#each [3, 2, 1, 0] as k, i}
@@ -150,6 +196,20 @@
 </div>
 
 <style>
+  .prof { display: flex; align-items: center; gap: 16px; }
+  .badge { flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--sun); color: #3d2800; font-size: 30px; box-shadow: 0 5px 0 #c98a12; margin-bottom: 5px; }
+  .lbar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: 8px 0 7px; }
+  .lbar i { display: block; height: 100%; border-radius: 5px; background: var(--sun); }
+  .troph { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tr { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 14px 6px 12px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); color: var(--ink-3); }
+  .tr b { font-size: 13.5px; color: var(--ink-2); line-height: 1.15; margin-top: 6px; }
+  .tr small { font-size: 11.5px; font-weight: 500; line-height: 1.2; }
+  .ti { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: var(--ground); }
+  .tr.won { background: var(--birch); color: var(--walnut); box-shadow: 0 5px 0 var(--birch-3); margin-bottom: 5px; }
+  .tr.won b { color: var(--ink-fixed); }
+  .tr.won .ti { background: var(--sun); color: #3d2800; box-shadow: 0 3px 0 #c98a12; }
+  .tp { width: 70%; height: 5px; border-radius: 3px; background: var(--ground); overflow: hidden; margin-top: 6px; }
+  .tp i { display: block; height: 100%; background: var(--st-learning); border-radius: 3px; }
   .xsec { display: flex; flex-direction: column; gap: 3px; height: 236px; margin: 14px 0 16px; border-radius: 14px; overflow: hidden; }
   .xsec div { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; color: #fff; min-height: 30px; font-weight: 650; font-size: 14px; border-radius: 4px; transform-origin: left; animation: lay 520ms var(--ease) both; }
   .xsec div.lt { color: var(--ink-fixed); }

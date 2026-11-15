@@ -24,12 +24,20 @@ const defaults = {
   delay: 400,
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
+  autoNext: true, // a clean answer moves on by itself
+  // the game layer: experience points and the daily goal (lib/game.ts)
+  xp: 0,
+  xpDay: 0,
+  xpToday: 0,
+  goal: 100,
+  goalHit: 0, // the study day the goal was last celebrated
+  tips: [] as string[], // what Birch has explained already
   // arcade: its own rating and counts, apart from the cards
   arcadeRating: 1000,
   arcadeBest: 0,
   arcadeSolved: 0,
   arcadeMissed: 0,
-  // focus openings: the moves (UCI, space separated) to the opening's position, null = none
+  // the openings you are mastering, per colour: move paths (UCI, space separated) joined by '|', null = none
   focusW: null as string | null,
   focusB: null as string | null,
   // growing with rating

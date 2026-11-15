@@ -2,7 +2,7 @@
   // One opening as a skill tree (lib/SkillTree.svelte): a night room with the opening's name on top
   // and the canvas filling the rest.
   import { route, go, run } from '../lib/state.svelte';
-  import { model, openingTree, nameOf, learnRound, subtreeNew, drillLine, focusOf, setFocus, type TreeMove } from '../lib/model.svelte';
+  import { model, openingTree, nameOf, learnRound, subtreeNew, drillLine, isFocus, toggleFocus, type TreeMove } from '../lib/model.svelte';
   import { epdAfter, moveOrder, sans, type Side } from '../lib/chess';
   import type { Item } from '../lib/session';
   import Sigil from '../lib/Sigil.svelte';
@@ -40,10 +40,11 @@
     go('/train');
   }
   const colour = side === 'w' ? 'White' : 'Black';
-  const focused = $derived(focusOf(side)?.join(' ') === path.join(' '));
+  const focused = $derived.by(() => { void model.rev; return isFocus(side, path); });
   function focus() {
-    setFocus(side, focused ? null : path);
-    model.notice = focused ? `${name[1]} is your ${colour} focus. About half of each day's new moves now come from it.` : `No ${colour} focus now. New moves follow what you are most likely to meet.`;
+    model.notice = toggleFocus(side, path)
+      ? `You are mastering the ${name[1]}. About half of each day's new moves now come from the openings you master.`
+      : `No longer mastering the ${name[1]}. Its cards keep their schedule.`;
   }
   const newCount = (m: TreeMove | null) => { void model.rev; return subtreeNew(side, from(m)).length; };
 </script>
@@ -54,15 +55,16 @@
     <Sigil path={path.slice(0, 8)} flip={side === 'b'} you={side} size={44} />
     <div class="grow">
       <h1 class="t-name ttl">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</h1>
-      <p class="ord">{#if focused}<b class="fc">Focus</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
+      <p class="ord">{#if focused}<b class="fc">Mastering</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
     </div>
-    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} aria-label={focused ? `Stop focusing on this opening` : `Make this your ${colour} focus opening`}><Icon name="star" fill={focused} /></button>
+    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop mastering this opening` : `Master this opening as ${colour}`}><Icon name="star" fill={focused} /></button>
     <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore"><Icon name="explore" /></button>
   </header>
 
   {#if roots.length}
     <SkillTree {roots} rootName={name[1]} rootMove={path.length ? sans(path).at(-1) : ''} {side} sum={total} {newCount}
-      onexplore={(m) => explore(m.path)} ondrill={(m) => drill(m ? [...m.path, m.uci] : path)} onlearn={(m) => learn(from(m))} />
+      onexplore={(m) => explore(m.path)} ondrill={(m) => drill(m ? [...m.path, m.uci] : path)} onlearn={(m) => learn(from(m))}
+      onplay={(m) => go(`/play?side=${side}&p=${encodeURIComponent([...m.path, m.uci].join(' '))}`)} />
   {:else}
     <p class="none">Your lines don't pass through this position.</p>
   {/if}
@@ -73,6 +75,7 @@
   header { display: flex; align-items: center; gap: 10px; padding: calc(env(safe-area-inset-top) + 12px) 8px 12px; }
   .ib { flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; }
   .ib.on { color: var(--sun); }
+  .ib:disabled { opacity: 0.3; }
   .ttl { font-size: 21px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .ttl .eco { background: rgba(255, 255, 255, 0.12); }
   .ord { font-size: 13px; color: var(--night-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }

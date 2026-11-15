@@ -1,6 +1,10 @@
 <script lang="ts">
   import { app, go, run } from '../lib/state.svelte';
-  import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew } from '../lib/model.svelte';
+  import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew, mastering, learnRound, drillLine, type Mastery } from '../lib/model.svelte';
+  import { levelOf, xpToday } from '../lib/game';
+  import { countup } from '../lib/countup';
+  import { greet } from '../lib/voice';
+  import Mascot from '../lib/Mascot.svelte';
   import { loadStats, type StatsData } from '../lib/stats';
   import { sync } from '../lib/import/sync.svelte';
   import type { Item } from '../lib/session';
@@ -51,6 +55,39 @@
     run.items = first; run.mode = 'drill'; run.title = 'Arcade'; run.rare = false; run.more = () => a.next(); run.arcade = a.result;
     go('/train');
   }
+  // the game layer
+  const lvl = $derived(levelOf(app.xp));
+  const xp = $derived.by(() => { void app.xpToday; void app.xpDay; return xpToday(); });
+  const goalPct = $derived(Math.min(1, xp / app.goal));
+  const lit = $derived(stats?.week[todayIdx] ?? false);
+  const mins = $derived(Math.max(1, Math.round((counts.due * 8 + counts.fresh * 25) / 60)));
+  const say = $derived(greet({ streak: stats?.streak ?? 0, lit, left: counts.queue.length, done: counts.done, goal: goalPct >= 1, fresh: allCards().size === 0 && counts.done === 0, mins }));
+  const rep = $derived(stats?.report ?? null);
+  const delta = $derived(rep?.before && rep.recent.eval10 !== null && rep.before.eval10 !== null ? rep.recent.eval10 - rep.before.eval10 : null);
+  const proof = $derived.by(() => {
+    if (!rep || rep.recent.eval10 === null) return '';
+    const now = fmt(rep.recent.eval10);
+    if (delta !== null && delta >= 0.15) return `You now leave the opening at ${now} on average, up from ${fmt(rep.before!.eval10)}. The work is showing.`;
+    if (delta !== null && delta <= -0.15) return `You leave the opening at ${now}, down from ${fmt(rep.before!.eval10)}. The mistake cards from these games are already in your queue.`;
+    return `You leave the opening at ${now} on average. ${rep.recent.covered >= 70 ? 'Your lines covered most of what you met.' : 'Opponents left your lines often: see Uncovered in Repertoire.'}`;
+  });
+  const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
+  const ms = $derived(mastering());
+  const openTree = (m: Mastery) => go(`/tree?side=${m.side}&p=${encodeURIComponent(m.path.join(' '))}`);
+  /** five new moves of an opening you are mastering, or a drill through it once all are learned */
+  function train(m: Mastery) {
+    const first = learnRound(m.side, m.path);
+    if (first.length) {
+      run.items = first; run.mode = 'learn'; run.title = m.name; run.arcade = undefined;
+      run.more = (missed: Item[]) => [...missed.map((x) => ({ ...x, asks: Object.fromEntries(Object.entries(x.asks).map(([k, a]) => [k, { ...a, intro: false, graded: false }])), prompt: 'Your move', spec: undefined })), ...learnRound(m.side, m.path)];
+      return go('/train');
+    }
+    const l = drillLine(m.side, m.path, false);
+    if (!l) return;
+    run.items = [l]; run.mode = 'drill'; run.title = m.name; run.arcade = undefined;
+    run.more = () => { const n = drillLine(m.side, m.path, false); return n ? [n] : []; };
+    go('/train');
+  }
   const kindLine: Record<string, string> = { line: 'Review', new: 'New move', punish: 'Punish', danger: 'Danger', puzzle: 'Puzzle', mistake: 'Your mistake', drill: 'Drill' };
   const spark = (v: number[]) => v.length < 2 ? '' : v.map((y, i) => `${i ? 'L' : 'M'}${(i / (v.length - 1)) * 300} ${20 - Math.max(-2, Math.min(2, y)) * 12}`).join(' ');
   const fmt = (x: number | null) => (x === null ? '—' : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1));
@@ -62,11 +99,34 @@
       <p class="t-small">{date}</p>
       <h1 class="t-display">Today</h1>
     </div>
-    <div class="streak" aria-label="{stats?.streak ?? 0} day streak">
-      <span class="pile" aria-hidden="true"><i></i><i></i><i></i></span>
-      <b class="t-num">{stats?.streak ?? 0}</b><span>{stats?.streak === 1 ? 'day' : 'days'}</span>
+    <div class="hud">
+      <div class="pillb" class:lit aria-label="{stats?.streak ?? 0} day streak{lit ? '' : ', nothing done yet today'}">
+        <Icon name="flame" size={20} fill /><b class="t-num">{stats?.streak ?? 0}</b>
+      </div>
+      <div class="pillb lv" aria-label="Level {lvl.level}, {lvl.rank}">
+        <span class="pc" aria-hidden="true">{lvl.level}</span><b>{lvl.rank}</b>
+      </div>
     </div>
   </header>
+
+  {#key say.text}
+    <div class="birch">
+      <Mascot mood={say.mood} size={64} />
+      <p class="bubble">{say.text}</p>
+    </div>
+  {/key}
+
+  <section class="card goal" aria-label="Daily goal: {xp} of {app.goal} XP">
+    <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+      <circle cx="32" cy="32" r="26" fill="none" stroke="var(--line)" stroke-width="8" />
+      <circle cx="32" cy="32" r="26" fill="none" stroke={goalPct >= 1 ? 'var(--good)' : 'var(--sun)'} stroke-width="8" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset={163.4 * (1 - goalPct)} transform="rotate(-90 32 32)" />
+      {#if goalPct >= 1}<path d="M22 33l7 7 14-15" fill="none" stroke="var(--good)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />{:else}<text x="32" y="38" text-anchor="middle">{Math.round(goalPct * 100)}</text>{/if}
+    </svg>
+    <div class="grow">
+      <p class="gl"><b class="t-num" use:countup={xp}></b> / {app.goal} XP <span>{goalPct >= 1 ? 'Daily goal reached' : lit ? 'today' : stats?.streak ? `keeps your ${stats.streak} day streak` : 'starts a streak'}</span></p>
+      <div class="lvrow"><span>Level {lvl.level}</span><span class="lbar"><i style="width:{(lvl.into / lvl.span) * 100}%"></i></span><span class="t-num">{lvl.span - lvl.into} to go</span></div>
+    </div>
+  </section>
 
   <section class="slab" style="animation: rise 420ms var(--ease) both">
     {#if next}
@@ -79,7 +139,7 @@
         <div><dd class="t-num">{counts.fresh}</dd><dt>New</dt></div>
         <div><dd class="t-num">{counts.done}</dd><dt>Done today</dt></div>
       </dl>
-      <button class="btn big wide" onclick={start}><Icon name="play" size={20} fill /> {counts.done ? 'Continue' : 'Start'}</button>
+      <button class="btn big wide cta" onclick={start}><Icon name="play" size={20} fill /> {counts.done ? 'Continue' : 'Start'} <small>about {mins} min</small></button>
     {:else}
       <div class="art done"><span class="tick"><Icon name="check" size={56} /></span></div>
       <p class="up">{counts.done} answer{counts.done === 1 ? '' : 's'} today</p>
@@ -92,6 +152,34 @@
     {/if}
     <div class="edge" aria-hidden="true"></div>
   </section>
+
+  <div class="sect"><h2 class="t-head">Mastering</h2><button class="link" onclick={() => go('/repertoire')}>All openings</button></div>
+  <div class="mast" class:one={ms.length < 2}>
+    {#each ms as m, i (m.side + m.path.join(' '))}
+      <article class="card mc">
+        <button class="mtop" onclick={() => openTree(m)} aria-label="Open the {m.name} tree">
+          <Sigil path={m.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={m.side === 'b'} you={m.side} size={52} />
+          <span class="grow"><span class="t-name mn">{m.name}</span><span class="mm">{m.side === 'w' ? 'White' : 'Black'} · {m.learned} of {m.total} moves</span></span>
+          <span class="mp t-num">{m.pct}<small>%</small></span>
+        </button>
+        <span class="mbar" role="img" aria-label="{m.stages[3]} mature, {m.stages[2]} young, {m.stages[1]} learning, {m.stages[0]} new">
+          {#each ['mature', 'young', 'learning', 'new'] as st, k}<i style="flex:{m.stages[3 - k]};background:var(--st-{st})"></i>{/each}
+        </span>
+        {#if m.chapters.length > 1}
+          {@const at = m.chapters.findIndex((c) => c.learned < c.total)}
+          <p class="chap"><b>{at < 0 ? 'Every chapter learned' : `Chapter ${at + 1} of ${m.chapters.length}`}</b>{#if at >= 0} · {m.chapters[at].name} · {m.chapters[at].learned}/{m.chapters[at].total}{/if}</p>
+          <span class="chs" aria-hidden="true">{#each m.chapters as c}<i style="flex:{Math.max(c.total, m.total / 14)}"><b style="width:{(c.learned / c.total) * 100}%"></b></i>{/each}</span>
+        {/if}
+        <button class="btn wide sm" class:quiet={!m.fresh} onclick={() => train(m)}>{m.fresh ? `Learn ${Math.min(5, m.fresh)} new moves` : 'Drill it'}</button>
+      </article>
+    {:else}
+      <button class="card pickone" onclick={() => go('/repertoire')}>
+        <span class="star"><Icon name="star" size={22} fill /></span>
+        <span class="grow"><b>Pick an opening to master</b><br /><span class="t-small">Open one in Repertoire and tap its star. Half of each day's new moves then come from it.</span></span>
+        <Icon name="next" size={18} />
+      </button>
+    {/each}
+  </div>
 
   <section class="card arc">
     <div class="grow">
@@ -139,7 +227,15 @@
   {/if}
 
   <section class="card games">
-    <div><h3 class="t-head">Out of the opening</h3><p class="t-small">Average eval in your last 30 games, your view</p></div>
+    <div><h3 class="t-head">Is it working?</h3><p class="t-small">Your last {rep?.recent.games ?? 10} analysed games against the ones before</p></div>
+    {#if rep && proof}
+      <div class="proof"><Mascot mood={delta !== null && delta <= -0.15 ? 'think' : 'cheer'} size={44} still /><p>{proof}</p></div>
+      <dl class="rep">
+        <div><dd class="t-num">{fmt(rep.recent.eval10)}</dd><dt>after move 10{#if delta !== null}<b class:up={delta >= 0}>{delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}</b>{/if}</dt></div>
+        <div><dd class="t-num">{rep.recent.covered}<small>%</small></dd><dt>inside your lines</dt></div>
+        <div><dd class="t-num">{rep.recent.win}<small>%</small></dd><dt>won</dt></div>
+      </dl>
+    {/if}
     {#if stats && stats.spark10.length > 1}
       <svg viewBox="-4 -6 308 52" preserveAspectRatio="none" aria-hidden="true">
         <line x1="0" x2="300" y1="20" y2="20" stroke="var(--line)" stroke-dasharray="3 4" />
@@ -157,12 +253,62 @@
 </div>
 
 <style>
-  .streak { display: flex; gap: 6px; height: 44px; padding: 0 14px 0 12px; background: var(--card); border-radius: 99px; box-shadow: var(--shadow); align-items: center; font-size: 14px; color: var(--ink-2); }
-  .streak b { font-size: 20px; color: var(--ink); }
-  .pile { display: flex; flex-direction: column; gap: 2px; width: 18px; }
-  .pile i { height: 4px; border-radius: 2px; background: var(--sun); }
-  .pile i:nth-child(2) { background: var(--st-learning); }
-  .pile i:nth-child(3) { background: var(--bad); }
+  .hud { display: flex; gap: 8px; }
+  .birch { display: flex; align-items: center; gap: 10px; margin: -4px 0 12px; }
+  .bubble { position: relative; flex: 1; padding: 11px 14px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); font-size: 14.5px; line-height: 1.32; color: var(--ink); animation: rise 360ms var(--spring) both; }
+  .bubble::before { content: ''; position: absolute; left: -6px; top: 50%; width: 14px; height: 14px; margin-top: -7px; background: var(--card); border-radius: 3px; transform: rotate(45deg); }
+  .chap { font-size: 13px; color: var(--ink-2); margin: -4px 0 -6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chap b { color: var(--ink); font-weight: 650; }
+  .chs { display: flex; gap: 3px; height: 6px; }
+  .chs i { border-radius: 3px; background: var(--line); overflow: hidden; min-width: 0; }
+  .chs b { display: block; height: 100%; background: var(--cobalt); border-radius: 3px; }
+  .proof { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 16px; background: var(--ground); font-size: 14.5px; line-height: 1.32; }
+  .rep { display: flex; gap: 8px; margin: 10px 0 0; }
+  .rep div { flex: 1; background: var(--ground); border-radius: 14px; padding: 10px 10px 8px; }
+  .rep dd { margin: 0; font-size: 24px; line-height: 1; }
+  .rep dd small { font-size: 14px; color: var(--ink-3); }
+  .rep dt { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
+  .rep dt b { display: block; color: var(--warn-text); font-size: 11.5px; }
+  .rep dt b.up { color: var(--good-text); }
+  /* the two things that are alive on this screen: the flame once today counts, and the way in */
+  .pillb.lit :global(svg) { transform-origin: 50% 90%; animation: flick 1.7s ease-in-out infinite; }
+  @keyframes flick { 0%, 100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.12, 1.2) rotate(-4deg); } 60% { transform: scale(0.96, 1.06) rotate(3deg); } }
+  .cta::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; animation: ring 2.4s ease-out infinite; }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(43, 75, 238, 0.55); } 70%, 100% { box-shadow: 0 0 0 16px rgba(43, 75, 238, 0); } }
+  .goal circle:nth-of-type(2) { animation: ringin 900ms var(--ease) both; }
+  @keyframes ringin { from { stroke-dashoffset: 163.4; } }
+  .pillb { display: flex; gap: 5px; height: 44px; padding: 0 14px 0 10px; background: var(--card); border-radius: 99px; box-shadow: var(--shadow); align-items: center; color: var(--ink-3); }
+  .pillb b { font-size: 18px; color: var(--ink); }
+  .pillb.lit :global(svg) { color: #f0762a; }
+  .pillb.lv b { font-size: 14.5px; font-weight: 650; }
+  .pillb .pc { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 9px; background: var(--sun); color: #3d2800; font-weight: 800; font-size: 14px; box-shadow: 0 2px 0 #c98a12; }
+
+  .goal { display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; margin-bottom: 12px; }
+  .goal svg { flex: none; }
+  .goal circle { transition: stroke-dashoffset 700ms var(--ease); }
+  .goal text { font-family: var(--sans); font-size: 17px; font-weight: 750; fill: var(--ink); }
+  .gl { font-size: 15px; color: var(--ink-2); }
+  .gl b { font-size: 24px; color: var(--ink); }
+  .gl span { display: block; font-size: 13px; margin-top: 1px; }
+  .lvrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+  .lbar { flex: 1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .lbar i { display: block; height: 100%; border-radius: 4px; background: var(--sun); transition: width 600ms var(--ease); }
+  .slab .btn small { font-size: 14px; font-weight: 500; opacity: 0.8; margin-left: 4px; }
+
+  .mast { display: flex; gap: 12px; overflow-x: auto; margin: 0 -16px; padding: 2px 16px 14px; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .mast::-webkit-scrollbar { display: none; }
+  .mc { flex: none; width: 82%; scroll-snap-align: center; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .mast.one .mc, .pickone { width: 100%; }
+  .mtop { display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; }
+  .mn { display: block; font-size: 20px; line-height: 1.1; }
+  .mm { display: block; font-size: 13px; color: var(--ink-2); margin-top: 3px; }
+  .mp { font-size: 26px; }
+  .mp small { font-size: 14px; color: var(--ink-3); }
+  .mbar { display: flex; gap: 2px; height: 8px; }
+  .mbar i { border-radius: 3px; min-width: 0; }
+  .btn.sm { min-height: 46px; font-size: 16px; border-radius: 14px; box-shadow: 0 4px 0 var(--edge); }
+  .pickone { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .pickone .star { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--sun-tint); color: var(--warn-text); }
 
   .slab { position: relative; color: var(--ink-fixed); background: var(--birch); border-radius: var(--r-xl); padding: 22px 20px 34px; overflow: hidden; box-shadow: 0 18px 28px -16px rgba(111, 76, 44, 0.55); }
   .slab .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(#d8bb8a 0 2px, #b08a57 2px 5px, #e0c797 5px 8px, #a67f4d 8px 11px, #d2b382 11px 14px); }
@@ -172,7 +318,7 @@
   .up { font-size: 14px; font-weight: 650; color: var(--walnut); position: relative; }
   .name { font-size: 46px; line-height: 0.98; margin-top: 4px; max-width: 250px; position: relative; }
   .sub { margin-top: 8px; font-size: 15px; color: var(--walnut); position: relative; max-width: 240px; }
-  .arc { display: flex; align-items: center; gap: 14px; margin-top: 14px; }
+  .arc { display: flex; align-items: center; gap: 14px; }
   .arc .btn { flex: none; width: 60px; min-height: 60px; padding: 0; border-radius: 20px; }
   .arcnum { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
   .arcnum .fl { display: inline-flex; align-items: baseline; gap: 2px; }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { go, app } from '../lib/state.svelte';
-  import { model, focusOf, searchOpenings, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
+  import { model, isFocus as mastered, searchOpenings, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
   import { db, type GameRow } from '../lib/db';
   import { sans, moveOrder, epdAfter, san } from '../lib/chess';
   import type { Section } from '../lib/srs/lines';
@@ -11,7 +11,7 @@
   const STAGES = ['new', 'learning', 'young', 'mature'];
   const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
   const all = $derived(summaries());
-  const isFocus = (o: OpeningSummary) => focusOf(o.side)?.join(' ') === o.path.join(' ');
+  const isFocus = (o: OpeningSummary) => { void model.rev; return mastered(o.side, o.path); };
   let q = $state('');
   const hits = $derived.by(() => { void model.rev; return searchOpenings(q); });
   const open = (o: { side: 'w' | 'b'; path: string[] }) => go(`/tree?side=${o.side}&p=${encodeURIComponent(o.path.join(' '))}`);
@@ -96,7 +96,7 @@
           <Sigil path={o.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={o.side === 'b'} you={o.side} size={60} />
           <span class="grow">
             <span class="t-name nm">{o.name}{#if o.eco}<span class="eco">{o.eco}</span>{/if}</span>
-            <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Focus</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
+            <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Mastering</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
             <span class="bar" role="img" aria-label="{o.stages[3]} mature, {o.stages[2]} young, {o.stages[1]} learning, {o.stages[0]} new">
               {#each [3, 2, 1, 0] as k}<i style="flex:{o.stages[k]};background:var(--st-{STAGES[k]})"></i>{/each}
             </span>

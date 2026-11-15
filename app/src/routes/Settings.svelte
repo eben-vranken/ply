@@ -1,5 +1,7 @@
 <script lang="ts">
   import { app, save, DEFAULTS, resetSettings } from '../lib/state.svelte';
+  import { summaries, isFocus, toggleFocus } from '../lib/model.svelte';
+  import { GOALS } from '../lib/game';
   import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress } from '../lib/model.svelte';
   import { db } from '../lib/db';
   import { makeBackup, parseBackup, restoreBackup, shareBackup, type Backup } from '../lib/backup';
@@ -38,8 +40,10 @@
     else if (n.k === 'band') { clearTimeout(regenTimer); regenTimer = setTimeout(() => void switchBand(currentBand()).catch((e: Error) => say(e.message)), 600); }
     else model.rev++;
   }
-  const toggles: ['sounds' | 'vibration' | 'showName', string, string?][] = [
-    ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
+  // the openings you can master: the biggest of each colour, and whatever is mastered already
+  const ops = $derived.by(() => { void model.rev; const all = summaries().filter((o) => o.path.length); const on = (o: (typeof all)[number]) => (isFocus(o.side, o.path) ? 0 : 1); return all.filter((o, i) => i < 12 || !on(o)).sort((a, b) => on(a) - on(b) || a.side.localeCompare(b.side) * -1 || b.total - a.total); });
+  const toggles: ['sounds' | 'vibration' | 'showName' | 'autoNext', string, string?][] = [
+    ['autoNext', 'Move on after a clean answer', 'A wrong answer always waits for you'], ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
   ];
   const classes = ['Rapid', 'Blitz', 'Daily'];
   function flip(c: string) { app.timeClasses = app.timeClasses.includes(c) ? app.timeClasses.filter((x) => x !== c) : [...app.timeClasses, c]; save(); }
@@ -86,6 +90,25 @@
 
 <div class="screen">
   <header class="screen-head"><h1 class="t-display">Settings</h1></header>
+
+  <div class="sect"><h2 class="t-head">Mastering</h2></div>
+  <section class="card rows">
+    <p class="t-small intro">Half of each day's new moves come from the openings you are mastering. Pick as many as you like for each colour; everything else still arrives in the order you are most likely to meet it.</p>
+    {#each ops as o (o.key)}
+      <label class="r">
+        <div class="grow"><p class="lb t-name on">{o.name}</p><p class="t-small">{o.side === 'w' ? 'You play White' : `You play Black, ${o.section.slice(6)}`} · {o.learned} of {o.total} moves learned</p></div>
+        <input type="checkbox" role="switch" checked={isFocus(o.side, o.path)} onchange={() => { toggleFocus(o.side, o.path); buzz(8); }} aria-label="Master the {o.name}" />
+      </label>
+    {/each}
+  </section>
+
+  <div class="sect"><h2 class="t-head">Daily goal</h2></div>
+  <section class="card rows">
+    <div class="r">
+      <div class="grow"><p class="lb">XP a day</p><p class="t-small">About 10 XP for a clean answer</p></div>
+      <div class="pick">{#each GOALS as g}<button class:on={app.goal === g} aria-pressed={app.goal === g} onclick={() => { app.goal = g; save(); buzz(8); }}>{g}</button>{/each}</div>
+    </div>
+  </section>
 
   {#each groups as [title, rows]}
     <div class="sect"><h2 class="t-head">{title}</h2></div>
@@ -184,6 +207,8 @@
   .r.col { flex-direction: column; align-items: stretch; padding: 14px 0; }
   .r.two { padding: 14px 0 16px; }
   .lb { font-weight: 600; }
+  .lb.on { font-size: 18px; font-weight: 500; }
+  .intro { padding: 14px 0 8px; }
   .stepper { display: flex; align-items: center; background: var(--ground); border-radius: 14px; padding: 3px; }
   .stepper button { width: 44px; height: 44px; border-radius: 11px; background: var(--card); font-size: 22px; font-weight: 600; box-shadow: 0 2px 0 var(--line); }
   .stepper button:active { transform: translateY(2px); box-shadow: none; }

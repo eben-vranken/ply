@@ -535,28 +535,71 @@ export function searchOpenings(query: string): OpeningHit[] {
   return hitIndex.rows.filter((r) => clean.every((w) => r.hay.includes(w))).slice(0, 40).map((r) => ({ side: r.side, name: r.name, eco: r.eco, path: pathTo(L[r.side]!, r.epd) }));
 }
 
-// ---------------------------------------------------------------- focus openings
+// ---------------------------------------------------------------- openings you are mastering
 const focusKey = (side: Side) => (side === 'w' ? 'focusW' : 'focusB') as 'focusW' | 'focusB';
-/** The focus opening of a colour as a move path, or null. */
-export const focusOf = (side: Side): string[] | null => { const f = app[focusKey(side)]; return f === null ? null : f.split(' ').filter(Boolean); };
-export function setFocus(side: Side, path: string[] | null) {
-  app[focusKey(side)] = path ? path.join(' ') : null;
+/** The openings a colour is mastering, each as a move path. */
+export const focusList = (side: Side): string[][] => (app[focusKey(side)] ?? '').split('|').map((p) => p.split(' ').filter(Boolean)).filter((p) => p.length > 0);
+export const isFocus = (side: Side, path: string[]) => focusList(side).some((p) => p.join(' ') === path.join(' '));
+/** Start or stop mastering an opening; says whether it is mastered now. */
+export function toggleFocus(side: Side, path: string[]): boolean {
+  if (!path.length) return false;
+  const key = path.join(' '), cur = focusList(side).map((p) => p.join(' '));
+  const on = !cur.includes(key);
+  const next = on ? [...cur, key] : cur.filter((k) => k !== key);
+  app[focusKey(side)] = next.length ? next.join('|') : null;
   save();
   bump();
+  return on;
+}
+/** Every opening you are mastering, with its name and how far along it is. */
+export interface Chapter { name: string; total: number; learned: number; path: string[] }
+/** An opening's chapters: the main branches your opponent can choose, most played first. */
+export function chapters(side: Side, path: string[]): Chapter[] {
+  void model.rev;
+  const base = nameOf(epdAfter(path), path)[1], family = base.split(':')[0];
+  type Step = { n: TreeMove; reply: TreeMove | null };
+  const next = (ms: TreeMove[]): Step[] => ms.flatMap((r): Step[] => (r.mine ? [{ n: r, reply: null }] : r.children.filter((c) => c.mine).map((c) => ({ n: c, reply: r }))));
+  let steps = next(openingTree(side, path));
+  for (let i = 0; i < 12 && steps.length === 1; i++) { const k = next(steps[0].n.children); if (!k.length) break; steps = k; }
+  return steps.map((s) => {
+    let name = s.reply ? branchName(s.reply, base)[1] : base;
+    if (name === base && s.reply) name = `After ${s.reply.san}`;
+    else if (name.startsWith(family + ': ')) name = name.slice(family.length + 2);
+    return { name, total: s.n.sum.total, learned: s.n.sum.total - s.n.sum.stages[0], path: [...s.n.path, s.n.uci] };
+  });
+}
+export interface Mastery { side: Side; path: string[]; name: string; eco: string; total: number; learned: number; stages: number[]; fresh: number; pct: number; chapters: Chapter[] }
+export function mastering(): Mastery[] {
+  void model.rev;
+  const out: Mastery[] = [];
+  for (const side of ['w', 'b'] as Side[]) for (const path of focusList(side)) {
+    if (!L[side]?.pos.has(epdAfter(path))) continue;
+    const stages = [0, 0, 0, 0];
+    for (const r of openingTree(side, path)) r.sum.stages.forEach((n, i) => (stages[i] += n));
+    const total = stages.reduce((a, b) => a + b, 0);
+    const [eco, name] = nameOf(epdAfter(path), path);
+    // mastery: a learning move counts a quarter, a young one half, a mature one in full
+    const pct = total ? Math.round(((stages[1] * 0.25 + stages[2] * 0.5 + stages[3]) / total) * 100) : 0;
+    out.push({ side, path, name, eco, total, learned: total - stages[0], stages, fresh: subtreeNew(side, path).length, pct, chapters: chapters(side, path) });
+  }
+  return out;
 }
 /**
- * Unlearned moves of the focus openings, in teaching order: for each colour the moves that lead
- * to the opening and then everything below it, most probable first; the two colours take turns.
+ * Unlearned moves of the openings you are mastering, in teaching order: for each one the moves
+ * that lead to it and then everything below it, most probable first; the two colours take turns.
  */
 function focusSpecs(): MoveSpec[] {
   const per = (['w', 'b'] as Side[]).map((side) => {
-    const path = focusOf(side), Ls = L[side];
-    if (!path || !Ls || !Ls.pos.has(epdAfter(path))) return [];
-    const way = new Map<string, string>();
-    let e = START_EPD;
-    for (const u of path) { way.set(e, u); e = child(e, u); }
-    const above = newMoveSpecs.filter((s) => s.side === side && way.get(s.epd) === s.move);
-    return [...above, ...subtreeNew(side, path)].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
+    const Ls = L[side], seen = new Map<string, MoveSpec>();
+    for (const path of focusList(side)) {
+      if (!Ls || !Ls.pos.has(epdAfter(path))) continue;
+      const way = new Map<string, string>();
+      let e = START_EPD;
+      for (const u of path) { way.set(e, u); e = child(e, u); }
+      for (const s of newMoveSpecs) if (s.side === side && way.get(s.epd) === s.move) seen.set(s.id, s);
+      for (const s of subtreeNew(side, path)) seen.set(s.id, s);
+    }
+    return [...seen.values()].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
   });
   const out: MoveSpec[] = [];
   for (let i = 0; i < Math.max(per[0].length, per[1].length); i++) for (const p of per) if (p[i]) out.push(p[i]);

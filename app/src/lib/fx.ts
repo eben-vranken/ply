@@ -21,6 +21,11 @@ export const sfx = {
   capture() { tone(150, 0.09, 'triangle', 0.6, 0, 0.45); tone(900, 0.03, 'square', 0.08); },
   good() { tone(660, 0.09, 'sine', 0.22); tone(990, 0.16, 'sine', 0.2, 0.07); },
   bad() { tone(120, 0.24, 'sawtooth', 0.16, 0, 0.7); },
+  /** a button going down */
+  tick() { tone(420, 0.035, 'triangle', 0.1, 0, 0.7); },
+  /** a streak of clean answers: the pitch climbs with it */
+  combo(n: number) { const f = 660 * 2 ** (Math.min(n, 12) / 12); tone(f, 0.08, 'sine', 0.2); tone(f * 1.5, 0.2, 'sine', 0.2, 0.08); },
+  level() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.34, 'triangle', 0.2, i * 0.1)); },
   done() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.28, 'sine', 0.18, i * 0.09)); }
 };
 export function buzz(ms: number | number[]) { if (app.vibration) try { navigator.vibrate?.(ms); } catch { /* unsupported */ } }

@@ -3,6 +3,7 @@
   import { cubicOut } from 'svelte/easing';
   import { app, route, go } from './lib/state.svelte';
   import Icon from './lib/Icon.svelte';
+  import { buzz, sfx } from './lib/fx';
   import Today from './routes/Today.svelte';
   import Explore from './routes/Explore.svelte';
   import Repertoire from './routes/Repertoire.svelte';
@@ -10,11 +11,18 @@
   import Settings from './routes/Settings.svelte';
   import Train from './routes/Train.svelte';
   import Tree from './routes/Tree.svelte';
+  import Play from './routes/Play.svelte';
   import Onboarding from './routes/Onboarding.svelte';
   import { model, boot } from './lib/model.svelte';
   import { autoSync } from './lib/import/sync.svelte';
   import { onMount } from 'svelte';
 
+  // every slab button answers the press: a soft tick and a tap in the hand
+  onMount(() => {
+    const press = (e: PointerEvent) => { const b = (e.target as Element | null)?.closest?.('.btn'); if (b && !(b as HTMLButtonElement).disabled) { sfx.tick(); buzz(8); } };
+    addEventListener('pointerdown', press);
+    return () => removeEventListener('pointerdown', press);
+  });
   onMount(() => { void boot().then(() => { if (app.onboarded) void autoSync(); }); });
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => { if (model.notice) { clearTimeout(noticeTimer); noticeTimer = setTimeout(() => (model.notice = ''), 7000); } });
@@ -30,6 +38,8 @@
   // the skill tree sits under Repertoire
   const tabOf = (b: string) => (b === '/tree' ? '/repertoire' : b);
   const training = $derived(base === '/train');
+  // the session and the skill tree are rooms of their own: no tab bar
+  const bare = $derived(training || base === '/tree' || base === '/play');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const dur = reduce ? 0 : 260;
   const mq = matchMedia('(prefers-color-scheme: dark)');
@@ -62,7 +72,7 @@
 {:else if !app.onboarded}
   <div out:fade={{ duration: dur }}><Onboarding /></div>
 {:else}
-  {#key base === '/tree' ? route.path : base}
+  {#key base === '/tree' || base === '/play' ? route.path : base}
     <div class="page" class:over={training}
       in:fly={{ x: training ? 0 : 28 * route.dir, y: training ? 60 : 0, duration: dur, easing: cubicOut }}
       out:fade={{ duration: dur * 0.5 }}>
@@ -73,6 +83,7 @@
       {:else if base === '/settings'}<Settings />
       {:else if base === '/train'}<Train />
       {:else if base === '/tree'}<Tree />
+      {:else if base === '/play'}<Play />
       {:else}<Today />{/if}
     </div>
   {/key}
@@ -80,10 +91,10 @@
   {#if model.notice && !training}
     <button class="notice" transition:fly={{ y: -40, duration: dur }} onclick={() => (model.notice = '')}>{model.notice}</button>
   {/if}
-  {#if !training}
+  {#if !bare}
     <nav transition:fly={{ y: 90, duration: dur }} aria-label="Main">
       {#each tabs as [href, icon, label]}
-        <button class:on={tabOf(base) === href} onclick={() => go(href)} aria-current={tabOf(base) === href ? 'page' : undefined}>
+        <button class:on={tabOf(base) === href} onclick={() => { buzz(6); go(href); }} aria-current={tabOf(base) === href ? 'page' : undefined}>
           <span class="ico"><Icon name={icon} size={22} /></span>
           <span class="lbl">{label}</span>
         </button>
@@ -113,6 +124,7 @@
     background: var(--bar); border-radius: 26px;
     box-shadow: 0 16px 30px -10px rgba(21, 25, 54, 0.5);
   }
+  nav button:active .ico { transform: scale(0.86); }
   nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: 20px; color: var(--night-ink-2); transition: color 160ms, background 200ms var(--ease); }
   nav .lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
   nav .ico { transition: transform 260ms var(--spring); }

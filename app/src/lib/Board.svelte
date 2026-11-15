@@ -83,6 +83,11 @@
     const y = side === 'w' ? 7 - r : r;
     return `left:${(x + 1) * 12.5}%;top:${y * 12.5}%`;
   });
+  const sq = $derived.by(() => {
+    if (!badge) return '';
+    const f = badge.square.charCodeAt(0) - 97, r = +badge.square[1] - 1;
+    return `left:${(side === 'w' ? f : 7 - f) * 12.5}%;top:${(side === 'w' ? 7 - r : r) * 12.5}%`;
+  });
 </script>
 
 <div class="slab" class:dark data-fen={fen}>
@@ -90,6 +95,8 @@
     <div class="cg-wrap" bind:this={el}></div>
     {#if badge && pos}
       {#key badge.square + badge.glyph + rev}
+        <span class="flash {badge.tone}" style={sq} aria-hidden="true"></span>
+        {#if badge.tone === 'good'}<span class="burst" style={pos} aria-hidden="true">{#each Array(8) as _, i}<i style="--a:{i * 45 + 12}deg"></i>{/each}</span>{/if}
         <span class="badge {badge.tone}" style={pos} aria-hidden="true">{badge.glyph}</span>
       {/key}
     {/if}
@@ -114,6 +121,15 @@
     animation: pop 260ms var(--spring) both; pointer-events: none;
   }
   .badge.good { background: var(--good); }
+  .flash { position: absolute; z-index: 3; width: 12.5%; aspect-ratio: 1; pointer-events: none; opacity: 0; animation: flash 520ms ease-out both; }
+  .flash.good { background: #34e08f; }
+  .flash.bad { background: #ff5a3d; }
+  .flash.warn { background: var(--sun); }
+  @keyframes flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
+  .burst { position: absolute; z-index: 4; width: 0; height: 0; margin: 6px 0 0 -6px; pointer-events: none; }
+  .burst i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--sun); animation: spark 560ms cubic-bezier(0.1, 0.7, 0.3, 1) both; }
+  .burst i:nth-child(odd) { background: #34e08f; }
+  @keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-10px) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-42px) scale(0.3); } }
   .badge.bad { background: var(--bad); border-radius: 9px; }
   .badge.warn { background: var(--sun); color: #3d2800; border-radius: 9px; }
 </style>
