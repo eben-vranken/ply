@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, save } from '../lib/state.svelte';
-  import { chooseStarter, summaries, isFocus, toggleFocus, switchBand, model } from '../lib/model.svelte';
+  import { chooseStarter, summaries, isFocus, toggleFocus, switchBand, model, bandList } from '../lib/model.svelte';
   import OpeningPicker from '../lib/OpeningPicker.svelte';
   import type { Side } from '../lib/chess';
   import { GOALS } from '../lib/game';
@@ -34,7 +34,8 @@
   let picking = $state<(typeof picks)[number] | null>(null);
   const choose = (p: (typeof picks)[number], v: string, path = '') => { app[p.key] = v; app[p.pathKey] = path; };
   // your level, on Lichess's scale (the bands); a synced rating replaces it
-  const LEVELS: [number, string][] = [[1000, 'Beginner'], [1200, '1200'], [1400, '1400'], [1600, '1600'], [1800, '1800'], [2000, '2000+']];
+  // one button per band the opening data has: the lowest is "Beginner", the highest open-ended
+  const LEVELS: [number, string][] = bandList().map((b, i, all) => [b, i === 0 ? 'Beginner' : i === all.length - 1 ? `${b}+` : `${b}`]);
   let level = $state(1200);
   let busy = $state(false);
   async function finish() {
