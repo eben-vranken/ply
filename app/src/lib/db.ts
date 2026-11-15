@@ -1,10 +1,19 @@
-// IndexedDB via Dexie. Schema documented in docs/backup-format.md; every schema
-// change bumps SCHEMA_VERSION and adds a Dexie version() block.
+// IndexedDB via Dexie. Schema documented in docs/backup-format.md.
 import Dexie, { type Table } from 'dexie';
 import type { Card as FsrsCard } from 'ts-fsrs';
 import type { Side } from './chess';
 
-export const SCHEMA_VERSION = 1;
+/** Dexie schema version: every change to the stores bumps it and adds a version() block. */
+export const DB_VERSION = 1;
+/**
+ * Backup file format (docs/backup-format.md, `schemaVersion`): bumps whenever what the
+ * file holds changes shape. Every older version stays importable.
+ * 2: Arcade's miss memory is a `settings` row (key "arcade"); it lived in localStorage before.
+ */
+export const BACKUP_VERSION = 2;
+
+/** Arcade: positions you missed (key → solves still needed) and the ones seen lately. */
+export interface ArcadeMemory { miss: Record<string, number>; recent: string[] }
 
 export type CardType = 'move' | 'punish' | 'danger' | 'puzzle' | 'mistake';
 /** 'extra' is Keep going: graded like Today, but outside the daily review limit */

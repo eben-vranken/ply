@@ -29,6 +29,8 @@ beforeAll(async () => {
     await dbm.db.data.put({ name, bytes: b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), sha256: JSON.parse(manifest).files.find((f: { name: string }) => f.name === name).sha256, version });
   }
   await dbm.db.data.put({ name: 'manifest.json', text: manifest, sha256: '', version });
+  // an install from before backup format 2 kept Arcade's memory in localStorage
+  store.set('ply-arcade-v1', JSON.stringify({ miss: { 'z:legacy': 1 }, recent: ['z:legacy'] }));
   m = await import('./model.svelte');
   await m.boot();
 });
@@ -121,15 +123,31 @@ describe('model on real data', () => {
     expect(m.depthLimit()).toBe(14);
   });
 
+  it("moves Arcade's memory from localStorage into IndexedDB, and a miss is stored there", async () => {
+    expect(m.arcadeMemory().miss['z:legacy']).toBe(1);
+    expect(store.has('ply-arcade-v1')).toBe(false);
+    expect(((await dbm.db.settings.get('arcade'))?.value as { miss: Record<string, number> }).miss['z:legacy']).toBe(1);
+    const a = m.arcade();
+    const it = a.next().find((i) => !i.arcade!.back)!;
+    a.result(it, false);
+    await new Promise((r) => setTimeout(r, 30));
+    const row = (await dbm.db.settings.get('arcade'))?.value as { miss: Record<string, number> };
+    expect(row.miss[it.arcade!.key]).toBeGreaterThanOrEqual(1);
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();
     const n = b.tables.cards.length;
     expect(n).toBeGreaterThan(0);
     expect(b.tables.reviews.length).toBeGreaterThan(0);
+    expect(b.schemaVersion).toBe(dbm.BACKUP_VERSION);
+    expect(b.tables.settings.some((s) => s.key === 'arcade')).toBe(true);
     await dbm.db.cards.clear();
+    await dbm.db.settings.delete('arcade');
     await restoreBackup(parseBackup(JSON.stringify(b)));
     expect(await dbm.db.cards.count()).toBe(n);
+    expect(await dbm.db.settings.get('arcade')).toBeTruthy();
     const again = await makeBackup();
     expect(JSON.stringify(again.tables.cards)).toBe(JSON.stringify(b.tables.cards));
   });

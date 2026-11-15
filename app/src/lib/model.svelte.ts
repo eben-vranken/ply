@@ -2,7 +2,7 @@
 // Big structures live outside $state (they are large and change wholesale);
 // `model.rev` ticks whenever they change, so views re-derive from it.
 import { app, save, onSave, replaceSettings, type Settings } from './state.svelte';
-import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType } from './db';
+import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
@@ -85,6 +85,7 @@ async function loadAll(band: number) {
   cards.clear();
   for (const c of await db.cards.toArray()) cards.set(c.id, c);
   reviewsToday = await db.reviews.where('at').aboveOrEqual(today0()).toArray();
+  await loadArcade();
   regenerate();
   model.status = 'ready';
   bump();
@@ -749,13 +750,31 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
 // An endless stream of single positions that never touches the cards: puzzles from your openings,
 // traps, the mistakes from your games and book moves from your repertoire. It has its own rating,
 // and a position you miss comes back until you get it right (a trap has to be solved twice).
-const ARC = 'ply-arcade-v1';
-interface ArcMem { miss: Record<string, number>; recent: string[] }
-function arcLoad(): ArcMem { try { return { miss: {}, recent: [], ...JSON.parse(localStorage.getItem(ARC) ?? '{}') }; } catch { return { miss: {}, recent: [] }; } }
-function arcSave(m: ArcMem) {
-  const miss = Object.fromEntries(Object.entries(m.miss).slice(-200));
-  try { localStorage.setItem(ARC, JSON.stringify({ miss, recent: m.recent.slice(-600) })); } catch { /* private mode */ }
+// The memory lives in the `settings` table (key "arcade"), so it is in every backup.
+const ARC_KEY = 'arcade';
+/** where the memory lived before backup format 2: outside IndexedDB, and so outside the backup */
+const ARC_LEGACY = 'ply-arcade-v1';
+type ArcMem = ArcadeMemory;
+const emptyArc = (): ArcMem => ({ miss: {}, recent: [] });
+let arcMem: ArcMem = emptyArc();
+async function loadArcade() {
+  const row = await db.settings.get(ARC_KEY);
+  if (row?.value) { arcMem = { ...emptyArc(), ...(row.value as Partial<ArcMem>) }; return; }
+  arcMem = emptyArc();
+  let legacy: string | null = null;
+  try { legacy = localStorage.getItem(ARC_LEGACY); } catch { /* private mode */ }
+  if (!legacy) return;
+  try { arcMem = { ...emptyArc(), ...JSON.parse(legacy) }; } catch { return; }
+  await db.settings.put({ key: ARC_KEY, value: arcMem });
+  try { localStorage.removeItem(ARC_LEGACY); } catch { /* private mode */ }
 }
+function arcLoad(): ArcMem { return structuredClone(arcMem); }
+function arcSave(m: ArcMem) {
+  arcMem = { miss: Object.fromEntries(Object.entries(m.miss).slice(-200)), recent: m.recent.slice(-600) };
+  void db.settings.put({ key: ARC_KEY, value: structuredClone(arcMem) });
+}
+/** The stored Arcade memory (tests, backup checks). */
+export const arcadeMemory = (): ArcMem => structuredClone(arcMem);
 export interface ArcadeResult { clean: boolean; delta: number; rating: number; streak: number; /** it was a position you had missed before */ back: boolean; /** it will come back */ returns: boolean }
 export interface Arcade { next: () => Item[]; result: (it: Item, clean: boolean) => ArcadeResult }
 
@@ -1150,6 +1169,6 @@ export async function resetAllProgress() {
   await db.transaction('rw', [db.cards, db.reviews, db.repertoire, db.games, db.settings], async () => {
     await Promise.all([db.cards.clear(), db.reviews.clear(), db.repertoire.clear(), db.games.clear(), db.settings.clear()]);
   });
-  cards.clear(); rep.clear(); reviewsToday = [];
+  cards.clear(); rep.clear(); reviewsToday = []; arcMem = emptyArc();
 }
 export { hashId, fenOf };

@@ -2,12 +2,17 @@
 
 **Export backup** in Settings writes one JSON file, `ply-backup-YYYY-MM-DD.json`, and hands it to the Android share sheet (plain download where sharing files is not supported). **Import backup** checks the file, asks for confirmation, replaces every user table with its contents and regenerates your lines. The baked opening data is not in the backup; it is downloaded again from the site.
 
-This document is the contract for anything else that reads the file (Construct, scripts). `schemaVersion` changes whenever a Dexie migration changes a table; older backups stay importable.
+This document is the contract for anything else that reads the file (Construct, scripts). `schemaVersion` is the version of this file format: it changes whenever what the file holds changes shape, and every older version stays importable. It is separate from the IndexedDB schema version inside the app.
+
+| schemaVersion | Change |
+| --- | --- |
+| 1 | First format |
+| 2 | Arcade's miss memory is a second `settings` row, `key: "arcade"` (it lived in the browser's localStorage before, outside the backup). A version 1 file restores with an empty Arcade memory |
 
 ```ts
 interface Backup {
   app: 'ply';
-  schemaVersion: 1;
+  schemaVersion: 2;
   exportedAt: string;          // ISO 8601
   dataVersion?: string;        // manifest version the backup was made with
   tables: {
@@ -24,7 +29,22 @@ Dates inside FSRS card objects are ISO strings in the file; every other time is 
 
 ## settings
 
-One row, `key: "app"`, whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+### `key: "app"`
+
+One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+
+### `key: "arcade"`
+
+Arcade's memory, so positions you missed keep coming back after a restore.
+
+```ts
+interface ArcadeMemory {
+  miss: Record<string, number>; // position key → clean solves still needed (traps 2, others 1)
+  recent: string[];             // the last 600 position keys shown, so new ones come first
+}
+```
+
+Position keys are `z:<puzzle id>`, `t:<trap id>`, `k:<mistake card id>` and `m:<side>:<move card id>`.
 
 ## repertoire
 

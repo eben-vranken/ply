@@ -1,6 +1,6 @@
 // Backup export / import (docs/backup-format.md). One JSON file with every
 // user table; the baked opening data is left out and re-downloaded.
-import { db, SCHEMA_VERSION, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow } from './db';
+import { db, BACKUP_VERSION, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow } from './db';
 
 export interface Backup {
   app: 'ply';
@@ -14,13 +14,13 @@ export async function makeBackup(): Promise<Backup> {
   const [settings, repertoire, cards, reviews, games, manifest] = await Promise.all([
     db.settings.toArray(), db.repertoire.toArray(), db.cards.toArray(), db.reviews.toArray(), db.games.toArray(), db.data.get('manifest.json')
   ]);
-  return { app: 'ply', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), dataVersion: manifest?.version, tables: { settings, repertoire, cards, reviews, games } };
+  return { app: 'ply', schemaVersion: BACKUP_VERSION, exportedAt: new Date().toISOString(), dataVersion: manifest?.version, tables: { settings, repertoire, cards, reviews, games } };
 }
 
 export function parseBackup(text: string): Backup {
   const j = JSON.parse(text) as Backup;
   if (j?.app !== 'ply' || typeof j.schemaVersion !== 'number' || !j.tables) throw new Error("That file isn't a Ply backup");
-  if (j.schemaVersion > SCHEMA_VERSION) throw new Error('This backup is from a newer version of Ply');
+  if (j.schemaVersion > BACKUP_VERSION) throw new Error('This backup is from a newer version of Ply');
   for (const k of ['settings', 'repertoire', 'cards', 'reviews', 'games'] as const) if (!Array.isArray(j.tables[k])) throw new Error(`Backup is missing the ${k} table`);
   // JSON turns dates into strings; FSRS wants Dates back
   for (const c of j.tables.cards) {

@@ -29,6 +29,12 @@ Everything in `docs/BRIEF.md` is built. The app runs on real data built by the p
 - **Backup:** export via the share sheet (download fallback), import with confirmation, documented in `docs/backup-format.md`; Reset all progress behind typing RESET.
 - **Tests:** Vitest for chess helpers, line generation, coverage, line grouping, the queue and its limits, grading, FSRS steps, the mistake rule, PGN import, the backup format, and the model end to end on a real data sample with an in-memory IndexedDB. `npm run smoke` plays a session in headless Chromium.
 
+## Trust and table stakes (from November 2026)
+
+Work from build-order steps 1 and 2 of `reports/Ply subscription readiness gaps.md`. Everything here is part of the free tier.
+
+- **Arcade memory in the backup:** the positions Arcade brings back after a miss lived in localStorage, outside IndexedDB and the backup. They are now a `settings` row (`key: "arcade"`), moved over on first launch; backup format 2 (`docs/backup-format.md`).
+
 ## Data build 2026-10 (14 Nov 2026)
 
 | Stage | Result |
