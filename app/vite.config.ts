@@ -20,7 +20,8 @@ export default defineConfig({
         // fullscreen hides Android's status and navigation bars; browsers without it fall back to standalone
         display: 'fullscreen',
         display_override: ['fullscreen', 'standalone'],
-        orientation: 'portrait',
+        // any: the phone follows its own auto-rotate setting; landscape and tablets have their own layouts
+        orientation: 'any',
         start_url: '/ply/',
         scope: '/ply/',
         icons: [

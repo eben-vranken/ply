@@ -26,7 +26,7 @@ Everything below is decided. Change a row here first, then the code.
 
 | Topic | Decision |
 | --- | --- |
-| Platform | Offline-first installable PWA for Android Chrome (Samsung Galaxy S20 FE), designed for the phone in portrait; responsive layouts for landscape, tablets and desktop (DESIGN.md, "Wide screens"). The installed app's manifest still asks for portrait |
+| Platform | Offline-first installable PWA for Android Chrome (Samsung Galaxy S20 FE), designed for the phone in portrait; responsive layouts for landscape, tablets and desktop (DESIGN.md, "Wide screens"). The installed app follows the device's rotation setting |
 | Hosting | GitHub Pages, repo `eben-vranken/ply`, license GPL-3.0 (required by chessground and Stockfish) |
 | Frontend | Svelte 5 + TypeScript + Vite |
 | Board | `@lichess-org/chessground` |

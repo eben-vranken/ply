@@ -60,6 +60,7 @@ The phone in portrait is the design; everything below only adds room around it a
 - **Landscape windows (desktop, tablets and phones on their side):** the trainer and Play it out become two columns: the board on the left, as tall as the window allows, and the name, prompt, move list and actions in a column beside it. Explore puts the board, its name, breadcrumbs and Learn / Drill on the left (held in place while the moves and traps scroll on the right).
 - **A phone on its side (under 540 px tall):** the tab bar becomes a slim rail of icons on the right edge, so it never covers the board.
 - **A tablet held upright:** one column, as on the phone, centred, with the board as large as the height allows.
+- The installed app is not locked to portrait: with auto-rotate off a phone stays upright as before; with it on, the landscape layouts take over.
 - Layout wrappers (`.pane`, `.lab`, `.side`) are `display: contents` on the phone, so the phone's DOM order, spacing and animations are untouched.
 
 ## The game layer
