@@ -135,7 +135,7 @@
         <button class="btn quiet sm" onclick={() => go(`/explore?side=${u.side}&p=${encodeURIComponent(u.path.join(' '))}`)}>Learn from here</button>
       </div>
     {:else}
-      <p class="t-small">{app.username ? 'Every reply your opponents played is in your lines.' : 'Sync your chess.com games to see replies your lines miss.'}</p>
+      <p class="t-small">{app.username || app.lichessUser ? 'Every reply your opponents played is in your lines.' : 'Sync your chess.com or Lichess games to see replies your lines miss.'}</p>
     {/each}
   </div>
 
@@ -155,7 +155,7 @@
         {/each}
       </div>
     {:else}
-      <p class="t-small">{app.username ? 'No mistake cards yet. They appear as your games are analysed.' : 'Add your chess.com username in Settings, or paste PGN there.'}</p>
+      <p class="t-small">{app.username || app.lichessUser ? 'No mistake cards yet. They appear as your games are analysed.' : 'Add your chess.com or Lichess username in Settings, or paste PGN there.'}</p>
     {/each}
   </div>
 

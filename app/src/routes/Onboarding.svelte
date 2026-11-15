@@ -32,6 +32,7 @@
   async function finish() {
     busy = true;
     app.username = app.username.trim();
+    app.lichessUser = app.lichessUser.trim();
     save();
     await chooseStarter();
     // the openings you picked are the ones you are mastering: they feed the daily cards first
@@ -39,7 +40,7 @@
     const pick = (sec: string, name: string) => all.find((o) => o.section === sec && o.path.length && o.family.startsWith(name)) ?? all.find((o) => o.section === sec && o.path.length);
     for (const o of [pick('White', app.white), pick('Black vs 1.e4', app.blackE4), pick('Black vs 1.d4', app.blackD4)]) if (o && !isFocus(o.side, o.path)) toggleFocus(o.side, o.path);
     app.onboarded = true; save();
-    if (app.username) void syncNow();
+    if (app.username || app.lichessUser) void syncNow();
   }
 </script>
 
@@ -93,10 +94,11 @@
           {/each}
         </div>
       {:else}
-        <h1 class="t-title">Your chess.com name</h1>
-        <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Nothing leaves this phone.</p>
-        <input class="name" placeholder="username" bind:value={app.username} autocapitalize="off" autocomplete="off" spellcheck="false" />
-        <p class="t-small" style="margin-top:12px">Leave it empty to start at the 1200 band with 8-move lines.</p>
+        <h1 class="t-title">Your online games</h1>
+        <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Your games are fetched from chess.com or Lichess and analysed on this device; Ply has no server and keeps no account.</p>
+        <input class="name" placeholder="chess.com username" aria-label="chess.com username" bind:value={app.username} autocapitalize="off" autocomplete="off" spellcheck="false" />
+        <input class="name two" placeholder="Lichess username" aria-label="Lichess username" bind:value={app.lichessUser} autocapitalize="off" autocomplete="off" spellcheck="false" />
+        <p class="t-small" style="margin-top:12px">Either or both. Leave them empty to start at the 1200 band with 8-move lines.</p>
       {/if}
     </div>
   {/key}
@@ -104,7 +106,7 @@
   <footer>
     {#if step > 0}<button class="btn quiet" onclick={() => step--} aria-label="Back"><Icon name="back" size={20} /></button>{/if}
     <button class="btn big grow {step === 0 ? 'sun' : ''}" disabled={busy} onclick={() => (step < 3 ? step++ : finish())}>
-      {step === 0 ? 'Set up Ply' : step === 3 ? (app.username ? 'Start training' : 'Skip and start') : 'Continue'}
+      {step === 0 ? 'Set up Ply' : step === 3 ? (app.username || app.lichessUser ? 'Start training' : 'Skip and start') : 'Continue'}
     </button>
   </footer>
 </div>
@@ -147,6 +149,7 @@
   .stepper button { width: 46px; height: 46px; border-radius: 11px; background: var(--card); font-size: 22px; font-weight: 600; box-shadow: 0 2px 0 var(--line); }
   .stepper output { min-width: 54px; text-align: center; font-size: 22px; }
   .name { margin-top: 24px; height: 64px; border-radius: 20px; border: 0; background: var(--card); padding: 0 20px; font-size: 22px; font-weight: 650; width: 100%; user-select: text; box-shadow: var(--shadow); }
+  .name.two { margin-top: 10px; }
   .name:focus { outline: 3px solid var(--cobalt); }
   footer { display: flex; gap: 10px; padding-top: 14px; }
   footer .quiet { min-height: 64px; border-radius: 20px; padding: 0 20px; }

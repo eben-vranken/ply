@@ -1,10 +1,12 @@
-// chess.com sync and on-phone analysis (docs/BRIEF.md, "Mistake import").
+// Game sync from chess.com and Lichess, and the on-phone analysis (docs/BRIEF.md, "Mistake import").
+// Both sources feed the same pipeline: repertoire deviations, uncovered replies, mistake cards.
 import { app, save } from '../state.svelte';
 import { db, type CardRow, type GameRow } from '../db';
 import { archives, monthGames, rapidRating, lastMonths, monthOf, monthStart, windowStart, monthsToSync } from './chesscom';
 import { parsePgn, splitPgns, sideOf, findMistakes, type PlyAnalysis, type ParsedGame } from './mistakes';
 import { Engine } from '../engine/stockfish';
 import { epdOf, hashId, sans, moveOrder, child, START_EPD, turnOf, winPct, type Side } from '../chess';
+import { lichessRapid, lichessGames, lichessRow, SPEEDS } from './lichess';
 import { lines, movesAt, labelOf, lapse, addCards, noteRating, openingAt, data } from '../model.svelte';
 import { moveId } from '../srs/lines';
 import { createEmptyCard } from '../srs/fsrs';
@@ -23,48 +25,84 @@ const CLASS: Record<string, string> = { Rapid: 'rapid', Blitz: 'blitz', Daily: '
 
 
 export async function autoSync() {
-  if (!app.username || Date.now() - app.lastSync < 24 * 36e5) { void analysePending(); return; }
+  if ((!app.username && !app.lichessUser) || Date.now() - app.lastSync < 24 * 36e5) { void analysePending(); return; }
   await syncNow();
 }
 
+/** Sync every source you have a name for: chess.com, then Lichess. */
 export async function syncNow() {
   if (sync.running) return;
-  if (!app.username) { sync.error = 'Add your chess.com username first.'; return; }
-  sync.running = true; sync.error = ''; sync.summary = null; sync.text = 'Reading your chess.com rating';
-  try {
-    const r = await rapidRating(app.username);
-    if (r) await noteRating(r);
-    sync.text = 'Fetching your games';
-    const all = await archives(app.username);
-    // the first sync takes the last three months; later syncs only newer months, never older history
-    if (!app.syncedArchives.length) app.syncFrom = monthOf(lastMonths(all, 3)[0] ?? '') || windowStart();
-    else if (!app.syncFrom) app.syncFrom = windowStart();
-    const months = monthsToSync(all, app.syncedArchives, app.syncFrom);
-    const want = new Set(app.timeClasses.map((c) => CLASS[c]));
-    const fresh: GameRow[] = [];
-    for (const m of months) {
-      for (const g of await monthGames(m)) {
-        if (!g.rated || !want.has(g.time_class) || (g.rules && g.rules !== 'chess')) continue;
-        if (await db.games.get(g.url)) continue;
-        const colour: Side = g.white.username.toLowerCase() === app.username.toLowerCase() ? 'w' : 'b';
-        const me = colour === 'w' ? g.white : g.black;
-        const opp = colour === 'w' ? g.black : g.white;
-        const res = me.result === 'win' ? 'win' : ['agreed', 'repetition', 'stalemate', 'insufficient', '50move', 'timevsinsufficient'].includes(me.result) ? 'draw' : 'loss';
-        fresh.push({ url: g.url, pgn: g.pgn, colour, opponent: opp.username, result: res, date: g.end_time * 1000, timeClass: g.time_class, rating: me.rating, evals: [], analyzed: 0 });
-      }
-    }
-    app.syncedArchives = Array.from(new Set([...app.syncedArchives, ...months.filter((m) => m !== all.at(-1))]));
-    app.lastSync = Date.now();
-    save();
-    const summary = await importGames(fresh);
-    sync.summary = summary;
-    sync.text = '';
-  } catch (e) {
-    sync.error = e instanceof Error ? e.message : 'chess.com could not be reached';
-  } finally {
-    sync.running = false;
-  }
+  if (!app.username && !app.lichessUser) { sync.error = 'Add your chess.com or Lichess username first.'; return; }
+  sync.running = true; sync.error = ''; sync.summary = null;
+  const errors: string[] = [];
+  const total = { imported: 0, lapsed: [] as string[], uncovered: 0, mistakes: 0 };
+  const add = (s: typeof total) => { total.imported += s.imported; total.lapsed.push(...s.lapsed); total.uncovered += s.uncovered; };
+  if (app.username) { try { add(await syncChesscom()); } catch (e) { errors.push(e instanceof Error ? e.message : 'chess.com could not be reached'); } }
+  if (app.lichessUser) { try { add(await syncLichess()); } catch (e) { errors.push(e instanceof Error ? e.message : 'Lichess could not be reached'); } }
+  if (!errors.length || total.imported) { app.lastSync = Date.now(); save(); }
+  sync.summary = total;
+  sync.error = errors.join(' · ');
+  sync.text = '';
+  sync.running = false;
   void analysePending();
+}
+
+async function syncChesscom() {
+  sync.text = 'Reading your chess.com rating';
+  const r = await rapidRating(app.username);
+  if (r) await noteRating(r);
+  sync.text = 'Fetching your games';
+  const all = await archives(app.username);
+  // the first sync takes the last three months; later syncs only newer months, never older history
+  if (!app.syncedArchives.length) app.syncFrom = monthOf(lastMonths(all, 3)[0] ?? '') || windowStart();
+  else if (!app.syncFrom) app.syncFrom = windowStart();
+  const months = monthsToSync(all, app.syncedArchives, app.syncFrom);
+  const want = new Set(app.timeClasses.map((c) => CLASS[c]));
+  const fresh: GameRow[] = [];
+  for (const m of months) {
+    for (const g of await monthGames(m)) {
+      if (!g.rated || !want.has(g.time_class) || (g.rules && g.rules !== 'chess')) continue;
+      if (await db.games.get(g.url)) continue;
+      const colour: Side = g.white.username.toLowerCase() === app.username.toLowerCase() ? 'w' : 'b';
+      const me = colour === 'w' ? g.white : g.black;
+      const opp = colour === 'w' ? g.black : g.white;
+      const res = me.result === 'win' ? 'win' : ['agreed', 'repetition', 'stalemate', 'insufficient', '50move', 'timevsinsufficient'].includes(me.result) ? 'draw' : 'loss';
+      fresh.push({ url: g.url, pgn: g.pgn, colour, opponent: opp.username, result: res, date: g.end_time * 1000, timeClass: g.time_class, rating: me.rating, evals: [], analyzed: 0 });
+    }
+  }
+  app.syncedArchives = Array.from(new Set([...app.syncedArchives, ...months.filter((m) => m !== all.at(-1))]));
+  save();
+  return await importGames(fresh);
+}
+
+/**
+ * Lichess: the public games export, newest first. The first sync takes the last three months; later
+ * syncs only games that started after the newest one already seen. Without a chess.com name, the
+ * Lichess rapid rating sets the band (the brief's chess.com + 350 is Lichess's scale).
+ */
+async function syncLichess() {
+  const user = app.lichessUser;
+  const wait = (ms: number) => (sync.text = `Lichess asked Ply to slow down. Trying again in ${Math.round(ms / 1000)} seconds`);
+  if (!app.username) {
+    sync.text = 'Reading your Lichess rating';
+    const r = await lichessRapid(user, wait);
+    if (r) await noteRating(r - 350);
+  }
+  sync.text = 'Fetching your Lichess games';
+  if (!app.lichessFrom) app.lichessFrom = monthStart(windowStart());
+  const since = Math.max(app.lichessFrom, app.lichessSince + 1);
+  const perfTypes = app.timeClasses.map((c) => SPEEDS[c]).filter(Boolean);
+  const games = await lichessGames(user, { since, rated: true, perfTypes }, (n) => (sync.text = `Fetching your Lichess games · ${n}`), wait);
+  const fresh: GameRow[] = [];
+  for (const g of games) {
+    const row = lichessRow(g, user);
+    if (row && !(await db.games.get(row.url))) fresh.push(row);
+  }
+  // the export is newest first; next time only games after the newest one seen
+  const newest = Math.max(app.lichessSince, ...games.map((g) => g.createdAt));
+  app.lichessSince = newest;
+  save();
+  return await importGames(fresh);
 }
 
 /** Paste PGN fallback: one or many games, same analysis. */
@@ -73,7 +111,7 @@ export async function importPgn(text: string, colour: Side | 'auto'): Promise<nu
   for (const p of splitPgns(text)) {
     const g = parsePgn(p);
     if (!g || !g.moves.length) continue;
-    const side = colour === 'auto' ? (app.username ? sideOf(g, app.username) : null) : colour;
+    const side = colour === 'auto' ? (app.username ? sideOf(g, app.username) : null) ?? (app.lichessUser ? sideOf(g, app.lichessUser) : null) : colour;
     if (!side) throw new Error('Pick the side you played: your username is not in these games');
     if (await db.games.get(g.url)) continue;
     const me = side === 'w' ? '1-0' : '0-1';
@@ -124,7 +162,7 @@ async function dropOutsideWindow() {
   if (!app.syncFrom && app.syncedArchives.length) { app.syncFrom = windowStart(); save(); }
   if (!app.syncFrom) return;
   const from = monthStart(app.syncFrom);
-  const old = await db.games.where('analyzed').equals(0).filter((g) => g.date < from && g.timeClass !== 'pasted').primaryKeys();
+  const old = await db.games.where('analyzed').equals(0).filter((g) => g.date < from && g.url.includes('chess.com/')).primaryKeys();
   if (old.length) await db.games.bulkDelete(old);
 }
 

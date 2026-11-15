@@ -4,7 +4,8 @@ const KEY = 'ply-state-v1';
 
 const defaults = {
   onboarded: false,
-  username: '',
+  username: '', // chess.com
+  lichessUser: '',
   white: 'Italian Game',
   blackE4: '1...e5',
   blackD4: "Queen's Gambit Declined",
@@ -54,6 +55,8 @@ const defaults = {
   lastBackup: 0,
   lastSync: 0,
   syncedArchives: [] as string[],
+  lichessFrom: 0, // ms: the oldest Lichess game Ply imports (three months back from the first sync)
+  lichessSince: 0, // ms: start time of the newest Lichess game seen; later syncs fetch only newer ones
   syncFrom: '' // 'YYYY/MM': the oldest chess.com month Ply imports (three months back from the first sync)
 };
 export type Settings = typeof defaults;

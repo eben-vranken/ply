@@ -51,6 +51,8 @@ export async function studyPgn(input: string, onWait?: (ms: number) => void): Pr
 }
 
 // ---------------------------------------------------------------- players and games
+import type { GameRow } from '../db';
+import type { Side } from '../chess';
 export interface LichessGame {
   id: string;
   rated: boolean;
@@ -86,6 +88,23 @@ export function gamesQuery(q: GameQuery): string {
   if (q.perfTypes?.length) p.set('perfType', q.perfTypes.join(','));
   if (q.max) p.set('max', String(q.max));
   return p.toString();
+}
+
+/** Lichess speeds for the time classes in Settings. */
+export const SPEEDS: Record<string, string> = { Rapid: 'rapid', Blitz: 'blitz', Daily: 'correspondence', Classical: 'classical', Bullet: 'bullet' };
+
+/** A Lichess game as a stored game: null for other variants and games without the player or moves. */
+export function lichessRow(g: LichessGame, user: string): GameRow | null {
+  if (g.variant !== 'standard' || !g.pgn) return null;
+  const me = user.toLowerCase();
+  const colour: Side | null = g.players.white.user?.id === me ? 'w' : g.players.black.user?.id === me ? 'b' : null;
+  if (!colour) return null;
+  const opp = colour === 'w' ? g.players.black : g.players.white;
+  const result = !g.winner ? 'draw' : (g.winner === 'white') === (colour === 'w') ? 'win' : 'loss';
+  return {
+    url: `${LICHESS}/${g.id}`, pgn: g.pgn, colour, opponent: opp.user?.name ?? 'Anonymous', result, date: g.lastMoveAt || g.createdAt,
+    timeClass: g.speed === 'correspondence' ? 'daily' : g.speed, rating: (colour === 'w' ? g.players.white : g.players.black).rating, evals: [], analyzed: 0
+  };
 }
 
 /** A player's games, newest first, read line by line as Lichess streams them. */

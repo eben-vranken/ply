@@ -180,6 +180,43 @@ describe('model on real data', () => {
     expect(it.replace(/\s+/g, ' ')).toMatch(/1\. e4 e5 2\. Nf3 Nc6 3\. Bc4/);
   });
 
+  it('syncs Lichess games through the same pipeline as chess.com', async () => {
+    const { app } = await import('./state.svelte');
+    const { syncNow, sync } = await import('./import/sync.svelte');
+    const now = Date.now();
+    const game = (id: string, moves: string, at: number) => ({ id, rated: true, variant: 'standard', speed: 'rapid', createdAt: at, lastMoveAt: at, status: 'resign', winner: 'white',
+      players: { white: { user: { name: 'Me', id: 'me' }, rating: 1500 }, black: { user: { name: 'Them', id: 'them' }, rating: 1500 } }, pgn: `[White "Me"]
+[Black "Them"]
+
+${moves} 1-0` });
+    const asked: string[] = [];
+    const fetchStub = async (u: string) => {
+      asked.push(u);
+      if (u.includes('/api/user/')) return new Response(JSON.stringify({ perfs: { rapid: { rating: 1550, games: 40 } } }));
+      // 1.e4 a6 is not in your lines: an uncovered reply
+      return new Response([game('g1', '1. e4 a6 2. d4', now - 864e5), game('g2', '1. e4 e5 2. Nf3', now - 2 * 864e5)].map((x) => JSON.stringify(x)).join('\n'));
+    };
+    const real = globalThis.fetch;
+    globalThis.fetch = fetchStub as typeof fetch;
+    try {
+      app.username = ''; app.lichessUser = 'Me';
+      await syncNow();
+    } finally { globalThis.fetch = real; }
+    expect(asked[0]).toContain('/api/user/Me');
+    expect(asked[1]).toContain('/api/games/user/Me?');
+    expect(asked[1]).toContain('rated=true');
+    expect(sync.summary!.imported).toBe(2);
+    const g1 = await dbm.db.games.get('https://lichess.org/g1');
+    expect(g1?.colour).toBe('w');
+    expect(g1?.uncovered).toEqual(['e2e4', 'a7a6']);
+    expect(app.lichessSince).toBe(now - 864e5);
+    // the next sync asks only for newer games
+    globalThis.fetch = fetchStub as typeof fetch;
+    try { asked.length = 0; await syncNow(); } finally { globalThis.fetch = real; }
+    expect(asked.find((u) => u.includes('/games/'))).toContain(`since=${now - 864e5 + 1}`);
+    app.lichessUser = '';
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();

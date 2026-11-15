@@ -59,7 +59,7 @@
   let pgn = $state('');
   let pasteSide = $state<'auto' | 'w' | 'b'>('auto');
   const say = (s: string) => { status = s; setTimeout(() => (status = ''), 3600); };
-  function syncClick() { if (!app.username) return say('Add your chess.com username first.'); void syncNow(); }
+  function syncClick() { if (!app.username && !app.lichessUser) return say('Add your chess.com or Lichess username first.'); void syncNow(); }
   async function exportBackup() {
     if (await shareBackup(await makeBackup())) { app.lastBackup = Date.now(); save(); say('Backup exported.'); }
   }
@@ -141,9 +141,11 @@
     </section>
   {/each}
 
-  <div class="sect"><h2 class="t-head">chess.com</h2></div>
+  <div class="sect"><h2 class="t-head">Your games</h2></div>
   <section class="card rows">
-    <label class="r"><p class="lb grow">Username</p><input class="txt" placeholder="not set" bind:value={app.username} onchange={save} autocapitalize="off" autocomplete="off" spellcheck="false" /></label>
+    <p class="t-small intro">Ply fetches your games when you open it once a day or tap Sync now, and analyses them on this device. Nothing else is sent.</p>
+    <label class="r"><p class="lb grow">chess.com</p><input class="txt" placeholder="username" bind:value={app.username} onchange={save} autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="chess.com username" /></label>
+    <label class="r"><p class="lb grow">Lichess</p><input class="txt" placeholder="username" bind:value={app.lichessUser} onchange={() => { app.lichessUser = app.lichessUser.trim(); save(); }} autocapitalize="off" autocomplete="off" spellcheck="false" aria-label="Lichess username" /></label>
     <div class="r">
       <p class="lb grow">Time classes</p>
       <div class="pick">{#each classes as c}<button class:on={app.timeClasses.includes(c)} aria-pressed={app.timeClasses.includes(c)} onclick={() => flip(c)}>{c}</button>{/each}</div>

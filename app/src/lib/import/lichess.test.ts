@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { studyRef, lichessFetch, studyPgn, gamesQuery, lichessGames, RETRY_AFTER_429 } from './lichess';
+import { studyRef, lichessFetch, studyPgn, gamesQuery, lichessGames, lichessRow, RETRY_AFTER_429, type LichessGame } from './lichess';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -48,5 +48,20 @@ describe('requests to Lichess', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(lines)));
     const gs = await lichessGames('someone', {});
     expect(gs.map((g) => g.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('Lichess games as stored games', () => {
+  const g: LichessGame = { id: 'abcdefgh', rated: true, variant: 'standard', speed: 'rapid', createdAt: 1000, lastMoveAt: 2000, status: 'mate', winner: 'black',
+    players: { white: { user: { name: 'Alice', id: 'alice' }, rating: 1500 }, black: { user: { name: 'Bob', id: 'bob' }, rating: 1600 } }, pgn: '1. e4 e5 *' };
+  it('finds your colour, the result and the opponent', () => {
+    expect(lichessRow(g, 'Bob')).toMatchObject({ url: 'https://lichess.org/abcdefgh', colour: 'b', opponent: 'Alice', result: 'win', rating: 1600, date: 2000, timeClass: 'rapid', analyzed: 0 });
+    expect(lichessRow(g, 'alice')!.result).toBe('loss');
+    expect(lichessRow({ ...g, winner: undefined }, 'alice')!.result).toBe('draw');
+    expect(lichessRow({ ...g, speed: 'correspondence' }, 'alice')!.timeClass).toBe('daily');
+  });
+  it('skips other variants and games you are not in', () => {
+    expect(lichessRow({ ...g, variant: 'chess960' }, 'alice')).toBe(null);
+    expect(lichessRow(g, 'carol')).toBe(null);
   });
 });

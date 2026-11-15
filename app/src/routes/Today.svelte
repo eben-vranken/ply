@@ -257,7 +257,7 @@
         <span><i style="background:var(--birch-3)"></i>After move 15 <b>{fmt(stats.avg15)}</b></span>
       </div>
     {:else}
-      <p class="t-small empty">{app.username ? 'Appears once a few of your games are analysed.' : 'Add your chess.com name in Settings to see how you leave the opening.'}</p>
+      <p class="t-small empty">{app.username || app.lichessUser ? 'Appears once a few of your games are analysed.' : 'Add your chess.com or Lichess name in Settings to see how you leave the opening.'}</p>
     {/if}
   </section>
 </div>

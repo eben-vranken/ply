@@ -189,7 +189,7 @@
           <span><i style="background:var(--line)"></i>Rapid <b>{g.rating.at(-1) ?? (app.rating || '—')}</b></span>
         </div>
       {:else}
-        <p class="t-small">{app.username ? 'Shows up once your games are analysed.' : 'Add your chess.com username in Settings to chart your games.'}</p>
+        <p class="t-small">{app.username || app.lichessUser ? 'Shows up once your games are analysed.' : 'Add your chess.com or Lichess username in Settings to chart your games.'}</p>
       {/if}
     </section>
   {/if}

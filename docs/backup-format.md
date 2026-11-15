@@ -33,7 +33,7 @@ Dates inside FSRS card objects are ISO strings in the file; every other time is 
 
 ### `key: "app"`
 
-One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `autoNext`, `storageNoteSeen` (Safari's 7-day storage rule was explained), the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `autoNext`, `storageNoteSeen` (Safari's 7-day storage rule was explained), the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username` (chess.com), `lichessUser`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `syncFrom`, `lichessFrom` and `lichessSince` (ms: the Lichess import window and the newest Lichess game seen), `extraNew`, `extraDay`).
 
 ### `key: "arcade"`
 
@@ -132,13 +132,13 @@ Files written while the Keep going mode existed (November 2026) can hold `mode: 
 
 ```ts
 interface GameRow {
-  url: string;                      // chess.com game URL, or 'pgn:<hash>' for pasted games
+  url: string;                      // chess.com or Lichess game URL, or 'pgn:<hash>' for pasted games
   pgn: string;
   colour: 'w' | 'b';
   opponent: string;
   result: 'win' | 'loss' | 'draw';
   date: number;
-  timeClass: string;                // rapid, blitz, daily, pasted
+  timeClass: string;                // rapid, blitz, daily, pasted; Lichess also classical, bullet
   rating?: number;                  // your rating in that game
   evals: (number | null)[];         // per ply, cp from White, null where not analysed
   analyzed: 0 | 1;
