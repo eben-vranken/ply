@@ -2,7 +2,7 @@
   import { app, save, DEFAULTS, resetSettings } from '../lib/state.svelte';
   import { summaries, isFocus, toggleFocus } from '../lib/model.svelte';
   import { GOALS } from '../lib/game';
-  import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress } from '../lib/model.svelte';
+  import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress, bandList } from '../lib/model.svelte';
   import { db } from '../lib/db';
   import { makeBackup, parseBackup, restoreBackup, shareBackup, type Backup } from '../lib/backup';
   import { sync, syncNow, importPgn, filtersChanged } from '../lib/import/sync.svelte';
@@ -27,7 +27,7 @@
     ['Lines', [
       { k: 'depth', label: 'Line depth', hint: 'Your moves per line', min: 3, max: 20, step: 1, fmt: (v) => (v < 4 ? `Auto · ${depthLimit()}` : `${v}`) },
       { k: 'replyPct', label: 'Opponent reply threshold', min: 1, max: 10, step: 1, fmt: (v) => `${v}%` },
-      { k: 'band', label: 'Rating band', hint: 'Auto is chess.com rapid + 350. A set band is locked', min: 800, max: 2000, step: 200, fmt: (v) => (v < 1000 ? `Auto · ${app.autoBand}` : `${v}`) }
+      { k: 'band', label: 'Rating band', hint: 'Auto is chess.com rapid + 350. A set band is locked', min: 800, max: 3000, step: 200, fmt: (v) => (v < 1000 ? `Auto · ${app.autoBand}` : `${v}`) }
     ]],
     ['Board and appearance', [{ k: 'delay', label: 'Opponent move delay', min: 0, max: 1500, step: 100, fmt: (v) => `${v} ms` }]]
   ];
@@ -36,6 +36,8 @@
     app[n.k] = Math.min(n.max, Math.max(n.min, app[n.k] + d * n.step));
     if (n.k === 'depth' && app.depth < 4) app.depth = d > 0 ? 4 : 3;
     if (n.k === 'band' && app.band < 1000) app.band = d > 0 ? 1000 : 800;
+    // only the bands the opening data has
+    if (n.k === 'band' && app.band >= 1000) app.band = Math.min(app.band, Math.max(...bandList()));
     save(); buzz(8);
     // limits rebuild today's queue at once; line settings regenerate the lines
     if (n.k === 'depth' || n.k === 'replyPct') { clearTimeout(regenTimer); regenTimer = setTimeout(regenerate, 350); }

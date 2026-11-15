@@ -218,6 +218,42 @@ impl Read for ChanReader {
     }
 }
 
+/// Several zstd files read one after another as one text; each is opened only when the one before it
+/// ends, so a stream that stops early never touches the rest. A blank line goes between them.
+pub fn zstd_chain(srcs: Vec<String>, progress: Progress) -> Result<Box<dyn Read + Send>> {
+    let mut it = srcs.into_iter();
+    let first = it.next().context("no source")?;
+    eprintln!("  reading {first}");
+    Ok(Box::new(Chain { cur: zstd_text(&first, progress.clone())?, rest: it, progress, gap: false }))
+}
+struct Chain {
+    cur: Box<dyn Read + Send>,
+    rest: std::vec::IntoIter<String>,
+    progress: Progress,
+    gap: bool,
+}
+impl Read for Chain {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        loop {
+            if self.gap {
+                self.gap = false;
+                if buf.len() >= 2 {
+                    buf[..2].copy_from_slice(b"\n\n");
+                    return Ok(2);
+                }
+            }
+            let n = self.cur.read(buf)?;
+            if n > 0 || buf.is_empty() {
+                return Ok(n);
+            }
+            let Some(next) = self.rest.next() else { return Ok(0) };
+            eprintln!("  reading {next}");
+            self.cur = zstd_text(&next, self.progress.clone()).map_err(|e| io::Error::other(e.to_string()))?;
+            self.gap = true;
+        }
+    }
+}
+
 pub fn text(src: &str) -> Result<String> {
     if src.starts_with("http") {
         let mut s = String::new();

@@ -34,6 +34,15 @@ Each stage's result is cached, so a stopped build continues where it left off. D
 - **Traps.** For every move with frequency ≥ 3% and win% loss ≥ 15 (Lichess formula): a Punish card after the move; with frequency ≥ 5%, also a Danger card before it. A Punish answer follows the engine line while the punishing side's moves stay forcing (captures and checks), up to 3 moves.
 - **Size budget.** If a band's tree is over 25 MB gzipped, it is cut again at 100 games, then doubled until it fits.
 
+## Higher bands
+
+```
+cargo run --release -- build --month 2026-10 --extra-months 2026-09,2026-08 \
+  --bands 1000,1200,1400,1600,1800,2000,2200,2400 --keep-downloads cache/downloads
+```
+
+`--bands` takes any list of Lichess-rating bands (each counts games where both players are within band−100 … band+99). Bands already counted in the cache (`raw-<band>.json.gz`) are not counted again, so adding 2200 streams games for 2200 only; its new positions are looked up in the eval database without redoing the others (`evals-db.done` lists the bands joined). High-rated games are rare, so `--extra-months` carries the stream on into older months, each opened only when the one before runs out. The manifest lists the bands built and the app offers exactly those.
+
 ## Counting positions
 
 ```

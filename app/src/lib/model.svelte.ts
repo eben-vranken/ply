@@ -42,7 +42,10 @@ export const allCards = () => cards;
 export const getCtx = () => ctx;
 
 // ---------------------------------------------------------------- settings
-export const bandFor = (rating: number) => BANDS.reduce((best, b) => (Math.abs(b - (rating + 350)) < Math.abs(best - (rating + 350)) ? b : best), BANDS[0]);
+/** The bands the data has (the manifest lists them; higher bands appear once the pipeline builds them). */
+let bandsHere: number[] = BANDS;
+export const bandList = () => bandsHere;
+export const bandFor = (rating: number) => bandsHere.reduce((best, b) => (Math.abs(b - (rating + 350)) < Math.abs(best - (rating + 350)) ? b : best), bandsHere[0]);
 export const currentBand = () => (app.band >= 1000 ? app.band : app.autoBand || 1200);
 export function depthLimit(): number {
   if (app.depth >= 4) return app.depth;
@@ -76,6 +79,7 @@ async function loadAll(band: number) {
   model.status = 'downloading';
   model.progress = 0;
   model.version = await ensureFiles(band, (d, t) => (model.progress = t ? d / t : 0));
+  try { const m = JSON.parse((await db.data.get('manifest.json'))?.text ?? '{}'); if (Array.isArray(m.bands) && m.bands.length) bandsHere = m.bands; } catch { /* keep the defaults */ }
   model.status = 'loading';
   D = await loadBand(band);
   model.band = band;

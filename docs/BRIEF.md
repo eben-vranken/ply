@@ -36,7 +36,7 @@ Everything below is decided. Change a row here first, then the code.
 | Storage | IndexedDB via Dexie |
 | Data pipeline | Rust CLI (`shakmaty`, `pgn-reader`, `zstd`) run on the desktop; native Stockfish 17 for gaps |
 | Opening data | Lichess `chess-openings` (names, ECO), Lichess game database (frequencies), Lichess evaluation database (evals), Lichess puzzle database (traps). All CC0 |
-| Rating bands | Lichess bands 1000, 1200, 1400, 1600, 1800, 2000. Your band = chess.com rapid rating + 350, rounded to the nearest band |
+| Rating bands | Lichess bands 1000, 1200, 1400, 1600, 1800, 2000 (the pipeline can add higher bands; the app offers whatever the manifest lists). Your band = chess.com rapid rating + 350, rounded to the nearest band |
 | Your moves (default) | Per position: the most-played move at your band whose eval is within 30 centipawns of the best move |
 | Opponent moves | Every reply with at least 3% frequency at your band, minimum 50 games |
 | Line depth | Auto by chess.com rapid rating: under 1000 → 8 of your moves, 1000–1299 → 10, 1300–1599 → 12, 1600+ → 14 |

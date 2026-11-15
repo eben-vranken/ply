@@ -66,6 +66,19 @@ Distinct positions across the six band trees, deduplicated by EPD (the FEN witho
 
 Per band: 47,054 (1000) · 50,720 (1200) · 53,976 (1400) · 57,129 (1600) · 62,116 (1800) · 68,214 (2000).
 
+### Higher bands (pipeline support only; nothing downloaded or built)
+
+`ply-data build --bands … --extra-months …` (pipeline/README.md, "Higher bands") builds bands above 2000 from the same CC0 Lichess game dumps; the app reads the band list from the manifest. Tested on the local 60 MB slice of the October dump: only the new bands were counted, only their new positions went to the eval lookup, and the stream carried on into a second file.
+
+What a real build would take, estimated from that slice (192,720 games: 2.2 % qualify for 2200, both players 2100–2299 at 3+ minutes; 0.46 % for 2400) and from Lichess's published sizes (October 2026: 95.4M games, 31.0 GB; September 89.6M, 29.2 GB; August 91.9M, 30.1 GB). The slice is the first hours of one month, so the rates are rough.
+
+| Band | Games to 3M | Dumps to read | Download | Time at the October build's pace (2.2M games/min) |
+| --- | --- | --- | --- | --- |
+| 2200 | about 138M | October and about half of September | about 4 GB more of October (26.8 GB are cached) and 14 GB of September | about 65 min, plus the eval lookup over the cached 22.5 GB eval database |
+| 2400 | about 650M | about seven months | about 210 GB | about 5 hours |
+
+A 2400 band capped at what three months give (about 1.26M games, `--max-games 1200000`) needs about 90 GB and 2 hours; a smaller tree, but it would be built from more games than the 1000–2000 bands' prune threshold needs. Not run: it needs your go-ahead.
+
 ## Data build 2026-10 (14 Nov 2026)
 
 | Stage | Result |

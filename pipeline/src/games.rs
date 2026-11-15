@@ -19,13 +19,14 @@ use std::ops::ControlFlow;
 use std::sync::atomic::Ordering;
 use std::time::Instant;
 
+/// The bands the app ships by default. `ply-data build --bands` takes any list, e.g. adding 2200 and 2400.
 pub const BANDS: [u32; 6] = [1000, 1200, 1400, 1600, 1800, 2000];
 pub const PLIES: usize = 40;
 const BUCKET: u64 = 300_000;
 
-/// Band for a pair of ratings: both must sit in band−100 … band+99.
-pub fn band_of(white: u32, black: u32) -> Option<usize> {
-    BANDS.iter().position(|&b| (b - 100..=b + 99).contains(&white) && (b - 100..=b + 99).contains(&black))
+/// Band (index into `bands`) for a pair of ratings: both must sit in band−100 … band+99.
+pub fn band_of(bands: &[u32], white: u32, black: u32) -> Option<usize> {
+    bands.iter().position(|&b| (b - 100..=b + 99).contains(&white) && (b - 100..=b + 99).contains(&black))
 }
 
 /// "600+5" → estimated duration base + 40 × increment, in seconds. "-" is correspondence.
@@ -61,7 +62,8 @@ pub struct Game {
 }
 
 pub struct Filter {
-    pub full: [bool; 6],
+    pub bands: Vec<u32>,
+    pub full: Vec<bool>,
 }
 
 impl Visitor for Filter {
@@ -98,7 +100,7 @@ impl Visitor for Filter {
         if !t.rated || t.result == 0 || t.tc < 180 {
             return ControlFlow::Break(None);
         }
-        match band_of(t.white, t.black) {
+        match band_of(&self.bands, t.white, t.black) {
             Some(b) if !self.full[b] => ControlFlow::Continue(Moves { band: b, result: t.result, pos: Chess::default(), path: Vec::with_capacity(PLIES) }),
             _ => ControlFlow::Break(None),
         }
@@ -275,13 +277,13 @@ pub struct StreamOpts {
     pub limit_games: u64,
 }
 
-/// Stream all games once, filling every band until it is full.
-pub fn count(src: &str, opts: &StreamOpts) -> Result<Vec<Counts>> {
+/// Stream all games once, filling every band until it is full (or the file ends).
+pub fn count(srcs: &[String], opts: &StreamOpts, band_list: &[u32]) -> Result<Vec<Counts>> {
     let progress = Progress::default();
-    let input = source::zstd_text(src, progress.clone())?;
+    let input = source::zstd_chain(srcs.to_vec(), progress.clone())?;
     let mut reader = Reader::new(input);
-    let mut bands: Vec<Counts> = (0..BANDS.len()).map(|_| Counts::default()).collect();
-    let mut filter = Filter { full: [false; 6] };
+    let mut bands: Vec<Counts> = (0..band_list.len()).map(|_| Counts::default()).collect();
+    let mut filter = Filter { bands: band_list.to_vec(), full: vec![false; band_list.len()] };
     let t0 = Instant::now();
     let mut seen: u64 = 0;
     let mut last_report = Instant::now();
@@ -333,12 +335,17 @@ mod tests {
 
     #[test]
     fn band_windows() {
-        assert_eq!(band_of(1150, 1290), Some(1)); // 1200 band: 1100–1299
-        assert_eq!(band_of(1099, 1100), None); // straddles 1000 and 1200
-        assert_eq!(band_of(900, 1099), Some(0));
-        assert_eq!(band_of(2099, 1900), Some(5));
-        assert_eq!(band_of(2100, 2100), None);
-        assert_eq!(band_of(899, 950), None);
+        assert_eq!(band_of(&BANDS, 1150, 1290), Some(1)); // 1200 band: 1100–1299
+        assert_eq!(band_of(&BANDS, 1099, 1100), None); // straddles 1000 and 1200
+        assert_eq!(band_of(&BANDS, 900, 1099), Some(0));
+        assert_eq!(band_of(&BANDS, 2099, 1900), Some(5));
+        assert_eq!(band_of(&BANDS, 2100, 2100), None);
+        assert_eq!(band_of(&BANDS, 899, 950), None);
+        // higher bands work the same way
+        let high = [2200, 2400, 2600];
+        assert_eq!(band_of(&high, 2150, 2299), Some(0));
+        assert_eq!(band_of(&high, 2450, 2400), Some(1));
+        assert_eq!(band_of(&high, 2299, 2300), None);
     }
 
     #[test]
@@ -351,7 +358,7 @@ mod tests {
 
     fn games(pgn: &str) -> Vec<Game> {
         let mut r = Reader::new(std::io::Cursor::new(pgn.as_bytes().to_vec()));
-        let mut f = Filter { full: [false; 6] };
+        let mut f = Filter { bands: BANDS.to_vec(), full: vec![false; BANDS.len()] };
         let mut out = vec![];
         while let Some(g) = r.read_game(&mut f).unwrap() {
             if let Some(g) = g {

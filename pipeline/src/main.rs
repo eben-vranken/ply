@@ -64,6 +64,10 @@ struct Build {
     /// Override the game source (path or URL)
     #[arg(long)]
     games: Option<String>,
+    /// More months (YYYY-MM) or game files to read, in order, when the first runs out before every band
+    /// is full: the rarer high-rated bands need more than one month
+    #[arg(long, value_delimiter = ',')]
+    extra_months: Vec<String>,
     /// Override the eval DB source (path or URL)
     #[arg(long)]
     evals: Option<String>,
@@ -83,6 +87,10 @@ struct Build {
     sf_procs: usize,
     #[arg(long, default_value_t = 3_000_000)]
     max_games: u64,
+    /// Rating bands to build (Lichess ratings; each takes games where both players are within band−100 … band+99).
+    /// Bands already counted in the cache are not counted again.
+    #[arg(long, value_delimiter = ',', default_value = "1000,1200,1400,1600,1800,2000")]
+    bands: Vec<u32>,
     /// Stop the game stream after this many games (testing)
     #[arg(long, default_value_t = 0)]
     limit_games: u64,
@@ -146,17 +154,22 @@ fn build(b: Build) -> Result<()> {
     // 2–3. frequencies and pruning
     eprintln!("[2/6] game frequencies ({games_src})");
     let raw_path = |band: u32| b.cache.join(format!("raw-{band}.json.gz"));
-    if !games::BANDS.iter().all(|&band| raw_path(band).exists()) {
-        let counts = games::count(&games_src, &games::StreamOpts { max_per_band: b.max_games, limit_games: b.limit_games })?;
+    // only the bands not counted yet go through the game stream
+    let todo: Vec<u32> = b.bands.iter().copied().filter(|&band| !raw_path(band).exists()).collect();
+    if !todo.is_empty() {
+        eprintln!("  counting bands {todo:?}");
+        let month_url = |m: &str| if m.contains('/') || m.contains('\\') || m.ends_with(".zst") { m.to_string() } else { format!("https://database.lichess.org/standard/lichess_db_standard_rated_{m}.pgn.zst") };
+        let srcs: Vec<String> = std::iter::once(games_src.clone()).chain(b.extra_months.iter().map(|m| month_url(m))).collect();
+        let counts = games::count(&srcs, &games::StreamOpts { max_per_band: b.max_games, limit_games: b.limit_games }, &todo)?;
         for (i, c) in counts.iter().enumerate() {
-            let band = games::BANDS[i];
+            let band = todo[i];
             let raw = games::rebuild(c, b.min_games, b.min_edge);
             eprintln!("  band {band}: {} games, {} nodes", c.games, raw.len());
             write_gz_json(&raw_path(band), &raw)?;
         }
     }
     let mut raws = Vec::new();
-    for &band in &games::BANDS {
+    for &band in &b.bands {
         let r: Vec<games::RawNode> = read_gz_json(&raw_path(band))?;
         raws.push(r);
     }
@@ -174,13 +187,25 @@ fn build(b: Build) -> Result<()> {
     let sf_cache = b.cache.join("evals-sf.jsonl");
     let mut ev = evals::Evals::default();
     evals::load_cache(&db_cache, &mut ev)?;
+    // the done file lists the bands whose positions went through the eval DB (empty: the first six)
+    let joined: Vec<u32> = match std::fs::read_to_string(&db_done) {
+        Ok(s) if s.trim().is_empty() => games::BANDS.to_vec(),
+        Ok(s) => s.split(',').filter_map(|x| x.trim().parse().ok()).collect(),
+        Err(_) => Vec::new(),
+    };
     if !db_done.exists() {
         // restart the join from scratch (the cache may hold a partial pass)
         ev.clear();
         let _ = std::fs::remove_file(&db_cache);
         evals::join_db(&evals_src, &need, &db_cache, &mut ev)?;
-        std::fs::write(&db_done, "")?;
+    } else if b.bands.iter().any(|band| !joined.contains(band)) {
+        // new bands: look up only their positions that have no eval yet (appended to the cache)
+        let fresh: AHashSet<String> = need.iter().filter(|e| !ev.contains_key(*e)).cloned().collect();
+        eprintln!("  {} new positions to look up in the eval DB", fresh.len());
+        evals::join_db(&evals_src, &fresh, &db_cache, &mut ev)?;
     }
+    let all: Vec<String> = joined.iter().chain(b.bands.iter()).copied().collect::<std::collections::BTreeSet<u32>>().iter().map(|x| x.to_string()).collect();
+    std::fs::write(&db_done, all.join(","))?;
     evals::load_cache(&sf_cache, &mut ev)?;
     let mut missing: Vec<String> = need.iter().filter(|e| !ev.contains_key(*e)).cloned().collect();
     // most-reached positions first, so a stopped run has the important ones
@@ -198,7 +223,7 @@ fn build(b: Build) -> Result<()> {
     let mut files = Vec::new();
     files.push(emit::write(&b.out, "openings.json", &serde_json::to_vec(&ops)?)?);
     for (i, raw) in raws.iter().enumerate() {
-        let band = games::BANDS[i];
+        let band = b.bands[i];
         let mut min = b.min_games;
         let mut cut = raw.clone();
         loop {
@@ -234,7 +259,7 @@ fn build(b: Build) -> Result<()> {
 
     // 10. manifest
     eprintln!("[6/6] manifest");
-    let m = emit::Manifest { version: version.clone(), month: b.month.clone(), built: chrono_now(), bands: games::BANDS.to_vec(), files };
+    let m = emit::Manifest { version: version.clone(), month: b.month.clone(), built: chrono_now(), bands: b.bands.clone(), files };
     std::fs::write(b.out.join("manifest.json"), serde_json::to_vec_pretty(&m)?)?;
     eprintln!("done: data version {version} in {:.1} min", t0.elapsed().as_secs_f64() / 60.0);
     Ok(())
