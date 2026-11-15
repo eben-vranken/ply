@@ -4,13 +4,14 @@ import type { Card as FsrsCard } from 'ts-fsrs';
 import type { Side } from './chess';
 
 /** Dexie schema version: every change to the stores bumps it and adds a version() block. */
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 /**
  * Backup file format (docs/backup-format.md, `schemaVersion`): bumps whenever what the
  * file holds changes shape. Every older version stays importable.
  * 2: Arcade's miss memory is a `settings` row (key "arcade"); it lived in localStorage before.
+ * 3: the `book` table: opponent replies you added yourself (imported PGN, Explore).
  */
-export const BACKUP_VERSION = 2;
+export const BACKUP_VERSION = 3;
 
 /** Arcade: positions you missed (key → solves still needed) and the ones seen lately. */
 export interface ArcadeMemory { miss: Record<string, number>; recent: string[] }
@@ -81,6 +82,13 @@ export interface RepRow {
   note?: string;
 }
 
+/** Opponent replies your lines follow at a position, beyond the band's tree (imported PGN, Explore). */
+export interface BookRow {
+  side: Side;
+  epd: string;
+  replies: string[];
+}
+
 export interface GameRow {
   url: string;
   pgn: string;
@@ -117,6 +125,7 @@ export class PlyDB extends Dexie {
   cards!: Table<CardRow, string>;
   reviews!: Table<ReviewRow, number>;
   games!: Table<GameRow, string>;
+  book!: Table<BookRow, [Side, string]>;
   data!: Table<DataRow, string>;
   constructor(name = 'ply') {
     super(name);
@@ -130,6 +139,8 @@ export class PlyDB extends Dexie {
     });
     // 2: reviews logged by Keep going ('extra') become ordinary 'today' reviews
     this.version(2).stores({}).upgrade((tx) => tx.table('reviews').toCollection().modify((r: { mode: string }) => { if (r.mode in LEGACY_MODES) r.mode = LEGACY_MODES[r.mode]; }));
+    // 3: your own book replies
+    this.version(3).stores({ book: '[side+epd], side' });
   }
 }
 

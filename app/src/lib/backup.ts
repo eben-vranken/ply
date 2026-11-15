@@ -1,20 +1,21 @@
 // Backup export / import (docs/backup-format.md). One JSON file with every
 // user table; the baked opening data is left out and re-downloaded.
-import { db, BACKUP_VERSION, LEGACY_MODES, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow } from './db';
+import { db, BACKUP_VERSION, LEGACY_MODES, type CardRow, type ReviewRow, type RepRow, type GameRow, type SettingRow, type BookRow } from './db';
 
 export interface Backup {
   app: 'ply';
   schemaVersion: number;
   exportedAt: string;
   dataVersion?: string;
-  tables: { settings: SettingRow[]; repertoire: RepRow[]; cards: CardRow[]; reviews: ReviewRow[]; games: GameRow[] };
+  /** `book` from format 3 on; older files have none */
+  tables: { settings: SettingRow[]; repertoire: RepRow[]; cards: CardRow[]; reviews: ReviewRow[]; games: GameRow[]; book?: BookRow[] };
 }
 
 export async function makeBackup(): Promise<Backup> {
-  const [settings, repertoire, cards, reviews, games, manifest] = await Promise.all([
-    db.settings.toArray(), db.repertoire.toArray(), db.cards.toArray(), db.reviews.toArray(), db.games.toArray(), db.data.get('manifest.json')
+  const [settings, repertoire, cards, reviews, games, book, manifest] = await Promise.all([
+    db.settings.toArray(), db.repertoire.toArray(), db.cards.toArray(), db.reviews.toArray(), db.games.toArray(), db.book.toArray(), db.data.get('manifest.json')
   ]);
-  return { app: 'ply', schemaVersion: BACKUP_VERSION, exportedAt: new Date().toISOString(), dataVersion: manifest?.version, tables: { settings, repertoire, cards, reviews, games } };
+  return { app: 'ply', schemaVersion: BACKUP_VERSION, exportedAt: new Date().toISOString(), dataVersion: manifest?.version, tables: { settings, repertoire, cards, reviews, games, book } };
 }
 
 export function parseBackup(text: string): Backup {
@@ -22,6 +23,7 @@ export function parseBackup(text: string): Backup {
   if (j?.app !== 'ply' || typeof j.schemaVersion !== 'number' || !j.tables) throw new Error("That file isn't a Ply backup");
   if (j.schemaVersion > BACKUP_VERSION) throw new Error('This backup is from a newer version of Ply');
   for (const k of ['settings', 'repertoire', 'cards', 'reviews', 'games'] as const) if (!Array.isArray(j.tables[k])) throw new Error(`Backup is missing the ${k} table`);
+  if (!Array.isArray(j.tables.book)) j.tables.book = [];
   // JSON turns dates into strings; FSRS wants Dates back
   for (const c of j.tables.cards) {
     c.fsrs.due = new Date(c.fsrs.due);
@@ -34,8 +36,9 @@ export function parseBackup(text: string): Backup {
 
 /** Replace every user table with the backup's contents. */
 export async function restoreBackup(b: Backup) {
-  await db.transaction('rw', [db.settings, db.repertoire, db.cards, db.reviews, db.games], async () => {
-    await Promise.all([db.settings.clear(), db.repertoire.clear(), db.cards.clear(), db.reviews.clear(), db.games.clear()]);
+  await db.transaction('rw', [db.settings, db.repertoire, db.cards, db.reviews, db.games, db.book], async () => {
+    await Promise.all([db.settings.clear(), db.repertoire.clear(), db.cards.clear(), db.reviews.clear(), db.games.clear(), db.book.clear()]);
+    await db.book.bulkPut(b.tables.book ?? []);
     await db.settings.bulkPut(b.tables.settings);
     await db.repertoire.bulkPut(b.tables.repertoire);
     await db.cards.bulkPut(b.tables.cards);

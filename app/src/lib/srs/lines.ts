@@ -7,6 +7,10 @@
 //
 // Positions are walked best-first by line probability, each EPD once, so
 // transpositions merge and every position keeps its most probable path.
+//
+// Your own book (replies you imported or set in Explore) is followed as well: those
+// replies are in your lines whatever their frequency, and past the end of the
+// band's tree your lines go on as long as you have a move or a book reply.
 import { child, hashId, turnOf, START_EPD, type Side } from '../chess';
 import type { Tree, Trap, Opening } from '../data';
 
@@ -43,6 +47,10 @@ export interface GenOpts {
 
 /** Your moves at a position: override, else forced punish answer, else the tree default. */
 export type Mine = (side: Side, epd: string) => string[] | undefined;
+/** Opponent replies you added yourself at a position (imported PGN, Explore). */
+export type Book = (side: Side, epd: string) => string[] | undefined;
+/** A book reply the band's tree does not know: it still counts, as a rare line. */
+export const BOOK_FREQ = 0.01;
 
 export interface Pos {
   epd: string;
@@ -101,6 +109,21 @@ export function replies(ctx: Ctx, epd: string, pct: number, minGames: number): [
   return out;
 }
 
+/** Replies your lines follow: the tree's above the threshold, plus your own book replies. */
+export function lineReplies(ctx: Ctx, book: Book | undefined, side: Side, epd: string, pct: number, minGames: number): [string, number][] {
+  const out = replies(ctx, epd, pct, minGames);
+  const own = book?.(side, epd);
+  if (own?.length) {
+    const n = ctx.tree[epd];
+    for (const u of own) {
+      if (out.some(([m]) => m === u)) continue;
+      const g = n?.m.find(([m]) => m === u)?.[1];
+      out.push([u, n?.g && g ? g / n.g : BOOK_FREQ]);
+    }
+  }
+  return out;
+}
+
 class Heap {
   private a: Pos[] = [];
   get size() { return this.a.length; }
@@ -124,7 +147,7 @@ class Heap {
   }
 }
 
-export function generate(ctx: Ctx, mine: Mine, o: GenOpts): Lines {
+export function generate(ctx: Ctx, mine: Mine, o: GenOpts, book?: Book): Lines {
   const minGames = o.minGames ?? 50;
   const rootPct = o.rootPct ?? 0.01;
   const pos = new Map<string, Pos>();
@@ -141,7 +164,9 @@ export function generate(ctx: Ctx, mine: Mine, o: GenOpts): Lines {
       continue;
     }
     pos.set(p.epd, p);
-    if (p.mine >= o.depth || !ctx.tree[p.epd]) { leaves.add(p.epd); continue; }
+    // past the tree, a line goes on only where you have a move or a book reply of your own
+    const known = ctx.tree[p.epd] || (turnOf(p.epd) === o.side ? mine(o.side, p.epd)?.length : book?.(o.side, p.epd)?.length);
+    if (p.mine >= o.depth || !known) { leaves.add(p.epd); continue; }
     const next: Pos[] = [];
     if (turnOf(p.epd) === o.side) {
       const ms = myMoves(ctx, mine, o.side, p.epd);
@@ -154,7 +179,7 @@ export function generate(ctx: Ctx, mine: Mine, o: GenOpts): Lines {
       }
     } else {
       const pct = p.ply === 0 ? rootPct : o.replyPct;
-      for (const [u, f] of replies(ctx, p.epd, pct, minGames)) {
+      for (const [u, f] of lineReplies(ctx, book, o.side, p.epd, pct, minGames)) {
         next.push({ epd: child(p.epd, u), parent: p.epd, via: u, prob: p.prob * f, ply: p.ply + 1, mine: p.mine, root: p.root ?? u });
       }
     }

@@ -135,6 +135,30 @@ describe('model on real data', () => {
     expect(row.miss[it.arcade!.key]).toBeGreaterThanOrEqual(1);
   });
 
+  it('imports a PGN repertoire, following it past the end of the tree', async () => {
+    const { readPgn } = await import('./pgn');
+    const { plan, rows } = await import('./import/repertoire');
+    const { moveId } = await import('./srs/lines');
+    const pgn = '[Orientation "white"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 h5 { A rare one. } 5. d4 h4 6. d5 *';
+    const D = m.data()!;
+    const P = (s: string) => s.split(' ');
+    const h5 = chess.epdAfter(P('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 h7h5'));
+    const h4 = chess.epdAfter(P('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 h7h5 d2d4 h5h4'));
+    expect(D.tree[h4]).toBeUndefined(); // past the band's tree
+    const p = plan({ games: readPgn(pgn), side: null, current: m.currentAt, note: m.noteAt, inTree: (e) => !!D.tree[e], depth: m.depthLimit() });
+    expect(p.outside).toBeGreaterThan(0);
+    const r = await m.importRepertoire(rows(p, { choices: {}, branches: false, current: m.currentAt, note: m.noteAt }));
+    expect(r.replies).toBeGreaterThan(0);
+    const L = m.lines().w!;
+    expect(L.cards.has(moveId('w', h5, 'd2d4'))).toBe(true);
+    expect(L.cards.has(moveId('w', h4, 'd4d5'))).toBe(true);
+    expect(m.noteAt('w', h5)).toBe('A rare one.');
+    expect(m.bookAt('w', chess.epdAfter(P('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3')))).toContain('h7h5');
+    expect((await dbm.db.book.toArray()).length).toBeGreaterThan(0);
+    // the off-tree positions are part of the Italian, not a stray group
+    expect(m.summaries().some((o) => o.name === 'First moves' && o.side === 'w' && o.total > 1)).toBe(false);
+  });
+
   it('backup round-trips every user table', async () => {
     const { makeBackup, parseBackup, restoreBackup } = await import('./backup');
     const b = await makeBackup();
@@ -148,6 +172,8 @@ describe('model on real data', () => {
     await restoreBackup(parseBackup(JSON.stringify(b)));
     expect(await dbm.db.cards.count()).toBe(n);
     expect(await dbm.db.settings.get('arcade')).toBeTruthy();
+    expect(b.tables.book!.length).toBeGreaterThan(0);
+    expect(await dbm.db.book.count()).toBe(b.tables.book!.length);
     const again = await makeBackup();
     expect(JSON.stringify(again.tables.cards)).toBe(JSON.stringify(b.tables.cards));
   });

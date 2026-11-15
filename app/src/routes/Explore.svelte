@@ -219,7 +219,7 @@
     {:else}
       <div class="empty">
         <p class="t-head">The book ends here</p>
-        <p class="t-small">Fewer than 50 games at the {model.band} band reach this position, so there is nothing reliable to show.</p>
+        <p class="t-small">Fewer than 50 games at the {model.band} band reach this position, so there is nothing reliable to show.{#if pos.turn === side} To go on with a line of your own, play your move on the board and tap Learn from here: Ply keeps the moves on the way as yours.{/if}</p>
       </div>
     {/if}
   </section>

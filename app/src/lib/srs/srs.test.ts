@@ -75,6 +75,23 @@ describe('line generation', () => {
     expect(L.pos.has(epdAfter(['e2e4', 'a7a6']))).toBe(false);
   });
 
+  it('follows your own book: rare replies and moves past the end of the tree', () => {
+    // 1...a6 is below the threshold; after 1.e4 a6 2.d4 b5 3.Bd3 the tree has no data at all
+    const a6 = epdAfter(['e2e4', 'a7a6']), b5 = epdAfter(['e2e4', 'a7a6', 'd2d4']), bd3 = epdAfter(['e2e4', 'a7a6', 'd2d4', 'b7b5']);
+    const mine: Mine = (side, epd) => (epd === bd3 ? ['f1d3'] : undefined);
+    const book = (_s: string, epd: string) => (epd === epdAfter(['e2e4']) ? ['a7a6'] : epd === b5 ? ['b7b5'] : undefined);
+    const L = generate(ctx, mine, { side: 'w', depth: 5, replyPct: 0.03 }, book);
+    expect(L.pos.has(a6)).toBe(true);
+    expect(L.cards.has(moveId('w', a6, 'd2d4'))).toBe(true);
+    expect(TREE[bd3]).toBeUndefined();
+    expect(L.cards.has(moveId('w', bd3, 'f1d3'))).toBe(true);
+    // a book reply the tree knows keeps its real frequency; the line still ends where nothing goes on
+    expect(L.pos.get(a6)!.prob).toBeCloseTo(L.pos.get(epdAfter(['e2e4']))!.prob * (20 / 1520), 5);
+    expect(L.leaves.has(child(bd3, 'f1d3'))).toBe(true);
+    // without the book none of it is a line
+    expect(generate(ctx, mine, { side: 'w', depth: 5, replyPct: 0.03 }).pos.has(a6)).toBe(false);
+  });
+
   it('stops at the depth limit', () => {
     const L = generate(ctx, none, { side: 'w', depth: 1, replyPct: 0.03 });
     expect(L.cards.size).toBe(1);

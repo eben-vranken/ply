@@ -2,10 +2,10 @@
 // Big structures live outside $state (they are large and change wholesale);
 // `model.rev` ticks whenever they change, so views re-derive from it.
 import { app, save, onSave, replaceSettings, type Settings } from './state.svelte';
-import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory } from './db';
+import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory, type BookRow } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
-import { makeCtx, generate, pathTo, coverage, myMoves, replies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
+import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
 import { rate } from './srs/grade';
@@ -26,6 +26,8 @@ let D: Loaded | null = null;
 let ctx: Ctx | null = null;
 const L: Partial<Record<Side, Lines>> = {};
 const rep = new Map<string, RepRow>();
+/** your own book: opponent replies your lines follow beyond the band's tree */
+const book = new Map<string, BookRow>();
 const cards = new Map<string, CardRow>();
 let trapById = new Map<string, Trap>();
 let puzzleById = new Map<string, Puzzle>();
@@ -81,6 +83,8 @@ async function loadAll(band: number) {
   puzzleById = new Map(D.puzzles.map((p) => [p.id, p]));
   rep.clear();
   for (const r of await db.repertoire.toArray()) rep.set(rk(r.side, r.epd), r);
+  book.clear();
+  for (const b of await db.book.toArray()) book.set(rk(b.side, b.epd), b);
   if (!rep.size) await chooseStarter();
   cards.clear();
   for (const c of await db.cards.toArray()) cards.set(c.id, c);
@@ -132,6 +136,14 @@ export const labelOf = (epd: string, path?: string[]) => { const [eco, n] = name
 export const mine = (side: Side, epd: string) => rep.get(rk(side, epd))?.moves;
 export const movesAt = (side: Side, epd: string) => (ctx ? myMoves(ctx, mine, side, epd) : []);
 export const repRow = (side: Side, epd: string) => rep.get(rk(side, epd));
+/** opponent replies you added yourself at a position */
+export const bookAt = (side: Side, epd: string) => book.get(rk(side, epd))?.replies;
+/** what you play at a position now, and whether it is your own choice rather than the default */
+export const currentAt = (side: Side, epd: string) => ({ moves: movesAt(side, epd), own: !!mine(side, epd)?.length });
+/** every opponent reply your lines follow from a position, with its share of games */
+const oppReplies = (side: Side, epd: string, ply = 1) => (ctx ? lineReplies(ctx, bookAt, side, epd, ply === 0 ? 0.01 : app.replyPct / 100, 50) : []);
+/** the band's tree knows the position, or your own moves or book carry the line on */
+const reached = (side: Side, epd: string) => !!D?.tree[epd] || !!(turnOf(epd) === side ? mine(side, epd)?.length : bookAt(side, epd)?.length);
 
 function starterRows(section: Section): RepRow[] {
   const rows: RepRow[] = [];
@@ -174,6 +186,11 @@ async function applyStarter(sections: Section[]) {
       if (sec === s) { rep.delete(rk(r.side, r.epd)); await db.repertoire.delete([r.side, r.epd]); }
     }
     for (const r of starterRows(s)) { rep.set(rk(r.side, r.epd), r); await db.repertoire.put(r); }
+    // your own book replies in this section go too
+    for (const b of [...book.values()]) {
+      const sec = b.side === 'w' ? 'White' : sectionOfEpd('b', b.epd);
+      if (sec === s) { book.delete(rk(b.side, b.epd)); await db.book.delete([b.side, b.epd]); }
+    }
   }
 }
 
@@ -255,8 +272,8 @@ export const candidates = () => ({ moves: newMoveSpecs, traps: newTrapSpecs });
 
 export function regenerate() {
   if (!ctx) return;
-  L.w = generate(ctx, mine, genOpts('w'));
-  L.b = generate(ctx, mine, genOpts('b'));
+  L.w = generate(ctx, mine, genOpts('w'), bookAt);
+  L.b = generate(ctx, mine, genOpts('b'), bookAt);
   newMoveSpecs = [...L.w.cards.values(), ...L.b.cards.values()].filter((s) => !cards.has(s.id));
   newTrapSpecs = trapCandidates().filter((t) => !cards.has(t.id));
   bump();
@@ -494,10 +511,38 @@ export function deviations(side: Side, path: string[]): { epd: string; uci: stri
   return out;
 }
 export async function adoptPath(side: Side, path: string[]) {
+  // the opponent's moves on the way that your lines would not follow become your own book replies
+  let e = START_EPD;
+  for (const u of path) {
+    if (turnOf(e) !== side && !oppReplies(side, e, e === START_EPD ? 0 : 1).some(([m]) => m === u)) {
+      const row: BookRow = { side, epd: e, replies: [...(bookAt(side, e) ?? []), u] };
+      book.set(rk(side, e), row);
+      await db.book.put(row);
+    }
+    e = child(e, u);
+  }
   for (const d of deviations(side, path)) {
     const cur = mine(side, d.epd);
     await setMoves(side, d.epd, cur?.length ? [d.uci, ...cur.filter((m) => m !== d.uci)].slice(0, 1) : [d.uci]);
   }
+  regenerate();
+}
+
+/**
+ * Import a repertoire (lib/import/repertoire.ts makes the rows from a PGN): your moves and notes per
+ * position, and the opponent's replies as your own book. Cards for moves you no longer play are retired.
+ */
+export async function importRepertoire(a: { rep: { side: Side; epd: string; moves: string[]; note?: string }[]; book: { side: Side; epd: string; replies: string[] }[] }) {
+  const before = snapshotIds();
+  const repRows: RepRow[] = a.rep.map((r) => ({ side: r.side, epd: r.epd, moves: r.moves, note: r.note ?? rep.get(rk(r.side, r.epd))?.note }));
+  const bookRows: BookRow[] = a.book.map((b) => ({ side: b.side, epd: b.epd, replies: [...new Set([...(bookAt(b.side, b.epd) ?? []), ...b.replies])] }));
+  for (const r of repRows) rep.set(rk(r.side, r.epd), r);
+  for (const b of bookRows) book.set(rk(b.side, b.epd), b);
+  await db.transaction('rw', db.repertoire, db.book, async () => { await db.repertoire.bulkPut(repRows); await db.book.bulkPut(bookRows); });
+  regenerate();
+  await retireDropped(before);
+  bump();
+  return { positions: repRows.length, replies: bookRows.length };
 }
 
 /** New Move cards in the subtree below a position (same rules as line generation). */
@@ -666,8 +711,7 @@ export function drillLine(side: Side, path: string[], rare: boolean): Item | nul
   let mineCount = 0;
   { let x = START_EPD; for (const u of path) { if (turnOf(x) === side) mineCount++; x = child(x, u); } }
   for (let guard = 0; guard < 60 && mineCount < limit; guard++) {
-    const n = D.tree[e];
-    if (!n) break;
+    if (!reached(side, e)) break;
     if (turnOf(e) === side) {
       const ms = movesAt(side, e);
       if (!ms.length) break;
@@ -675,7 +719,7 @@ export function drillLine(side: Side, path: string[], rare: boolean): Item | nul
       moves.push(ms[0]); mineCount++;
       e = child(e, ms[0]);
     } else {
-      const rs = replies(ctx!, e, app.replyPct / 100, 50);
+      const rs = oppReplies(side, e, path.length + moves.length);
       if (!rs.length) break;
       let r = Math.random() * (rare ? rs.length : rs.reduce((s, x) => s + x[1], 0));
       let pick = rs[0][0];
@@ -704,10 +748,10 @@ export function drillContinue(side: Side, epd: string, rare: boolean, movesSoFar
   let e = epd;
   let mineCount = movesSoFar;
   for (let g = 0; g < 60 && mineCount < depthLimit(); g++) {
-    if (!D!.tree[e]) break;
+    if (!reached(side, e)) break;
     if (turnOf(e) === side) { const ms = movesAt(side, e); if (!ms.length) break; out.push(ms[0]); e = child(e, ms[0]); mineCount++; }
     else {
-      const rs = replies(ctx!, e, app.replyPct / 100, 50);
+      const rs = oppReplies(side, e);
       if (!rs.length) break;
       let r = Math.random() * (rare ? rs.length : rs.reduce((s, x) => s + x[1], 0));
       let pick = rs[0][0];
@@ -1010,7 +1054,17 @@ export function summaries(): OpeningSummary[] {
   for (const side of ['w', 'b'] as Side[]) {
     const Ls = L[side];
     if (!Ls) continue;
-    const famOf = (e: string) => { const o = D!.tree[e]?.o; return o !== undefined ? D!.openings[o].family : 'First moves'; };
+    const fams = new Map<string, string>();
+    const famOf = (e: string): string => {
+      const hit = fams.get(e);
+      if (hit) return hit;
+      const o = D!.tree[e]?.o;
+      // a position past the band's tree (your own lines) belongs to the opening it came from
+      const parent = o === undefined ? Ls.pos.get(e)?.parent : null;
+      const f = o !== undefined ? D!.openings[o].family : parent ? famOf(parent) : 'First moves';
+      fams.set(e, f);
+      return f;
+    };
     const entry = new Map<string, Pos>();
     for (const p of Ls.pos.values()) {
       const sec = sectionOf(side, p.root);
@@ -1087,9 +1141,9 @@ export function openingTree(side: Side, path: string[]): TreeMove[] {
   // every move your lines play from a position: your moves, or the replies above the threshold
   const movesFrom = (epd: string, ply: number): [string, number][] => {
     const p = Ls.pos.get(epd);
-    if (!p || p.mine >= Ls.depth || !ctx!.tree[epd]) return [];
+    if (!p || p.mine >= Ls.depth || !reached(side, epd)) return [];
     if (turnOf(epd) === side) return (p.moves ?? []).map((u) => [u, 1] as [string, number]);
-    return replies(ctx!, epd, ply === 0 ? opts.rootPct! : opts.replyPct, opts.minGames!).filter(([u]) => Ls.pos.has(child(epd, u)));
+    return lineReplies(ctx!, bookAt, side, epd, ply === 0 ? opts.rootPct! : opts.replyPct, opts.minGames!).filter(([u]) => Ls.pos.has(child(epd, u)));
   };
   const build = (epd: string, at: string[], ply: number, prob: number): TreeMove[] =>
     movesFrom(epd, ply).map(([u, f]) => {
@@ -1166,9 +1220,9 @@ export async function noteRating(rating: number) {
 // ---------------------------------------------------------------- reset / backup support
 export async function reloadFromDb() { if (D) await loadAll(model.band); }
 export async function resetAllProgress() {
-  await db.transaction('rw', [db.cards, db.reviews, db.repertoire, db.games, db.settings], async () => {
-    await Promise.all([db.cards.clear(), db.reviews.clear(), db.repertoire.clear(), db.games.clear(), db.settings.clear()]);
+  await db.transaction('rw', [db.cards, db.reviews, db.repertoire, db.games, db.settings, db.book], async () => {
+    await Promise.all([db.cards.clear(), db.reviews.clear(), db.repertoire.clear(), db.games.clear(), db.settings.clear(), db.book.clear()]);
   });
-  cards.clear(); rep.clear(); reviewsToday = []; arcMem = emptyArc();
+  cards.clear(); rep.clear(); book.clear(); reviewsToday = []; arcMem = emptyArc();
 }
 export { hashId, fenOf };

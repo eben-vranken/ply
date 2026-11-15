@@ -176,6 +176,22 @@ if (!typedOk) errors.push('could not answer a card and move on with the keyboard
 step('keyboard in a session: ' + (typedOk ? 'answered by typing, Enter moved on' : 'failed'));
 await page.keyboard.press('Escape'); await page.waitForTimeout(400);
 
+// PGN import: a Black repertoire pasted without an Orientation header, with a variation and a comment
+await page.goto(url + '#/repertoire'); await page.waitForTimeout(700);
+await page.getByRole('button', { name: 'Import PGN' }).click();
+await page.getByLabel('PGN').fill('1. e4 c6 2. d4 d5 3. e5 (3. exd5 cxd5 { The Exchange. }) 3... Bf5 4. Nf3 e6 *');
+await page.getByRole('button', { name: 'Read the PGN' }).click();
+await page.getByRole('button', { name: 'I play Black' }).click();
+await page.waitForTimeout(400);
+const summary = (await page.locator('.sheet .sum').innerText()).replace(/\s+/g, ' ');
+step('import preview: ' + summary.slice(0, 90));
+await shot('import-preview');
+await page.getByRole('button', { name: 'Add to my repertoire' }).click();
+await page.waitForTimeout(1200);
+const imported = await page.locator('.toast').innerText().catch(() => '');
+if (!/Imported \d+ position/.test(imported)) errors.push('PGN import did not finish: ' + imported);
+step('import: ' + imported);
+
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();
 server.httpServer.close();

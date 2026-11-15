@@ -8,11 +8,12 @@ This document is the contract for anything else that reads the file (Construct, 
 | --- | --- |
 | 1 | First format |
 | 2 | Arcade's miss memory is a second `settings` row, `key: "arcade"` (it lived in the browser's localStorage before, outside the backup). A version 1 file restores with an empty Arcade memory |
+| 3 | The `book` table: opponent replies you added yourself (PGN import, Explore). Older files restore with an empty book |
 
 ```ts
 interface Backup {
   app: 'ply';
-  schemaVersion: 2;
+  schemaVersion: 3;
   exportedAt: string;          // ISO 8601
   dataVersion?: string;        // manifest version the backup was made with
   tables: {
@@ -21,6 +22,7 @@ interface Backup {
     cards: CardRow[];
     reviews: ReviewRow[];
     games: GameRow[];
+    book?: BookRow[];          // from schemaVersion 3
   };
 }
 ```
@@ -31,7 +33,7 @@ Dates inside FSRS card objects are ISO strings in the file; every other time is 
 
 ### `key: "app"`
 
-One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
+One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `depth` (0 = auto), `replyPct`, `band` (0 = auto), `timeClasses`, `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `autoNext`, `storageNoteSeen` (Safari's 7-day storage rule was explained), the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username`, the onboarding choices (`white`, `blackE4`, `blackD4`) and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `lastSync`, `syncedArchives`, `extraNew`, `extraDay`).
 
 ### `key: "arcade"`
 
@@ -56,6 +58,18 @@ interface RepRow {
   epd: string;       // position, you to move
   moves: string[];   // your moves in branch order (two or more = a branch)
   note?: string;     // your note for the position
+}
+```
+
+## book
+
+Opponent replies your lines follow at a position even where the band's opening tree has no data for it, or where the reply is below your reply threshold. They come from an imported PGN (the opponent's moves in it) and from **Set as my repertoire** in Explore. A position you have a move at (`repertoire`) plus the replies here are what lets your lines continue past the end of the tree.
+
+```ts
+interface BookRow {
+  side: 'w' | 'b';   // which repertoire
+  epd: string;       // position, opponent to move
+  replies: string[]; // UCI moves your lines follow from here
 }
 ```
 

@@ -6,6 +6,7 @@
   import type { Section } from '../lib/srs/lines';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
+  import ImportSheet from '../lib/ImportSheet.svelte';
 
   const sections: Section[] = ['White', 'Black vs 1.e4', 'Black vs 1.d4', 'Black vs others'];
   const STAGES = ['new', 'learning', 'young', 'mature'];
@@ -20,6 +21,9 @@
   const cov = $derived.by(() => { void model.rev; return { w: Math.round(sectionCoverage('w') * 100), b: Math.round(sectionCoverage('b') * 100) }; });
 
   let asking = $state<Section | null>(null);
+  let importing = $state(false);
+  let toast = $state('');
+  function done(msg: string) { importing = false; toast = msg; setTimeout(() => (toast = ''), 6000); }
   let games = $state<GameRow[]>([]);
   $effect(() => { void model.rev; void db.games.orderBy('date').reverse().toArray().then((g) => (games = g)); });
   const withCards = $derived(games.filter((g) => (g.mistakes ?? []).some((id) => allCards().has(id))));
@@ -61,6 +65,13 @@
     <input type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Search your openings" aria-label="Search your openings" bind:value={q} />
     {#if q}<button onclick={() => (q = '')} aria-label="Clear search"><Icon name="close" size={18} /></button>{/if}
   </label>
+
+  {#if !q.trim()}
+    <div class="io">
+      <button class="btn quiet sm" onclick={() => (importing = true)}><Icon name="plus" size={18} /> Import PGN</button>
+    </div>
+  {/if}
+  {#if toast}<p class="toast" role="status">{toast}</p>{/if}
 
   {#if q.trim()}
     <div class="stack">
@@ -153,7 +164,11 @@
   {/if}
 </div>
 
+{#if importing}<ImportSheet onclose={() => (importing = false)} ondone={done} />{/if}
+
 <style>
+  .io { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .toast { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
   .sc { font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: var(--ink-3); margin-left: 8px; }
   .search { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 8px 0 16px; margin-bottom: 4px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); color: var(--ink-3); }
   .search:focus-within { outline: 3px solid var(--cobalt); outline-offset: 1px; }
