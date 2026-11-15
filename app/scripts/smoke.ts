@@ -1,13 +1,15 @@
 // End-to-end smoke test on the built app: onboarding, a Today session, every
 // tab, Learn and Drill. Fails on any page error. Run `npm run build` first.
-import { chromium } from 'playwright';
+import { chromium, webkit, devices } from 'playwright';
 import { preview } from 'vite';
 import { Chess } from 'chess.js';
 
 const server = await preview({ preview: { port: 4180 } });
 const url = 'http://localhost:4180/ply/';
-const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+// BROWSER=webkit runs it in WebKit (Safari's engine); with DEVICE=iphone as an iPhone 13 (touch, mobile Safari user agent)
+const isWebkit = process.env.BROWSER === 'webkit';
+const browser = await (isWebkit ? webkit : chromium).launch();
+const ctx = await browser.newContext(process.env.DEVICE === 'iphone' ? { ...devices['iPhone 13'], deviceScaleFactor: 1 } : { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, hasTouch: true, isMobile: !isWebkit });
 const page = await ctx.newPage();
 const errors: string[] = [];
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
@@ -15,6 +17,7 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + 
 const out = process.env.SHOTS ?? '';
 const shot = async (n: string) => { if (out) await page.screenshot({ path: `${out}/${n}.png` }); };
 const step = (s: string) => console.log('·', s);
+step(`${isWebkit ? 'WebKit' : 'Chromium'}${process.env.DEVICE === 'iphone' ? ' as iPhone 13' : ''}`);
 
 process.on('unhandledRejection', async (e) => { console.log('FAILED', e); console.log(errors.join(String.fromCharCode(10))); await shot('failure'); process.exit(1); });
 await page.goto(url);
@@ -26,6 +29,14 @@ try { await page.waitForSelector('h1:text("Today")', { timeout: 15_000 }); }
 catch (e) { await shot('failure'); console.log('FAILED to reach Today'); console.log(errors.join(String.fromCharCode(10))); console.log(await page.locator('body').innerText()); process.exit(1); }
 await page.waitForTimeout(800);
 await shot('today');
+// Safari's 7-day storage rule is explained on Safari only; the vibration switch shows only where vibration exists
+const risk = await page.getByText('Keep Ply on your Home Screen').isVisible();
+if (risk !== isWebkit) errors.push(`storage note visible: ${risk} in ${isWebkit ? 'WebKit' : 'Chromium'}`);
+await page.goto(url + '#/settings'); await page.waitForTimeout(400);
+const vib = await page.getByText('Vibration', { exact: true }).isVisible();
+if (vib !== (await page.evaluate(() => typeof navigator.vibrate === 'function'))) errors.push('vibration switch shown where vibration does not exist');
+step(`storage note ${risk ? 'shown' : 'hidden'}, vibration switch ${vib ? 'shown' : 'hidden'}`);
+await page.goto(url + '#/today'); await page.waitForTimeout(400);
 // a clean answer moves on by itself; the script wants every answer screen to wait
 await page.goto(url + '#/settings'); await page.getByText('Move on after a clean answer').click(); await page.waitForTimeout(300);
 await page.goto(url + '#/today'); await page.waitForTimeout(500);

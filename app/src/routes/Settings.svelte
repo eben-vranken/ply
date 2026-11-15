@@ -8,6 +8,7 @@
   import { sync, syncNow, importPgn } from '../lib/import/sync.svelte';
   import { sfx, buzz } from '../lib/fx';
   import Icon from '../lib/Icon.svelte';
+  import { canVibrate } from '../lib/platform';
 
   type Num = { k: 'newMoves' | 'newTraps' | 'newMistakes' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
   const groups: [string, Num[]][] = [
@@ -42,9 +43,11 @@
   }
   // the openings you can master: the biggest of each colour, and whatever is mastered already
   const ops = $derived.by(() => { void model.rev; const all = summaries().filter((o) => o.path.length); const on = (o: (typeof all)[number]) => (isFocus(o.side, o.path) ? 0 : 1); return all.filter((o, i) => i < 12 || !on(o)).sort((a, b) => on(a) - on(b) || a.side.localeCompare(b.side) * -1 || b.total - a.total); });
-  const toggles: ['sounds' | 'vibration' | 'showName' | 'autoNext', string, string?][] = [
+  type Toggle = ['sounds' | 'vibration' | 'showName' | 'autoNext', string, string?];
+  // iPhones have no vibration for web pages, so the switch only shows where it does something
+  const toggles = ([
     ['autoNext', 'Move on after a clean answer', 'A wrong answer always waits for you'], ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
-  ];
+  ] as Toggle[]).filter(([k]) => k !== 'vibration' || canVibrate());
   const classes = ['Rapid', 'Blitz', 'Daily'];
   function flip(c: string) { app.timeClasses = app.timeClasses.includes(c) ? app.timeClasses.filter((x) => x !== c) : [...app.timeClasses, c]; save(); }
 

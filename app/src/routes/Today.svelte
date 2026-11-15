@@ -12,6 +12,8 @@
   import { whenText } from '../lib/srs/fsrs';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
+  import { storageAtRisk } from '../lib/platform';
+  import { save } from '../lib/state.svelte';
 
   const counts = $derived.by(() => { void model.rev; return todayCounts(); });
   const firstItems = $derived(itemsFor(counts.queue.slice(0, 1)));
@@ -22,6 +24,7 @@
   const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
   const week = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
   const todayIdx = (new Date().getDay() + 6) % 7;
+  const atRisk = $derived(!app.storageNoteSeen && storageAtRisk());
   const staleBackup = $derived(allCards().size > 0 && Date.now() - app.lastBackup > 7 * 864e5);
   const rollText = $derived(`${String(app.rollover).padStart(2, '0')}:00`);
   // learning cards due again before the next rollover
@@ -218,6 +221,13 @@
     </section>
   </div>
 
+  {#if atRisk}
+    <div class="banner risk" role="note">
+      <Icon name="warn" size={20} />
+      <span class="grow"><b>Keep Ply on your Home Screen</b><br /><span class="t-small">Safari deletes a website's saved data after 7 days without a visit. Added to the Home Screen (Share, then Add to Home Screen; on a Mac, File, then Add to Dock), Ply keeps your progress. Export a backup now and then too.</span></span>
+      <button class="x" onclick={() => { app.storageNoteSeen = true; save(); }} aria-label="Got it"><Icon name="close" size={18} /></button>
+    </div>
+  {/if}
   {#if staleBackup}
     <button class="banner" onclick={() => go('/settings')}>
       <Icon name="share" size={20} />
@@ -347,6 +357,8 @@
 
   .banner { width: 100%; text-align: left; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 14px 16px; border-radius: var(--r-l); background: var(--sun-tint); color: var(--sun-ink); min-height: 56px; font-size: 15px; }
   .banner .t-small { color: var(--sun-ink); }
+  .banner.risk { align-items: flex-start; }
+  .banner .x { width: 44px; height: 44px; margin: -10px -10px -10px 0; display: grid; place-items: center; flex: none; }
   .games { margin-top: 12px; }
   .games svg { width: 100%; height: 76px; margin: 12px 0 8px; overflow: visible; }
   .games .empty { margin-top: 10px; }

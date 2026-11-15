@@ -25,6 +25,7 @@ const defaults = {
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
   autoNext: true, // a clean answer moves on by itself
+  storageNoteSeen: false, // Safari's 7-day storage rule was explained (lib/platform.ts)
   // the game layer: experience points and the daily goal (lib/game.ts)
   xp: 0,
   xpDay: 0,

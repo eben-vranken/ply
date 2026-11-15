@@ -40,12 +40,19 @@ jobs:
       - run: npm run build
         working-directory: app
       # the smoke test plays a session in headless Chromium against the built app
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
         working-directory: app
       - run: mkdir -p smoke-shots && npm run smoke
         working-directory: app
         env:
           SHOTS: smoke-shots
+      # the same session in WebKit, Safari's engine, as an iPhone
+      - run: mkdir -p smoke-shots/iphone && npm run smoke
+        working-directory: app
+        env:
+          SHOTS: smoke-shots/iphone
+          BROWSER: webkit
+          DEVICE: iphone
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
