@@ -86,7 +86,8 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; background: var(--ground); transition: background 240ms; overscroll-behavior: none; }
+/* pinch zoom stays on; manipulation only drops double-tap zoom, so tapping a piece and then a square next to it never zooms */
+html, body { margin: 0; height: 100%; background: var(--ground); transition: background 240ms; overscroll-behavior: none; touch-action: manipulation; }
 body {
   font-family: var(--sans);
   font-size: 16px;

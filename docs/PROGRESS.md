@@ -36,6 +36,7 @@ Work from build-order steps 1 and 2 of `reports/Ply subscription readiness gaps.
 - **Arcade memory in the backup:** the positions Arcade brings back after a miss lived in localStorage, outside IndexedDB and the backup. They are now a `settings` row (`key: "arcade"`), moved over on first launch; backup format 2 (`docs/backup-format.md`).
 - **Promotion choice everywhere:** Play it out and the Explore board always made a queen. Both now open the trainer's four-piece picker (`lib/Promo.svelte`, also keys q / r / b / n and Escape). `npm run smoke` underpromotes to a knight on both boards.
 - **Keep going's review mode removed:** the `'extra'` mode outlived the feature. Database version 2 rewrites any such reviews as `'today'` (they were reviews of due cards, graded like Today), and backups holding them import the same way.
+- **Pinch zoom:** `user-scalable=no` is gone; `touch-action: manipulation` keeps double-tap from zooming when you tap a piece and then a nearby square. Checked in Chromium at page scale 2: taps still land on the right squares (e2, e4 played 1.e4). Synthetic pinch gestures do not work in Playwright, so the pinch itself is still to check on the phone.
 
 ## Data build 2026-10 (14 Nov 2026)
 
