@@ -95,6 +95,19 @@ The estimate made before the build, for the record: it was estimated from that s
 
 The three-month 2400 band was the route taken.
 
+## Accounts and sync (16 Nov 2026)
+
+Build-order step 3 of `reports/Ply subscription readiness gaps.md`. Everything here is free.
+
+- **Accounts:** with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the build (repo root `.env.local`, see `.env.example`; CI secrets), login is the first screen and progress lives on the account. Builds without them run on the device only, exactly as before. Log in with an email link or the 6-digit code in the same email, with Google, or with Lichess (`supabase/functions/lichess-login`). A second device skips onboarding and pulls the account's progress ("Bringing in your progress"); a device that already had data merges it in and says what came in.
+- **Server:** `supabase/migrations/20261116000000_sync.sql`: one table per synced IndexedDB table (`settings`, `repertoire`, `book`, `cards`, `reviews`, `games`) with the natural key, `data jsonb`, `updated_at`, `deleted`, and a server `seq` / `synced_at` to pull by; Row Level Security (`auth.uid() = user_id`) on all of them; triggers that refuse older writes by the merge rules; `delete_my_account()`. The opening data never syncs. Checked in a local Postgres (PGlite, with Supabase's `auth.uid()` and roles stood in for): 27 checks on the merge rules, per-setting merge, deletions, the reset, Row Level Security between two users, no access without a login, and account deletion.
+- **Change tracking:** Dexie version 4: `updatedAt` on every synced row through hooks, existing rows stamped at the upgrade, tombstones in `tomb`, sync state in `meta`, reviews indexed by card + time. Settings get per-setting stamps.
+- **Merge and sync engine** (`lib/cloud/merge.ts`, `lib/cloud/engine.ts`): pull, merge in one transaction, push, save the cursor. Triggers: login, opening the app, leaving a session or Play it out, finishing onboarding, the connection returning, Sync now. Status in Settings → Account ("Synced 2 min ago", "Offline, will sync later", the error).
+- **Settings → Account:** who you are, status, Sync now, Log out (a last sync, then the device is cleared; it warns if that sync failed), Delete my account and synced data. Reset all progress resets the account too.
+- **Honesty:** onboarding no longer says Ply keeps no account; the privacy draft says what is stored with Supabase and how to delete it; the landing draft and the brief match.
+- **Tests:** Vitest for the merge rules (12) and the sync engine with two simulated devices and the server's rules in memory (12: offline training on both, deletions, undo, per-setting merge, onboarding defaults, failed pull and push, paging, late writes, stale pushes, another account). `npm run devices` (also in CI): two Playwright browser contexts as two devices against a stand-in Supabase. A onboards and trains, B logs in and gets it, both train offline and change different settings, both sync: identical tables, every review from both kept (the union), each card at its latest review, both settings changes kept; B logs out (cleared) and back in (everything returns); no request leaves for anywhere else. `npm run smoke` passes on a build without keys.
+- **Not done or not checked:** the SQL has not been run on the real project, and nothing has been tried against the real Supabase (no service access from here); Google and Lichess login need the dashboard steps first and are untested end to end; the Edge Function is type-checked but not deployed. XP and other counters in settings merge like any setting, so XP earned on two devices offline at the same time keeps one device's total. Login-free use of the deployed site ends when `PLY_ACCOUNTS` is switched on.
+
 ## Data build 2026-10 (14 Nov 2026)
 
 | Stage | Result |

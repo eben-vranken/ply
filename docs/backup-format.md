@@ -9,11 +9,12 @@ This document is the contract for anything else that reads the file (Construct, 
 | 1 | First format |
 | 2 | Arcade's miss memory is a second `settings` row, `key: "arcade"` (it lived in the browser's localStorage before, outside the backup). A version 1 file restores with an empty Arcade memory |
 | 3 | The `book` table: opponent replies you added yourself (PGN import, Explore). Older files restore with an empty book |
+| 4 | Sync: every row carries `updatedAt`, and the `app` settings row its per-setting `stamps`. Both are optional; older files restore with every row counted as changed at import |
 
 ```ts
 interface Backup {
   app: 'ply';
-  schemaVersion: 3;
+  schemaVersion: 4;
   exportedAt: string;          // ISO 8601
   dataVersion?: string;        // manifest version the backup was made with
   tables: {
@@ -27,13 +28,19 @@ interface Backup {
 }
 ```
 
-Dates inside FSRS card objects are ISO strings in the file; every other time is milliseconds since the Unix epoch. Moves are UCI, positions are EPD (first four FEN fields, see `docs/DATA_CONTRACT.md`).
+Dates inside FSRS card objects are ISO strings in the file; every other time is milliseconds since the Unix epoch.
+
+From format 4 every row of every table also has `updatedAt?: number`: when the row last changed on the device it came from (ms; 0 for a default nobody chose, such as the starter repertoire before onboarding). Sync uses it to merge (`docs/DECISIONS.md`, "Merge rules"). Readers can ignore it. Importing a file stamps every row with the import time; reviews get new local ids (a review is identified by `cardId` + `at`).
+
+**Importing while logged in to an account** replaces this device's tables, and the next sync starts over and merges with the account: rows the account has that the file lacks come back, and a card keeps whichever version has the later review. A backup never wipes newer progress from other devices. To start over everywhere, use Reset all progress.
+
+The app's sync bookkeeping (the `tomb` table of deletions not yet synced, the `meta` table with the sync cursor) is device-only and never in a backup. Moves are UCI, positions are EPD (first four FEN fields, see `docs/DATA_CONTRACT.md`).
 
 ## settings
 
 ### `key: "app"`
 
-One row whose `value` holds every setting: daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `fsrsWeights` (21 FSRS weights fitted to your reviews, or null for the defaults), `fsrsFitAt`, `fsrsFitReviews`, `depth` (0 = auto), `replyPct`, `band` (0 = auto), the game filters (`timeClasses`: any of Bullet, Blitz, Rapid, Classical, Daily; `gamesRated`: rated, casual or both; `gamesFrom`, `gamesTo`: 'YYYY-MM-DD' or ''), `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `autoNext`, `storageNoteSeen` (Safari's 7-day storage rule was explained), the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username` (chess.com), `lichessUser`, the onboarding choices (`white`, `blackE4`, `blackD4`, and `whitePath`, `blackE4Path`, `blackD4Path`: the moves of an opening picked from the full list, or '') and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `catchUp` (null, or the plan: `start` study day in ms, `days`, `perDay`), `catchUpDeclined` (study day the offer was turned down), `lastSync`, `syncedArchives`, `syncFrom`, `lichessFrom` and `lichessSince` (ms: the Lichess import window and the newest Lichess game seen), `extraNew`, `extraDay`).
+One row whose `value` holds every setting (from format 4, `stamps` beside it: setting name → when it last changed, ms, 0 for onboarding choices and defaults): daily limits (`newMoves`, `newTraps`, `newMistakes`, `maxReviews`), `hardSeconds`, `retention` (percent), `fsrsWeights` (21 FSRS weights fitted to your reviews, or null for the defaults), `fsrsFitAt`, `fsrsFitReviews`, `depth` (0 = auto), `replyPct`, `band` (0 = auto), the game filters (`timeClasses`: any of Bullet, Blitz, Rapid, Classical, Daily; `gamesRated`: rated, casual or both; `gamesFrom`, `gamesTo`: 'YYYY-MM-DD' or ''), `rollover` (hour), `sounds`, `vibration`, `delay` (ms), `showName`, `theme`, `autoNext`, `storageNoteSeen` (Safari's 7-day storage rule was explained), the focus openings (`focusW`, `focusB`: the UCI moves to the opening's position, space separated, or null),  the arcade numbers (`arcadeRating`, `arcadeBest`, `arcadeSolved`, `arcadeMissed`), `username` (chess.com), `lichessUser`, the onboarding choices (`white`, `blackE4`, `blackD4`, and `whitePath`, `blackE4Path`, `blackD4Path`: the moves of an opening picked from the full list, or '') and bookkeeping (`rating`, `autoBand`, `bandSet`, `pendingBand`, `pendingSince`, `lastBackup`, `catchUp` (null, or the plan: `start` study day in ms, `days`, `perDay`), `catchUpDeclined` (study day the offer was turned down), `lastSync`, `syncedArchives`, `syncFrom`, `lichessFrom` and `lichessSince` (ms: the Lichess import window and the newest Lichess game seen), `extraNew`, `extraDay`).
 
 ### `key: "arcade"`
 

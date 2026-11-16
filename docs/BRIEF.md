@@ -28,6 +28,7 @@ Everything below is decided. Change a row here first, then the code.
 | --- | --- |
 | Platform | Offline-first installable PWA for Android Chrome (Samsung Galaxy S20 FE), designed for the phone in portrait; responsive layouts for landscape, tablets and desktop (DESIGN.md, "Wide screens"). The installed app follows the device's rotation setting |
 | Hosting | GitHub Pages, repo `eben-vranken/ply`, license GPL-3.0 (required by chessground and Stockfish) |
+| Accounts and sync | Supabase (Auth + Postgres with Row Level Security). A Ply account is required when the build has a Supabase URL and anon key; progress lives on the account and syncs across devices, offline-first. Log in with email (link or code), Google or Lichess. Builds without the keys run on the device only |
 | Frontend | Svelte 5 + TypeScript + Vite |
 | Board | `@lichess-org/chessground` |
 | Rules / move validation | `chess.js` |
@@ -402,7 +403,7 @@ Settings also holds **Sync now**, **Export backup**, **Import backup**, and **Re
 
 ## Storage, offline and backup
 
-All user data lives on the phone in IndexedDB. There is no server and no account. After the first launch everything works offline except chess.com sync.
+All user data lives on the phone in IndexedDB and, when the build has the Supabase keys, on your Ply account, which syncs it between devices (see Locked decisions, Accounts and sync). After the first launch everything works offline except chess.com sync and the account sync, which catches up when the connection returns.
 
 | Dexie table | Key | Holds |
 | --- | --- | --- |

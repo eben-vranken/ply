@@ -23,7 +23,7 @@
 - Sync and analyse your chess.com and Lichess games
 - Streak freezes you earn by playing, never buy
 
-No account, no ads, no tracking. Your progress stays on your device.
+No ads, no tracking. Your progress is kept on your Ply account, so it is there on your phone and your desktop.
 
 (One line under it: "Most opening trainers cap the free version. Ply doesn't, because none of this costs us anything to run.")
 
