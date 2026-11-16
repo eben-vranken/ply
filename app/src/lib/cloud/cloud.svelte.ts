@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { rawDb, SYNCED, type SyncedTable } from '../db';
 import { syncOnce, KEYS, type Remote, type ServerRow, type SyncMeta } from './engine';
 import { applyRemote, resetAllProgress, model } from '../model.svelte';
-import { app, save, resetSettings, route } from '../state.svelte';
+import { app, save, resetSettings, route, go } from '../state.svelte';
 
 const URL_ = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? '';
 const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ?? '';
@@ -33,8 +33,12 @@ export const cloud = $state({
   restoring: false,
   /** logging out or deleting the account: the device is being cleared and the page is about to reload */
   leaving: false,
-  /** a login link or code was sent to this address */
-  sentTo: '',
+  /** a password reset email was sent to this address */
+  resetSentTo: '',
+  /** a new account is waiting for its confirmation email to be opened */
+  confirmSentTo: '',
+  /** you came back from a password reset link: Settings asks for the new password */
+  recovering: false,
   authError: ''
 });
 
@@ -68,7 +72,8 @@ export async function initCloud() {
     const c = await client();
     c.auth.onAuthStateChange((event, session) => {
       setUser(session?.user);
-      if (event === 'SIGNED_IN') {
+      if (event === 'PASSWORD_RECOVERY') { cloud.recovering = true; go('/settings'); }
+      if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
         // a new device waits for the account's data before onboarding
         if (!app.onboarded) cloud.restoring = true;
         void requestSync();
@@ -104,24 +109,44 @@ async function finishRedirect(c: SupabaseClient) {
       if (error) throw error;
     }
   } catch (e) {
-    cloud.authError = /code verifier|flow state/i.test(msg(e)) ? 'That link was opened in a different browser than the one you asked from. Type the 6-digit code from the email instead.' : msg(e);
+    cloud.authError = /code verifier|flow state/i.test(msg(e)) ? 'That link was opened in a different browser than the one you used to ask for it. Open it there, or log in here with your email and password.' : msg(e);
   }
 }
 
 // ---------------------------------------------------------------- logging in
-export async function sendEmail(email: string) {
+// Email and password. "Confirm email" is on in the Supabase dashboard, so a new account needs a
+// real address: the confirmation link comes back to the app (?code=) and logs you in.
+const authMsg = (m: string) =>
+  /invalid login credentials/i.test(m) ? 'That email and password do not match an account.'
+  : /already (been )?registered|already exists/i.test(m) ? 'There is already an account with this email. Log in instead, or reset the password.'
+  : /email not confirmed/i.test(m) ? 'Confirm your email first: open the link we sent you, then log in.'
+  : m;
+export async function logInWithPassword(email: string, password: string) {
   cloud.authError = '';
-  const { error } = await (await client()).auth.signInWithOtp({ email: email.trim(), options: { emailRedirectTo: appUrl(), shouldCreateUser: true } });
-  if (error) { cloud.authError = error.message; return false; }
-  cloud.sentTo = email.trim();
+  const { error } = await (await client()).auth.signInWithPassword({ email: email.trim(), password });
+  if (error) { cloud.authError = authMsg(error.message); return false; }
   return true;
 }
-export async function verifyCode(code: string) {
+export async function signUpWithPassword(email: string, password: string) {
   cloud.authError = '';
-  const { error } = await (await client()).auth.verifyOtp({ email: cloud.sentTo, token: code.replace(/\s/g, ''), type: 'email' });
-  if (error) { cloud.authError = error.message; return false; }
-  cloud.sentTo = '';
+  const { data, error } = await (await client()).auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: appUrl() } });
+  if (error) { cloud.authError = authMsg(error.message); return false; }
+  // with confirmations on there is no session until the link in the email is opened
+  if (!data.session) { cloud.confirmSentTo = email.trim(); return false; }
   return true;
+}
+export async function sendPasswordReset(email: string) {
+  cloud.authError = '';
+  const { error } = await (await client()).auth.resetPasswordForEmail(email.trim(), { redirectTo: appUrl() });
+  if (error) { cloud.authError = authMsg(error.message); return false; }
+  cloud.resetSentTo = email.trim();
+  return true;
+}
+/** Set a new password for the logged-in account (after a reset link, or from Settings). */
+export async function setPassword(password: string) {
+  const { error } = await (await client()).auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+  cloud.recovering = false;
 }
 export async function withGoogle() {
   cloud.authError = '';

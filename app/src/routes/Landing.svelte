@@ -24,12 +24,15 @@
   const C = demo.counts, T = demo.trap;
   // accounts are on and nobody is logged in: the page ends in the login. Otherwise its buttons open the app.
   const login = $derived(configured && !cloud.user);
-  const cta = $derived(login ? 'Start training' : app.onboarded ? 'Open Ply' : 'Start training');
+  const cta = $derived(login ? 'Sign up' : app.onboarded ? 'Open Ply' : 'Start training');
+  /** which form the login panel shows: Sign up opens it on a new account, Log in on logging in */
+  let loginMode = $state<'login' | 'signup' | 'reset'>('signup');
   let root = $state<HTMLDivElement>();
   let scrolled = $state(false);
-  function enter() {
+  function enter(mode: 'login' | 'signup' = 'signup') {
     onintent();
     if (!login) return go('/today');
+    loginMode = mode;
     document.getElementById('login')?.scrollIntoView({ behavior: desk.still ? 'auto' : 'smooth', block: 'center' });
     setTimeout(() => (document.querySelector('#login input') as HTMLElement | null)?.focus({ preventScroll: true }), desk.still ? 0 : 700);
   }
@@ -71,7 +74,7 @@
       <button onclick={() => to('traps')}>Traps</button>
       <button onclick={() => to('free')}>Free and open</button>
     </nav>
-    <button class="in" onclick={enter} aria-label={login ? 'Log in to Ply: go to the login' : 'Open Ply'}>{login ? 'Log in' : 'Open Ply'}</button>
+    <button class="in" onclick={() => enter('login')} aria-label={login ? 'Log in to Ply: go to the login' : 'Open Ply'}>{login ? 'Log in' : 'Open Ply'}</button>
   </header>
 
   <!-- 1. the night room: the board is the only bright thing -->
@@ -82,7 +85,7 @@
         <h1>Openings that <em>stay</em> learned.</h1>
         <p class="sub">Ply drills the lines players at your rating actually play, the traps inside them and the mistakes from your own games. A few minutes a day. Free, with no ads.</p>
         <div class="acts">
-          <button class="btn big sun" onclick={enter}>{cta}</button>
+          <button class="btn big sun" onclick={() => enter('signup')}>{cta}</button>
           <button class="btn big night" onclick={() => to('level')}>See how it works</button>
         </div>
         <p class="tiny">This board is not a recording. It is playing the {demo.band} band's data, built from {millions(C.games[demo.band])} games.</p>
@@ -254,7 +257,7 @@
           <p class="lead">Ply is free software under the GPL-3.0 licence, and its opening data comes from the Lichess open database (CC0). It contains no analytics, advertising or third-party scripts, sets no cookies, and loads its fonts and icons from its own files.</p>
           <details>
             <summary>What does Ply store, and where?</summary>
-            <p>{#if configured}Your login (an email address, or who you are on Google or Lichess: never a password), and a copy of your repertoire, cards, review history, games and settings, kept with Supabase, our database provider, so your devices can share them. Only your own login can read your rows. You can delete the account and everything on it from Settings.{:else}This build has no accounts: everything stays in this browser's storage and is never sent anywhere.{/if}</p>
+            <p>{#if configured}Your login (an email address and a password Supabase keeps only as a hash, or who you are on Google or Lichess, with no Google or Lichess password), and a copy of your repertoire, cards, review history, games and settings, kept with Supabase, our database provider, so your devices can share them. Only your own login can read your rows. You can delete the account and everything on it from Settings.{:else}This build has no accounts: everything stays in this browser's storage and is never sent anywhere.{/if}</p>
           </details>
           <details>
             <summary>When does it connect to the internet?</summary>
@@ -281,11 +284,11 @@
         </div>
       </div>
       <div class="door" use:inview={{ on: (s) => { if (s) onintent(); }, once: true, margin: '300px', threshold: 0 }}>
-        {#if login}<Login />
+        {#if login}<Login bind:mode={loginMode} />
         {:else}
           <div class="open">
             <Mascot mood="cheer" size={96} />
-            <button class="btn big sun wide" onclick={enter}>{app.onboarded ? 'Open Ply' : 'Start training'}</button>
+            <button class="btn big sun wide" onclick={() => enter()}>{app.onboarded ? 'Open Ply' : 'Start training'}</button>
             {#if !configured}<p>This build has no accounts: your progress stays on this device.</p>{/if}
           </div>
         {/if}

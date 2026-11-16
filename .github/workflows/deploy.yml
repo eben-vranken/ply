@@ -64,15 +64,14 @@ jobs:
         working-directory: app
         env:
           SHOTS: smoke-shots
-      # the deployed build. Accounts are on once the Supabase project is set up: the repository
-      # variable PLY_ACCOUNTS = true passes the project URL and the public anon key (secrets) to
-      # Vite. Without it the site works as before, on the device only.
+      # the deployed build: accounts are always on, so progress lives on the Supabase account
+      # (the project URL and the public anon key are repository secrets)
       - run: npm run build
         if: github.ref == 'refs/heads/main'
         working-directory: app
         env:
-          VITE_SUPABASE_URL: ${{ vars.PLY_ACCOUNTS == 'true' && secrets.VITE_SUPABASE_URL || '' }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.PLY_ACCOUNTS == 'true' && secrets.VITE_SUPABASE_ANON_KEY || '' }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

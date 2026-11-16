@@ -11,7 +11,7 @@
   import Icon from '../lib/Icon.svelte';
   import { canVibrate } from '../lib/platform';
   import { fitMySchedule, useDefaultWeights, MIN_REVIEWS } from '../lib/srs/personal';
-  import { configured, cloud, requestSync, syncLabel, logOut, deleteAccount, resetAccount } from '../lib/cloud/cloud.svelte';
+  import { configured, cloud, requestSync, syncLabel, logOut, deleteAccount, resetAccount, setPassword } from '../lib/cloud/cloud.svelte';
 
   type Num = { k: 'newMoves' | 'newTraps' | 'newMistakes' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
   const groups: [string, Num[]][] = [
@@ -111,6 +111,16 @@
   let deleting = $state(false);
   let deleteWord = $state('');
   let accountBusy = $state(false);
+  // a new password: after a reset link (cloud.recovering), or a change you ask for
+  let changing = $state(false);
+  let newPass = $state('');
+  let passErr = $state('');
+  async function savePassword() {
+    accountBusy = true; passErr = '';
+    try { await setPassword(newPass); newPass = ''; changing = false; say('Password saved.'); }
+    catch (e) { passErr = (e as Error).message; }
+    finally { accountBusy = false; }
+  }
   async function out(force = false) {
     accountBusy = true;
     try { const r = await logOut(force); if (!r.ok) leaving = r.pending; }
@@ -152,6 +162,19 @@
         <button class="btn quiet wide" onclick={() => requestSync()} disabled={cloud.status === 'syncing'}><Icon name="wifi" size={20} /> {cloud.status === 'syncing' ? 'Syncing…' : 'Sync now'}</button>
         <p class="t-small">Your repertoire, cards, reviews, games and settings are kept on your account and sync between your devices. Appearance, sounds and vibration stay per device.</p>
       </div>
+      {#if cloud.recovering || changing}
+        <div class="r col">
+          <p class="t-small">{cloud.recovering ? 'You came in from a password reset link. Choose a new password for your account.' : 'Choose a new password, 8 characters or more.'}</p>
+          <form class="row" onsubmit={(e) => { e.preventDefault(); void savePassword(); }}>
+            <input class="txt grow" style="text-align:left" type="password" autocomplete="new-password" placeholder="New password" aria-label="New password" bind:value={newPass} />
+            <button class="btn sm" type="submit" disabled={newPass.length < 8 || accountBusy}>Save</button>
+          </form>
+          {#if passErr}<p class="err" role="alert">{passErr}</p>{/if}
+          <button class="link" onclick={() => { changing = false; cloud.recovering = false; newPass = ''; passErr = ''; }}>{cloud.recovering ? 'Not now' : 'Cancel'}</button>
+        </div>
+      {:else if cloud.user.via === 'email'}
+        <div class="r"><button class="link" onclick={() => (changing = true)}>Change password</button></div>
+      {/if}
       {#if leaving !== null}
         <div class="r col">
           <p class="t-small">The last sync did not go through{leaving ? `, so ${leaving.toLocaleString('en')} change${leaving === 1 ? '' : 's'} on this device would be lost` : ''}. Logging out clears this device.</p>

@@ -1,5 +1,5 @@
 // Two devices, one account: each browser context is a device with its own storage. They log in
-// with the same email, train, go offline and train more, then come back online and sync; they
+// with the same email and password, train, go offline and train more, then come back online and sync; they
 // must end up holding the same data with nothing lost. Then one logs out (the device is
 // cleared) and logs back in (everything returns).
 //
@@ -28,6 +28,7 @@ const check = (ok: boolean, what: string) => { if (!ok) fails.push(what); step((
 // ---------------------------------------------------------------- the stand-in Supabase
 const remote = new MemoryRemote();
 const USER = { id: '11111111-1111-4111-8111-111111111111', email: 'player@example.com', aud: 'authenticated', role: 'authenticated', app_metadata: { provider: 'email' }, user_metadata: {}, created_at: '2026-11-16T00:00:00Z' };
+const PASSWORD = 'correct horse battery';
 const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const session = () => {
   const exp = Math.floor(Date.now() / 1000) + 3600;
@@ -44,8 +45,10 @@ async function supabase(route: Route) {
   const json = (status: number, body: unknown) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body) });
   if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
   const p = u.pathname;
-  if (p === '/auth/v1/otp') return json(200, {});
-  if (p === '/auth/v1/verify') return (req.postDataJSON()?.token === '123456' ? json(200, session()) : json(403, { code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }));
+  if (p === '/auth/v1/token' && u.searchParams.get('grant_type') === 'password') {
+    const b = req.postDataJSON() as { email?: string; password?: string };
+    return b.email === USER.email && b.password === PASSWORD ? json(200, session()) : json(400, { code: 400, error_code: 'invalid_credentials', msg: 'Invalid login credentials' });
+  }
   if (p === '/auth/v1/token') return json(200, session());
   if (p === '/auth/v1/user') return json(200, USER);
   if (p === '/auth/v1/logout') return route.fulfill({ status: 204, headers: cors });
@@ -85,9 +88,10 @@ async function device(name: string) {
 type Dev = { name: string; ctx: BrowserContext; page: Page };
 
 async function logIn(d: Dev) {
-  await d.page.getByLabel('Email address').fill(USER.email, { timeout: 30_000 });
-  await d.page.getByRole('button', { name: 'Email me a login link' }).click();
-  await d.page.getByLabel('Code from the email').fill('123456');
+  // the landing's panel opens on a new account; this one exists
+  await d.page.getByRole('button', { name: 'Have an account? Log in' }).click({ timeout: 30_000 });
+  await d.page.getByLabel('Email address').fill(USER.email);
+  await d.page.getByLabel('Password').fill(PASSWORD);
   await d.page.getByRole('button', { name: 'Log in', exact: true }).click();
 }
 const onToday = (d: Dev) => d.page.waitForSelector('h1:text("Today")', { timeout: 30_000 });
