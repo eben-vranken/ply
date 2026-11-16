@@ -1,5 +1,7 @@
 # Ply landing page (draft outline)
 
+> **Built:** the page is `app/src/routes/Landing.svelte` (DESIGN.md, "The landing page"). It follows this outline where the outline still holds; where the two differ the page is right: accounts are now required in builds that have them, there are eight rating bands (2400 from 1.4 million games), and the FAQ's "Do I need an account? No" and "It stays on your device" answers were replaced by what `privacy-draft.md` says.
+>
 > Draft for review, not published. Text outline only, no design. Built around the free-forever promise in `reports/Ply subscription readiness gaps.md`. Nothing here mentions a paid tier, since that is not decided yet. Claims are limited to what the app does today.
 
 ## Hero

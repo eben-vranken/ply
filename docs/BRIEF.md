@@ -26,7 +26,7 @@ Everything below is decided. Change a row here first, then the code.
 
 | Topic | Decision |
 | --- | --- |
-| Platform | Offline-first installable PWA for Android Chrome (Samsung Galaxy S20 FE), designed for the phone in portrait; responsive layouts for landscape, tablets and desktop (DESIGN.md, "Wide screens"). The installed app follows the device's rotation setting |
+| Platform | Offline-first installable PWA for Android Chrome (Samsung Galaxy S20 FE), designed for the phone in portrait; responsive layouts for landscape and tablets (DESIGN.md, "Wide screens"), a desktop design from 1024 × 600 ("Desktop") and a landing page for anyone not logged in ("The landing page"). The installed app follows the device's rotation setting |
 | Hosting | GitHub Pages, repo `eben-vranken/ply`, license GPL-3.0 (required by chessground and Stockfish) |
 | Accounts and sync | Supabase (Auth + Postgres with Row Level Security). A Ply account is required when the build has a Supabase URL and anon key; progress lives on the account and syncs across devices, offline-first. Log in with email (link or code), Google or Lichess. Builds without the keys run on the device only |
 | Frontend | Svelte 5 + TypeScript + Vite |

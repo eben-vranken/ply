@@ -20,7 +20,8 @@ npm run check    # svelte-check
 npm run build
 npm run smoke    # plays a session in headless Chromium (after build)
 npm run shots    # screenshots into docs/screenshots (after build)
-npm run layouts  # main screens at phone, landscape, tablet and desktop sizes (after build)
+npm run layouts  # every screen at phone, tablet and three desktop sizes, light and dark, and the landing page (after build)
+npm run landing-data  # rebuilds the landing page's demo data from public/data
 ```
 
 ## Data pipeline (`pipeline/`)

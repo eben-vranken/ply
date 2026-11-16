@@ -54,7 +54,7 @@ Added with the real build, in the same language: the first-launch screen (night 
 
 ## Wide screens
 
-The phone in portrait is the design; everything below only adds room around it and never changes it (`npm run layouts` captures every main screen at five sizes into `docs/screenshots/layouts/`).
+Windows of 1024 × 600 and larger have a design of their own ("Desktop", below); this section is what applies under that. The phone in portrait is the design; everything below only adds room around it and never changes it (`npm run layouts` captures every main screen at five sizes into `docs/screenshots/layouts/`).
 
 - **Wider than 560 px:** the app fills the window. List screens (Today, Repertoire, Stats, Settings) read as one centred 680 px column; the tab bar, notices, sheets and dialogs keep their phone width, centred.
 - **Landscape windows (desktop, tablets and phones on their side):** the trainer and Play it out become two columns: the board on the left, as tall as the window allows, and the name, prompt, move list and actions in a column beside it. Explore puts the board, its name, breadcrumbs and Learn / Drill on the left (held in place while the moves and traps scroll on the right).
@@ -81,17 +81,17 @@ The switch is by window size only, never by device or pointer, so an iPad on its
 
 ### The shell
 
-- **Sidebar** in place of the tab bar: ink, like the tab bar it replaces, with the active screen as a birch slab. Top to bottom: the wordmark, a "Jump to…" field that opens the command palette (Ctrl/Cmd+K), the five screens with their number keys, then what you would otherwise have to open Today for: the daily goal ring with today's XP, the streak flame (lit once today counts) with freezes, the level, and the sync status (a dot with a word, never colour alone; click to sync). Builds without accounts say "On this device".
-- **Command palette** (Ctrl/Cmd+K, or `/`): screens, actions (start today's session, Arcade, sync, appearance, import and export) and every named opening by name, ECO code or moves. Your own openings open their skill tree; any other opens in Explore. Arrow keys and Enter; Escape closes.
+- **Sidebar** in place of the tab bar: ink, like the tab bar it replaces, with the active screen as a birch slab. Top to bottom: the wordmark, a "Jump to…" field that opens the command palette (Ctrl/Cmd+K), the five screens, then what you would otherwise have to open Today for: the daily goal ring with today's XP, the streak flame (lit once today counts) with freezes, the level, and the sync status (a dot with a word, never colour alone; click to sync). Builds without accounts say "On this device".
+- **Command palette** (Ctrl/Cmd+K, or `/`): screens, actions (start today's session, Arcade, sync now, appearance) and every one of the 3,865 named openings by name, ECO code or first moves. Your own openings open their skill tree; any other opens in Explore. Arrow keys and Enter; Escape closes.
 - **Rooms** (the trainer, Play it out, the skill tree) still take the whole window: the sidebar slides away and the dark room comes up over everything.
 - Hover states on everything that can be clicked (cards lift by 2 px, rows tint), tooltips on icon-only buttons, the cobalt focus ring everywhere, and `kbd` chips for shortcuts where a keyboard is the faster way.
 
 ### Screen by screen
 
 - **Today** is a dashboard in two columns. Left, the work: the birch hero slab (first card, counts, Start), the queue (what today's session is made of, by kind, and the next cards in order), and the openings you are mastering as a grid of cards with their chapters. Right, the state of things, side by side instead of stacked: Birch, the daily goal, the week strip, retention, Arcade and "Is it working?".
-- **Explore** is board, moves, context. The board is the hero on the left with the name, the line so far and Learn / Drill. The move table sits beside it with frequencies, W/D/L and eval; hovering a move draws it on the board as an arrow and shows the position it leads to on a small board with the name it reaches. From 1600 px, search, the traps and the puzzles get a third column; below that they sit under the moves.
+- **Explore** is board, moves, context. The board is the hero on the left with the name, the line so far and Learn / Drill. The move table sits beside it with frequencies, W/D/L and eval; hovering a move draws it on the board as an arrow and shows the position it leads to on a small board with the name it reaches (the preview sits over the half of the board the arrow is not in). From 1600 px, search, the traps and the puzzles get a third column; below that they sit under the moves.
 - **Repertoire** shows openings as a grid of cards per section instead of a list, with search, import and export in one row; uncovered replies, mistakes and rare cards move to a column on the right. A mistake card gets a delete button on hover (the phone swipes).
-- **Stats** and **Settings** are the same cards in two or three balanced columns.
+- **Stats** and **Settings** are the same cards in two balanced columns, three from 1600 px.
 - **The trainer** keeps the board as the hero, as large as the window allows. Beside it one panel carries, top to bottom: the opening and the move order, the prompt and the reason for the move, the line so far as a real move list, the other lines this position is in (open, not behind a tap), and the actions. Under it a row of key chips: type a move, `?` hint, `Enter` continue, `⌫` undo the grade, `Esc` leave. Play it out uses the same panel with its eval bar.
 - **Session complete** fills the window: Birch on the stack of plies on the left, the numbers on the right, and three times the confetti across the full width.
 - **The skill tree** is a full-window canvas: scroll to zoom at the pointer, drag to pan, arrow keys to pan, `+` `−` `0` to zoom and fit. The sheet becomes a panel on the right with a larger board, so the tree keeps its full height.
@@ -106,14 +106,18 @@ The table above still rules: only actions move. Added for the big screen:
 - **Screens** cross-fade and rise 10 px instead of sliding sideways (a 28 px slide reads as a phone gesture on a wide window).
 - `prefers-reduced-motion` removes all of it, as everywhere.
 
+How it is built: desktop rules live in each screen's own file under one media query, `(min-width: 1024px) and (min-height: 600px)`, after the phone's rules, so nothing below the breakpoint can be touched by them. Where the order of the parts differs (Today), the parts are Svelte snippets rendered in the phone's order or the dashboard's; elsewhere the wrappers that group parts into columns are `display: contents` on the phone. `npm run layouts` captures every screen at 1280 × 800, 1440 × 900 and 1920 × 1080 in light and dark next to the phone and tablet sizes.
+
 ## The landing page
 
 One page (`routes/Landing.svelte`), shown to anyone who is not logged in, at every width. It ends in the login. Builds without accounts have no login and open straight into the app as before; there the page lives at `#/welcome` (Settings links to it) and its buttons open the app.
 
 It walks through the two rooms: the night room first, where the board is the only bright thing, then the light one, and back into the night for the login.
 
+The page's own bar stays on top (clear over the hero, ink once you scroll) with the way in on the right. The opening data (a few MB) is not fetched until the visitor heads for the login, so the page itself loads fast.
+
 1. **Hero (night).** "Openings that stay learned." beside a live board playing the line the 1200 band's data produces when White plays the default moves and Black the most played reply: it runs into the Fried Liver. On Black's turns the replies fan out as arrows, as thick as they are played, with their percentages listed beside the board; on yours a card for the move flips from New to Learned and gains its first veneer. You can pause it and step through it.
-2. **Your level.** The Italian Game after 3.Bc4 at every band the data has: pick a rating and the arrows and bars change (…h6 is played by 18% at 1200 and 1% at 2200).
+2. **Your level.** The Italian Game after 3.Bc4 at every band the data has. The section is pinned while you scroll and the scroll climbs the bands; the arrows, the bars and a small trend line per move change with it (…h6 is played by about 19% around 1200 to 1400 and under 1% at 2400). Picking a band by hand takes over from the scroll.
 3. **Three ways to train:** Today, Learn, Drill.
 4. **Traps, both ways.** The same position one move later: 6.Qf3 is played in 22% of games at 1200 and loses. The board plays the bait and its refutation (Danger), or the punishment from Black's side (Punish).
 5. **Your own games** turned into cards, analysed on your device.
