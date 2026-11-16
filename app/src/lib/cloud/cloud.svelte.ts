@@ -31,6 +31,8 @@ export const cloud = $state({
   lastAt: 0,
   /** the first sync for this account on this device is running (onboarding waits for it) */
   restoring: false,
+  /** logging out or deleting the account: the device is being cleared and the page is about to reload */
+  leaving: false,
   /** a login link or code was sent to this address */
   sentTo: '',
   authError: ''
@@ -255,6 +257,7 @@ async function wipeDevice() {
 /** Log out: a last sync, then this device is cleared; logging in again brings it all back. */
 export async function logOut(force = false): Promise<{ ok: true } | { ok: false; pending: number }> {
   if (!force && !(await requestSync())) return { ok: false, pending: await unsynced() };
+  cloud.leaving = true;
   await (await client()).auth.signOut({ scope: 'local' });
   await wipeDevice();
   location.reload();
@@ -266,6 +269,7 @@ export async function deleteAccount() {
   const c = await client();
   const { error } = await c.rpc('delete_my_account');
   if (error) throw new Error(error.message);
+  cloud.leaving = true;
   await c.auth.signOut({ scope: 'local' });
   await wipeDevice();
   location.reload();

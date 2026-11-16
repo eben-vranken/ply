@@ -69,6 +69,7 @@
   .field { height: 56px; border-radius: 16px; border: 0; background: #fff; padding: 0 18px; font-size: 18px; font-weight: 600; width: 100%; user-select: text; box-shadow: inset 0 0 0 1.5px var(--birch-3); color: var(--ink-fixed); }
   .field::placeholder { color: #77684f; }
   .field:focus { outline: 3px solid var(--cobalt); outline-offset: 1px; }
+  .login :global(:focus-visible) { outline-color: var(--cobalt-deep) !important; }
   .code { letter-spacing: 0.3em; text-align: center; font-size: 24px; }
   .sent { margin-bottom: 14px; line-height: 1.4; }
   .note { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.6); margin-bottom: 14px; font-weight: 600; }

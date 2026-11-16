@@ -60,7 +60,9 @@
   const FREE = ['Unlimited repertoire and unlimited reviews', 'Every way to train: Today, Learn, Drill, Arcade, Play it out', 'Import and export PGN, import Lichess studies', 'Your chess.com and Lichess games, synced and analysed', 'Streak freezes you earn by playing, never buy'];
 </script>
 
-<div class="landing" class:timelines bind:this={root} onscroll={() => { const s = (root?.scrollTop ?? 0) > 24; if (s !== scrolled) scrolled = s; }}>
+<!-- the sections that are built late are built at once for anyone moving through the page with Tab -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="landing" class:timelines bind:this={root} onkeydown={(e) => { if (e.key === 'Tab') near = { fan: true, trap: true }; }} onscroll={() => { const s = (root?.scrollTop ?? 0) > 24; if (s !== scrolled) scrolled = s; }}>
   <header class="top" class:scrolled>
     <button class="mark" onclick={() => root?.scrollTo({ top: 0, behavior: desk.still ? 'auto' : 'smooth' })} aria-label="Ply, back to the top"><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span><span class="t-name">Ply</span></button>
     <nav aria-label="On this page">
@@ -69,7 +71,7 @@
       <button onclick={() => to('traps')}>Traps</button>
       <button onclick={() => to('free')}>Free and open</button>
     </nav>
-    <button class="in" onclick={enter}>{login ? 'Log in' : 'Open Ply'}</button>
+    <button class="in" onclick={enter} aria-label={login ? 'Log in to Ply: go to the login' : 'Open Ply'}>{login ? 'Log in' : 'Open Ply'}</button>
   </header>
 
   <!-- 1. the night room: the board is the only bright thing -->
@@ -99,7 +101,7 @@
   </section>
 
   <!-- 2. lines matched to your rating -->
-  <section id="level" class="level" use:inview={{ on: (s) => { if (s) { near.fan = true; onintent(); } }, once: true, margin: '700px', threshold: 0 }}>
+  <section id="level" class="level" use:inview={{ on: (s) => { if (s) near.fan = true; }, once: true, margin: '700px', threshold: 0 }}>
     {#if near.fan}<BandFan />{:else}<div class="ph tall"></div>{/if}
   </section>
 
@@ -493,12 +495,17 @@
     h1 { font-size: clamp(50px, 6.2vw, 104px); }
     .two { grid-template-columns: 1fr 1fr; gap: 64px; }
     .two.mid { grid-template-columns: 1fr minmax(0, 480px); }
+    .enter { padding-top: 84px; }
     .three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-    .treeband .two { grid-template-columns: 0.7fr 1.3fr; }
+    .treeband .two { grid-template-columns: 0.7fr 1.3fr; align-items: start; }
+    .treeband .two > div:first-child { position: sticky; top: 110px; }
     .sigils { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 34px 14px; }
     .birch .two { grid-template-columns: 0.8fr 1.2fr; }
     .mis { flex-direction: column; }
     .arrow { transform: rotate(90deg); }
+    .game, .mcard { max-width: 400px; }
+    .mcard { grid-template-columns: 150px 1fr; }
+    .mcard .mini { width: 150px; }
   }
-  @media (min-width: 1200px) { .mis { flex-direction: row; } .arrow { transform: none; } .sigils { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+  @media (min-width: 1200px) { .sigils { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
 </style>

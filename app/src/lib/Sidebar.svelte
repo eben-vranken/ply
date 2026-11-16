@@ -71,7 +71,7 @@
 
 <style>
   .sb { position: absolute; z-index: 10; left: 0; top: 0; bottom: 0; width: 76px; display: flex; flex-direction: column; gap: 6px; padding: 16px 10px 14px; background: var(--bar); color: var(--night-ink-2); }
-  .lbl { display: none; }
+  .sb .lbl { display: none; }
   button { border-radius: 14px; transition: background 160ms, color 160ms; }
   .brand { display: flex; align-items: center; justify-content: center; gap: 10px; height: 48px; color: var(--night-ink); }
   .logo { display: flex; flex-direction: column; gap: 3px; }
@@ -117,9 +117,9 @@
 
   @media (min-width: 1280px) {
     .sb { width: 232px; padding: 18px 14px 14px; }
-    .lbl { display: inline; }
-    .pill.lbl { display: inline-flex; }
-    .gt { display: block; }
+    .sb .lbl { display: inline; }
+    .sb .pill.lbl { display: inline-flex; }
+    .sb .gt { display: block; }
     .wm { display: block; }
     .brand { justify-content: flex-start; padding: 0 8px; }
     .jump, nav button { justify-content: flex-start; padding: 0 12px; }

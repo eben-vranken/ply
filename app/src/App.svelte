@@ -47,7 +47,7 @@
   $effect(() => { const t = training || base === '/play'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
   const needLogin = $derived(configured && !cloud.user);
   // the landing page: for anyone not logged in, and at #/welcome for everyone else (builds without accounts too)
-  const landing = $derived(route.path.split('?')[0] === '/welcome' || (needLogin && (cloud.ready || likelyGuest) && model.status !== 'error'));
+  const landing = $derived(route.path.split('?')[0] === '/welcome' || (needLogin && !cloud.leaving && (cloud.ready || likelyGuest) && model.status !== 'error'));
   let Landing = $state<Component<{ onintent?: () => void }> | null>(null);
   $effect(() => { if (landing && !Landing) void import('./routes/Landing.svelte').then((m) => (Landing = m.default)); });
   // finishing onboarding sends it all to the account
@@ -101,7 +101,7 @@
 
 {#if landing && Landing}
   <div out:fade={{ duration: dur }}><Landing onintent={startBoot} /></div>
-{:else if landing || model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
+{:else if landing || cloud.leaving || model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
   <div class="boot" class:err={model.status === 'error'} role="status">
     <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     {#if model.status === 'error'}

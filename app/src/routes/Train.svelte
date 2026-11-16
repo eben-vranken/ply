@@ -768,7 +768,7 @@
     .room.board .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 10px 4px; font-size: 12.5px; color: var(--night-ink-2); }
     .room.board .keys kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--night-3); color: var(--night-ink); margin-left: 8px; }
     .room.board .keys kbd:first-child { margin-left: 0; }
-    .room.board .coach { left: auto; right: max(32px, calc((100vw - var(--bw) - 492px) / 2 + 16px)); bottom: 136px; width: 428px; }
+    .room.board .coach { left: auto; right: max(32px, calc((100vw - var(--bw) - 492px) / 2 + 16px)); bottom: 160px; width: 428px; }
     .room .btn:not(:disabled):hover { filter: brightness(1.08); }
     /* session complete fills the window: Birch on the stack on the left, the numbers on the right */
     .complete:not(.summary) { max-width: 1120px; display: grid; grid-template-columns: 1fr minmax(380px, 480px); column-gap: 72px; align-content: center; align-items: center; padding: 0 48px 24px; }

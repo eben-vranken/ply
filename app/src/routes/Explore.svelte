@@ -135,7 +135,11 @@
   function point(e: PointerEvent, u: string) {
     if (!desk.on || e.pointerType !== 'mouse') return;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    hover = { u, top: Math.max(12, Math.min(innerHeight - 300, r.top - 96)), left: r.left - 236 };
+    // the preview sits over the half of the board the arrow is not in
+    const b = boardEl?.getBoundingClientRect();
+    const rank = (+u[1] + +u[3]) / 2, upper = (side === 'w') === rank > 4.5;
+    const top = b ? (upper ? Math.min(b.bottom - 292, innerHeight - 300) : b.top + 8) : Math.max(12, r.top - 96);
+    hover = { u, top, left: r.left - 236 };
   }
   const lead = $derived.by(() => {
     if (!hover) return null;

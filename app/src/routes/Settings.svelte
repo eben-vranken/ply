@@ -319,7 +319,7 @@
   </div>
   </div>
   {#if status}<p class="status" role="status">{status}</p>{/if}
-  <p class="foot">Ply 1.0 · opening data {model.version || '—'} · {model.band} band · GPL-3.0<br />Opening data from the Lichess open database (CC0) · <button class="about" onclick={() => go('/welcome')}>About Ply</button></p>
+  <p class="foot">Ply 1.0 · opening data {model.version || '—'} · {model.band} band · GPL-3.0<br />Opening data from the Lichess open database (CC0)<span class="about"> · <button onclick={() => go('/welcome')}>About Ply</button></span></p>
 </div>
 
 <style>
@@ -358,7 +358,8 @@
   .pgn { width: 100%; border: 0; border-radius: 14px; background: var(--ground); padding: 12px; font: 13px/1.4 ui-monospace, monospace; color: var(--ink); user-select: text; resize: vertical; }
   .r.col { gap: 10px; }
   .foot { text-align: center; font-size: 12.5px; color: var(--ink-3); margin-top: 26px; }
-  .about { color: var(--accent-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .about { display: none; }
+  .about button { color: var(--accent-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
   /* ---------- desktop: the same cards in balanced columns (DESIGN.md, "Desktop") ---------- */
   @media (min-width: 1024px) and (min-height: 600px) {
     .screen.settings { padding: 28px max(32px, calc((100% - 1480px) / 2)) 48px; }
@@ -370,6 +371,7 @@
     .settings .pick button:not(.on):hover { background: var(--line); color: var(--ink); }
     .settings .btn:not(:disabled):hover { filter: brightness(1.06); }
     .settings label.r { cursor: pointer; }
+    .about { display: inline; }
     .settings .status { position: fixed; z-index: 30; left: 50%; bottom: 28px; margin: 0 0 0 -180px; width: 360px; box-shadow: var(--shadow); }
   }
   @media (min-width: 1600px) and (min-height: 600px) { .settings .cols { columns: 3; } }

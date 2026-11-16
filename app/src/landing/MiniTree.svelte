@@ -20,7 +20,7 @@
       const node: N = { ...t, x: t.depth * COL, y: 0, colour, lit: -1, folded: open ? 0 : t.kids };
       out.push(node);
       if (ks.length) { const ys = ks.map((k, i) => place(k, colour, opens(k, bi, i === 0), bi)); node.y = (ys[0] + ys.at(-1)!) / 2; }
-      else { node.y = y; y += ROW; }
+      else { if (t.name) y += 16; node.y = y; y += ROW; }
       return node.y;
     };
     const tops = kids(null).map((t, i) => { const at = place(t, PALETTE[i % PALETTE.length], opens(t, i, true), i); y += 10; return at; });
