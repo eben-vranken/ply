@@ -7,7 +7,7 @@
 
 ## The short version
 
-You log in to Ply with your email or Lichess. Your repertoire, cards, reviews, games and settings are stored on your device and on your Ply account, so they are the same on every device you log in on. The account is stored with Supabase, our database provider. Ply has no tracking, no ads and no analytics. Ply connects to chess.com or Lichess only to fetch your public games, your rating or a public study, and only for the usernames or study addresses you give it.
+You log in to Ply with your email or Lichess. Your repertoire, cards, reviews, games and settings are stored on your device and on your Ply account, so they are the same on every device you log in on. The account is stored with Supabase, our database provider. Ply has no tracking, no ads and no analytics. Ply connects to chess.com or Lichess only to fetch your public games, your rating or a public study, and only for the usernames or study addresses you give it. When you play a puzzle, Ply asks Lichess for the game it comes from, sending only the puzzle's id.
 
 ## What Ply stores, and where
 

@@ -48,10 +48,11 @@ export function matchMove(typed: string, legal: Legal[]): Match {
 }
 
 /** Keys that are never part of a move, so they can drive the screen while nothing is typed. */
-export type KeyAction = 'hint' | 'next' | 'undo' | 'back' | 'stop';
+export type KeyAction = 'hint' | 'next' | 'undo' | 'back' | 'fwd' | 'stop';
 export function actionOf(e: { key: string }): KeyAction | null {
   if (e.key === '?') return 'hint';
-  if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') return 'next';
+  if (e.key === 'Enter' || e.key === ' ') return 'next';
+  if (e.key === 'ArrowRight') return 'fwd';
   if (e.key === 'Backspace') return 'undo';
   if (e.key === 'ArrowLeft') return 'back';
   if (e.key === 'Escape') return 'stop';

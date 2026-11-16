@@ -490,7 +490,7 @@ function puzzleItem(p: Puzzle, id: string, isNew: boolean): Item {
   p.moves.forEach((_, i) => { if (i % 2 === 1) asks[i] = {}; });
   const fams = [...new Set(p.families.map((f) => D!.openings[f]?.family).filter(Boolean))];
   return {
-    kind: 'puzzle', side, start: p.fen, setup: [], moves: p.moves, asks,
+    kind: 'puzzle', side, start: p.fen, setup: [], moves: p.moves, asks, puzzle: p.id,
     prompt: 'Find the best line', label: D!.openings[p.families.at(-1)!]?.name ?? fams[0] ?? 'Puzzle', order: '',
     source: `Puzzle · rated ${p.rating} · ${fams.join(', ')}`, card: id, intro: isNew ? { kind: 'puzzle', ref: p.id } : undefined
   };

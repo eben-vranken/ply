@@ -17,6 +17,7 @@
   import Board, { type Badge } from '../lib/Board.svelte';
   import EvalBar from '../lib/EvalBar.svelte';
   import { Engine } from '../lib/engine/stockfish';
+  import { puzzleGame } from '../lib/puzzleGame';
   import Icon from '../lib/Icon.svelte';
   import Promo from '../lib/Promo.svelte';
   import MoveInput from '../lib/MoveInput.svelte';
@@ -87,7 +88,35 @@
       if (seq === evalSeq) evalCp = w;
     } catch { /* no engine here: the bar stays as it was */ }
   }
-  $effect(() => { if (evalOn) void evaluate(fen); });
+  // the game before a puzzle (fetched from Lichess), so the line reads from move 1
+  let pre = $state<string[]>([]);
+  // browsing the whole line after the answer with ← and →: the position after `view` moves, null = the live one
+  let view = $state<number | null>(null);
+  const line = $derived.by(() => {
+    if (!item) return [];
+    const c = pre.length ? new Chess() : new Chess(fenOf(item.start));
+    const out: { fen: string; last: [string, string] | null; san: string }[] = [{ fen: c.fen(), last: null, san: '' }];
+    try {
+      for (const u of pre) { const m = c.move(toMove(u)); out.push({ fen: c.fen(), last: [m.from, m.to], san: m.san }); }
+      for (const s of hist) { const m = c.move(s); out.push({ fen: c.fen(), last: [m.from, m.to], san: m.san }); }
+    } catch { /* a line that does not replay: browse what there is */ }
+    return out;
+  });
+  /** the ply number of the line's first move, for "12… Qh5" */
+  const lineStart = $derived(pre.length ? 0 : histStart);
+  const cur = $derived(view ?? line.length - 1);
+  const browsing = $derived(view !== null && phase === 'answered');
+  const shown = $derived(browsing ? line[view!] : null);
+  function goTo(k: number) {
+    if (phase !== 'answered' || !line.length) return;
+    k = Math.max(0, Math.min(line.length - 1, k));
+    if (k === cur) return;
+    hold();
+    view = k === line.length - 1 ? null : k;
+    sfx.move();
+    void tick().then(() => strip?.querySelector('.last')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  }
+  $effect(() => { if (evalOn) void evaluate(shown ? shown.fen : fen); });
   const rating0 = app.arcadeRating;
   const tally = { solved: 0, missed: 0, streak: 0 };
   // the streak is what the arcade plays for: a flame that heats up, and a cheer at 3, 5 and every 5 after
@@ -136,6 +165,8 @@
     histStart = (chess.moveNumber() - 1) * 2 + (chess.turn() === 'b' ? 1 : 0);
     for (const u of it.setup) chess.move(toMove(u));
     step = 0; wrong = false; hinted = false; playable = false; results = {}; fixing = false; showOthers = false;
+    view = null; pre = [];
+    if (it.puzzle) void puzzleGame(it.puzzle, fenOf(it.start)).then((u) => { if (u && idx === i && items[i] === it) pre = u; });
     phase = 'play'; msg = null; badge = null; shapes = []; lastMove = null; dests = null; applied = null; cheer = null; auto = false; lastXp = 0; why = ''; coach = '';
     sync();
     timer = setTimeout(advance, 450);
@@ -176,6 +207,7 @@
   function onkey(a: KeyAction): boolean {
     if (phase === 'complete' || phase === 'summary') { if (a === 'next' || a === 'stop') { leave(); return true; } return false; }
     if (a === 'hint' && phase === 'play' && dests) { hint(); return true; }
+    if ((a === 'back' || a === 'fwd') && phase === 'answered') { goTo(cur + (a === 'back' ? -1 : 1)); return true; }
     if (a === 'next' && phase === 'answered') { void next(); return true; }
     if (a === 'undo' && phase === 'answered' && !drill && applied && !undone) { void undo(); return true; }
     if (a === 'stop') { stop(); return true; }
@@ -316,7 +348,7 @@
       }
       // a clean answer with nothing to read moves on by itself
       const told = !drill && tip('grade');
-      if (app.autoNext && clean && !told && !it.note && !it.bait && !it.played) autoNext(cheer ? 2900 : 2300);
+      if (app.autoNext && clean && !told && !it.note && !it.bait && !it.played && !PUZZLE_KINDS.has(it.kind)) autoNext(cheer ? 2900 : 2300);
     }
     if (arcade) {
       const rs = Object.values(results);
@@ -333,8 +365,7 @@
           if (mile && n >= 10) sfx.done();
           buzz([18, 50, 18, 50, 60]);
         } else buzz(n >= 3 ? [12, 40, 12] : 12);
-        // a clean answer moves on by itself after a moment (a touch or Stay holds it); a miss waits so you can look at it
-        autoNext(cheer ? 2900 : 2300);
+        // as on Lichess, the next puzzle waits for you: look at the line, then Next puzzle
       }
     }
     lastXp = xpFor(arcade ? 'arcade' : drill ? 'drill' : intro ? 'intro' : 'card', arcade ? !!arc?.clean : clean, arcade ? arc?.streak ?? 0 : combo);
@@ -456,6 +487,16 @@
   const playedSan = $derived(item?.played ? sanOf(epdAfter(item.setup, item.start.split(' ').slice(0, 4).join(' ')), item.played.uci) : '');
 </script>
 
+{#snippet moves()}
+  <div class="strip" bind:this={strip}>
+    {#each line.slice(1) as m, i}
+      {@const ply = lineStart + i}
+      <button class:last={i + 1 === cur} disabled={phase !== 'answered'} onclick={() => goTo(i + 1)}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m.san}</button>
+    {/each}
+    {#if line.length <= 1}<span class="ghost">1.</span>{/if}
+  </div>
+{/snippet}
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="room" class:board={phase !== 'complete' && phase !== 'summary'} onpointerdown={hold}>
   {#if phase === 'complete'}
@@ -566,7 +607,7 @@
     <div class="boardwrap" use:land>
       <div class="withbar">
         {#if evalOn}<EvalBar cp={evalCp} side={item.side} />{/if}
-        <div class="bd"><Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} /></div>
+        <div class="bd"><Board fen={shown ? shown.fen : fen} side={item.side} dests={shown ? null : dests} lastMove={shown ? shown.last : lastMove} shapes={shown ? [] : shapes} badge={shown ? null : badge} check={shown ? false : check} {rev} {shake} dark {onmove} /></div>
       </div>
       {#if cheer}
         {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
@@ -593,13 +634,7 @@
           <p class="ask">{item.prompt}</p>
         {/if}
       </div>
-      <div class="strip" bind:this={strip}>
-        {#each histSans as m, i}
-          {@const ply = histStart + i}
-          <span class:last={i === histSans.length - 1}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m}</span>
-        {/each}
-        {#if !histSans.length}<span class="ghost">1.</span>{/if}
-      </div>
+      {@render moves()}
       <footer>
         <button class="btn night" onclick={hint} disabled={!dests}><Icon name="hint" size={20} /> Hint</button>
         {#if retry}<button class="btn night" onclick={showMe} disabled={!dests || fixing}><Icon name="explore" size={20} /> Show me</button>{/if}
@@ -630,12 +665,17 @@
           </button>
         {/if}
       </div>
+      <div class="browse">
+        <button class="btn night sq" onclick={() => goTo(cur - 1)} disabled={cur === 0} aria-label="Previous move"><Icon name="back" size={20} /></button>
+        <div class="grow">{@render moves()}</div>
+        <button class="btn night sq" onclick={() => goTo(cur + 1)} disabled={cur >= line.length - 1} aria-label="Next move"><Icon name="next" size={20} /></button>
+      </div>
       <footer>
         {#if !drill}<button class="btn night sq" onclick={undo} disabled={undone || !applied || phase === 'replay'} aria-label="Undo grade"><Icon name="undo" size={22} /></button>{/if}
         {#if auto}<button class="btn night stay" onclick={hold}>Stay</button>{/if}
-        <button class="btn grow go {gradeInfo[0]}" class:auto style="--auto:{autoMs}ms" onclick={next}><span>Continue</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
+        <button class="btn grow go {gradeInfo[0]}" class:auto style="--auto:{autoMs}ms" onclick={next}><span>{arcade || item.kind === 'puzzle' ? 'Next puzzle' : 'Continue'}</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
       </footer>
-      <p class="keys" aria-hidden="true"><kbd>Enter</kbd> continue {#if !drill}<kbd>⌫</kbd> undo the grade {/if}<kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
+      <p class="keys" aria-hidden="true"><kbd>Enter</kbd> {arcade || item.kind === 'puzzle' ? 'next puzzle' : 'continue'} <kbd>←</kbd><kbd>→</kbd> the line {#if !drill}<kbd>⌫</kbd> undo the grade {/if}<kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {/if}
     </div>
   {/if}
@@ -706,10 +746,15 @@
 
   .strip { display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px; scrollbar-width: none; flex: none; min-height: 46px; align-items: center; }
   .strip::-webkit-scrollbar { display: none; }
-  .strip span { white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--night-ink-2); padding: 4px 7px; border-radius: 8px; }
+  .strip span, .strip button { white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--night-ink-2); padding: 4px 7px; border-radius: 8px; }
   .strip em { font-style: normal; font-weight: 500; opacity: 0.6; margin-right: 3px; }
   .strip .last { background: var(--night-3); color: var(--night-ink); }
   .strip .ghost { opacity: 0.4; }
+  .strip button:disabled { opacity: 1; cursor: default; }
+  .strip button:not(:disabled):hover { color: var(--night-ink); background: var(--night-2); }
+  .browse { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
+  .browse .sq { width: 44px; height: 44px; padding: 0; flex: none; }
+  .browse .strip { padding: 4px 4px; min-height: 40px; }
 
   footer { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 8px 16px 6px; }
   .src { font-size: 13px; color: var(--night-ink-2); text-align: right; flex: 1; }
@@ -827,6 +872,7 @@
     .room.board .prompt { min-height: 96px; padding-top: 18px; border-top: 1px solid var(--night-3); margin-top: 4px; }
     .room.board .ask { font-size: 30px; }
     .room.board .msg { font-size: 19px; }
+    .room.board .browse .strip::before { display: none; }
     .room.board .strip { flex-wrap: wrap; overflow: visible; padding: 14px 16px 8px; gap: 2px 4px; align-content: flex-start; }
     .room.board .strip::before { content: 'The line so far'; flex: 0 0 100%; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--night-ink-2); opacity: 0.8; margin-bottom: 4px; }
     .room.board .answer { margin: 14px 8px 0; background-clip: padding-box; }

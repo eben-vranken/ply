@@ -261,7 +261,7 @@
           </details>
           <details>
             <summary>When does it connect to the internet?</summary>
-            <p>To load the app and its opening data from GitHub Pages{#if configured}, to sync your account{/if}, and to chess.com or Lichess only for the usernames or studies you give it, to fetch public games, a rating or a study.</p>
+            <p>To load the app and its opening data from GitHub Pages{#if configured}, to sync your account{/if}, to chess.com or Lichess only for the usernames or studies you give it, to fetch public games, a rating or a study, and to Lichess for the game a puzzle comes from (only the puzzle's id is sent).</p>
           </details>
           <details>
             <summary>Will it raise my rating?</summary>

@@ -60,10 +60,10 @@ const playSan = async (san: string) => {
 let answered = 0, asked = 0;
 for (let i = 0; i < 400 && answered < 12; i++) {
   if (await page.getByText(/Session complete|All learned/).isVisible().catch(() => false)) break;
-  if (await page.getByRole('button', { name: 'Continue', exact: true }).isVisible().catch(() => false)) {
+  if (await page.getByRole('button', { name: /^(Continue|Next puzzle)$/ }).isVisible().catch(() => false)) {
     answered++;
     if (answered === 1) await shot('answer');
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await page.getByRole('button', { name: /^(Continue|Next puzzle)$/ }).click();
     await page.waitForTimeout(500);
     continue;
   }
@@ -175,9 +175,9 @@ for (let i = 0; i < 40 && !typedOk; i++) {
   } else if (hintOn && await page.getByRole('button', { name: 'Show me' }).isEnabled().catch(() => false)) {
     await page.getByRole('button', { name: 'Show me' }).click(); await page.waitForTimeout(200);
   }
-  if (await page.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false)) {
+  if (await page.getByRole('button', { name: /Continue|Next puzzle/ }).isVisible().catch(() => false)) {
     await page.keyboard.press('Enter'); await page.waitForTimeout(500);
-    typedOk = hinted && !(await page.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false));
+    typedOk = hinted && !(await page.getByRole('button', { name: /Continue|Next puzzle/ }).isVisible().catch(() => false));
   }
 }
 if (!typedOk) errors.push('could not answer a card and move on with the keyboard');
@@ -265,7 +265,7 @@ if (process.env.DEVICE !== 'iphone') {
     await d.waitForTimeout(300);
     const want = (await d.locator('.prompt').innerText({ timeout: 500 }).catch(() => '')).replace(/\s+/g, ' ').match(/(?:move is|Play|safe move is) ([^ .]+)/)?.[1];
     if (want && (await d.getByRole('button', { name: 'Hint' }).isEnabled().catch(() => false))) await d.keyboard.type(want);
-    dOk = await d.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false);
+    dOk = await d.getByRole('button', { name: /Continue|Next puzzle/ }).isVisible().catch(() => false);
   }
   if (!dOk) errors.push('desktop: could not answer a card by typing');
   if (out) await d.screenshot({ path: `${out}/desktop-answer.png` });

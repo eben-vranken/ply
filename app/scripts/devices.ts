@@ -116,7 +116,7 @@ async function train(d: Dev, cards: number) {
   let answered = 0;
   for (let i = 0; i < 300 && answered < cards; i++) {
     if (await page.getByText(/Session complete|All learned/).isVisible().catch(() => false)) break;
-    if (await page.getByRole('button', { name: 'Continue', exact: true }).isVisible().catch(() => false)) { answered++; await page.getByRole('button', { name: 'Continue', exact: true }).click(); await page.waitForTimeout(400); continue; }
+    if (await page.getByRole('button', { name: /^(Continue|Next puzzle)$/ }).isVisible().catch(() => false)) { answered++; await page.getByRole('button', { name: /^(Continue|Next puzzle)$/ }).click(); await page.waitForTimeout(400); continue; }
     if (!(await page.getByRole('button', { name: 'Hint' }).isEnabled().catch(() => false))) { await page.waitForTimeout(250); continue; }
     const msg = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ');
     const named = msg.match(/(?:move is|Play|safe move is) ([^ .]+)/);

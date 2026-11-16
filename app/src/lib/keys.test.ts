@@ -54,6 +54,8 @@ describe('typed moves', () => {
   it('maps the action keys', () => {
     expect(actionOf({ key: '?' })).toBe('hint');
     expect(actionOf({ key: 'Enter' })).toBe('next');
+    expect(actionOf({ key: 'ArrowRight' })).toBe('fwd');
+    expect(actionOf({ key: 'ArrowLeft' })).toBe('back');
     expect(actionOf({ key: 'Backspace' })).toBe('undo');
     expect(actionOf({ key: 'e' })).toBe(null);
   });
