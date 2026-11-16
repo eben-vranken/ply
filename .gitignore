@@ -11,3 +11,6 @@ docs/screenshots/layouts
 .env.local
 .env.*.local
 dist-devices
+
+# Supabase CLI state from `supabase link`
+supabase/.temp
