@@ -11,6 +11,7 @@
   import Board from './Board.svelte';
   import Plies from './Plies.svelte';
   import Icon from './Icon.svelte';
+  import { desk } from './desk.svelte';
 
   interface Sum { total: number; stages: number[]; lapses: number }
   interface Props {
@@ -150,20 +151,23 @@
       if (t < 1) vraf = requestAnimationFrame(tick);
     });
   }
+  // desktop: the sheet is a panel on the right, so the tree keeps its height and gives up some width
+  const PANEL = 372;
+  const uw = () => vw - (desk.on ? PANEL : 0);
   /** the part of the canvas the sheet does not cover */
-  const clear = () => Math.max(160, vh - sheetH - NAV - 14);
+  const clear = () => Math.max(160, vh - (desk.on ? 0 : sheetH) - NAV - 14);
   function fit() {
     const b = layout.box, pad = 18, room = clear() - TOP;
-    const k = clampK(Math.min((vw - pad * 2) / (b.x1 - b.x0), (room - pad * 2) / (b.y1 - b.y0), 1.1));
-    glide({ k, x: (vw - (b.x0 + b.x1) * k) / 2, y: TOP + (room - (b.y0 + b.y1) * k) / 2 });
+    const k = clampK(Math.min((uw() - pad * 2) / (b.x1 - b.x0), (room - pad * 2) / (b.y1 - b.y0), 1.1));
+    glide({ k, x: (uw() - (b.x0 + b.x1) * k) / 2, y: TOP + (room - (b.y0 + b.y1) * k) / 2 });
   }
   /** where you start: the whole tree when it is readable at that size, otherwise the moves you can learn next */
   function start() {
     const b = layout.box, room = clear() - TOP;
-    const all = Math.min((vw - 36) / (b.x1 - b.x0), (room - 28) / (b.y1 - b.y0), 1);
-    if (all >= 0.72) return { k: all, x: (vw - (b.x0 + b.x1) * all) / 2, y: TOP + (room - (b.y0 + b.y1) * all) / 2 };
+    const all = Math.min((uw() - 36) / (b.x1 - b.x0), (room - 28) / (b.y1 - b.y0), 1);
+    if (all >= 0.72) return { k: all, x: (uw() - (b.x0 + b.x1) * all) / 2, y: TOP + (room - (b.y0 + b.y1) * all) / 2 };
     // the move before them at the left edge, so its answers fill the screen
-    const k = Math.min(1, Math.max(0.78, vw / 440));
+    const k = Math.min(1, Math.max(0.78, uw() / 440));
     const n = layout.vis.find((v) => v.state === 'next') ?? layout.vis[0];
     const p = layout.pos.get(n?.id ?? 'root')!, q = layout.pos.get(n?.parent?.id ?? 'root')!;
     return { k, x: 18 + (W / 2) * k - q.x * k, y: TOP + room * 0.5 - p.y * k };
@@ -216,6 +220,26 @@
     return () => el?.removeEventListener('wheel', wheel);
   });
 
+  // keyboard: arrows pan, + and - zoom at the centre, 0 fits the tree, Escape lets go of a tile
+  $effect(() => {
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (e.ctrlKey || e.metaKey || e.altKey || (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
+      const pan: Record<string, [number, number]> = { ArrowLeft: [90, 0], ArrowRight: [-90, 0], ArrowUp: [0, 90], ArrowDown: [0, -90] };
+      if (pan[e.key]) { e.preventDefault(); glide({ k: view.k, x: view.x + pan[e.key][0], y: view.y + pan[e.key][1] }); }
+      else if (e.key === '+' || e.key === '=') zoomBy(1.25);
+      else if (e.key === '-' || e.key === '_') zoomBy(0.8);
+      else if (e.key === '0') fit();
+      else if (e.key === 'Escape' && selId) { e.preventDefault(); selId = null; }
+    };
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  });
+  function zoomBy(f: number) {
+    const k = clampK(view.k * f), r = k / view.k, cx = uw() / 2, cy = vh / 2;
+    glide({ k, x: cx - (cx - view.x) * r, y: cy - (cy - view.y) * r });
+  }
+
   // ---------------------------------------------------------------- selecting and folding
   let selId = $state<string | null>(null);
   const sel = $derived(selId ? tree.all.get(selId) ?? null : null);
@@ -223,9 +247,9 @@
 
   /** bring a tile into the part of the canvas that is free, moving as little as possible */
   function reveal(p: P, sheet: number, room = 0) {
-    const k = view.k, hw = (W / 2) * k, bottom = Math.max(160, vh - sheet - NAV - 14);
+    const k = view.k, hw = (W / 2) * k, bottom = Math.max(160, vh - (desk.on ? 0 : sheet) - NAV - 14);
     const sx = p.x * k + view.x, sy = p.y * k + view.y;
-    const maxX = Math.max(hw + 12, vw - hw - 14 - room * k);
+    const maxX = Math.max(hw + 12, uw() - hw - 14 - room * k);
     const tx = Math.min(maxX, Math.max(hw + 12, sx)), ty = Math.min(bottom - 40 * k, Math.max(TOP + 40 * k, sy));
     return { k, x: view.x + tx - sx, y: view.y + ty - sy };
   }
@@ -247,7 +271,7 @@
     const after = layout.pos.get(n.id)!;
     const kept = { k: view.k, x: view.x - (after.x - before.x) * view.k, y: view.y - (after.y - before.y) * view.k };
     const sx = after.x * kept.k + kept.x;
-    const want = s.has(n.id) ? Math.max((W / 2) * kept.k + 12, Math.min(sx, vw - (COL + W / 2 + 18) * kept.k)) : sx;
+    const want = s.has(n.id) ? Math.max((W / 2) * kept.k + 12, Math.min(sx, uw() - (COL + W / 2 + 18) * kept.k)) : sx;
     glide({ ...kept, x: kept.x + want - sx });
   }
   /** back to the main branches and what you have learned */
@@ -355,8 +379,10 @@
 
   <div class="tools">
     {#if hasNext}<button class="nx" onclick={nextUp}><Icon name="next" size={16} /> Next up</button>{/if}
-    <button onclick={fit} aria-label="Fit the whole tree on screen"><Icon name="fit" size={20} /></button>
-    <button onclick={foldAll} aria-label="Fold the tree back to its main branches"><Icon name="fold" size={20} /></button>
+    <button class="zm" onclick={() => zoomBy(0.8)} aria-label="Zoom out" title="Zoom out (−)">−</button>
+    <button class="zm" onclick={() => zoomBy(1.25)} aria-label="Zoom in" title="Zoom in (+)">+</button>
+    <button onclick={fit} aria-label="Fit the whole tree on screen" title="Fit the whole tree (0)"><Icon name="fit" size={20} /></button>
+    <button onclick={foldAll} aria-label="Fold the tree back to its main branches" title="Fold back to the main branches"><Icon name="fold" size={20} /></button>
     <button class:on={showKey} onclick={() => (showKey = !showKey)} aria-expanded={showKey}>Key</button>
   </div>
   {#if showKey}
@@ -370,6 +396,8 @@
       <p class="how">The small line on a tile is your opponent's move and how often it is played at your level. The large one is your answer. Drag to move around, pinch to zoom.</p>
     </div>
   {/if}
+
+  <p class="how2" aria-hidden="true"><kbd>scroll</kbd> zoom <kbd>drag</kbd> move <kbd>← ↑ ↓ →</kbd> pan <kbd>0</kbd> fit</p>
 
   <div class="sheet" bind:clientHeight={sheetH}>
     {#if sel}
@@ -496,4 +524,31 @@
   .chs .done small, .chs .done b { color: var(--walnut); }
   .acts { display: flex; gap: 8px; margin: 14px 0 5px; }
   .acts .btn { min-height: 46px; font-size: 15px; padding: 0 10px; border-radius: 14px; }
+  .tools .zm, .how2 { display: none; }
+  /* ---------- desktop: a full-window canvas, the sheet as a panel on the right (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .canvas { border-radius: 0; }
+    .tools { right: auto; left: 16px; top: 14px; }
+    .tools .zm { display: grid; font-size: 20px; font-weight: 600; }
+    .tools button { transition: background 140ms, color 140ms; }
+    .tools button:not(.on):hover { background: #2c3366; color: #fff; }
+    .key { right: auto; left: 16px; top: 66px; }
+    .how2 { display: flex; align-items: center; gap: 6px; position: absolute; left: 18px; bottom: 16px; font-size: 12.5px; color: #868db6; pointer-events: none; }
+    .how2 kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: rgba(29, 34, 71, 0.92); border: 1px solid #2c3366; color: #d6d9ee; margin-left: 8px; }
+    .how2 kbd:first-child { margin-left: 0; }
+    .sheet { left: auto; right: 16px; top: 14px; bottom: auto; width: 340px; margin: 0; max-height: calc(100% - 28px); overflow-y: auto; padding: 16px; }
+    .one { flex-direction: column; gap: 12px; }
+    .bd { width: 100%; }
+    .nm { font-size: 20px; }
+    .mv { font-size: 32px; }
+    .chs { flex-direction: column; overflow: visible; margin: 14px 0 0; padding: 0; }
+    .chs button { max-width: none; width: 100%; flex-direction: row; align-items: baseline; gap: 10px; transition: background 140ms; }
+    .chs button:not(.done):hover { background: #1d2350; }
+    .chs span { flex: 1; text-align: left; }
+    .acts { flex-wrap: wrap; }
+    .acts .btn:not(:disabled):hover { filter: brightness(1.1); }
+    .tile:hover .face { stroke-width: 2.6; }
+    .tile.far:hover .face { stroke: var(--c); }
+    .pill:hover .body { stroke: #fff; }
+  }
 </style>

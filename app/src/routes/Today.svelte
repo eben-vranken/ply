@@ -16,6 +16,8 @@
   import Icon from '../lib/Icon.svelte';
   import { storageAtRisk } from '../lib/platform';
   import { save } from '../lib/state.svelte';
+  import { desk } from '../lib/desk.svelte';
+  import { takeOff, takeOffFrom } from '../lib/flight';
 
   const counts = $derived.by(() => { void model.rev; return todayCounts(); });
   const firstItems = $derived(itemsFor(counts.queue.slice(0, 1)));
@@ -46,7 +48,12 @@
   const cuPick = $derived(cuDays || suggestDays(counts.dueAll));
   $effect(() => { void model.rev; void loadStats(allCards().values(), app.rollover).then((s) => (stats = s)); });
 
+  // desktop: what today's session is made of, and the cards in the order they come
+  const qItems = $derived(desk.on ? itemsFor(counts.queue) : []);
+  const qKinds = $derived.by(() => { const m = new Map<string, number>(); for (const i of qItems) m.set(i.kind, (m.get(i.kind) ?? 0) + 1); return [...m].sort((a, b) => b[1] - a[1]); });
+  let artEl = $state<HTMLElement>();
   function start() {
+    takeOff(artEl?.querySelector('svg'));
     run.items = itemsFor(counts.queue); run.mode = 'today'; run.title = 'Today';
     run.more = () => requeue();
     go('/train');
@@ -104,7 +111,7 @@
   const fmt = (x: number | null) => (x === null ? '—' : (x >= 0 ? '+' : '−') + Math.abs(x).toFixed(1));
 </script>
 
-<div class="screen">
+{#snippet head()}
   <header class="screen-head">
     <div>
       <p class="t-small">{date}</p>
@@ -120,14 +127,18 @@
       </div>
     </div>
   </header>
+{/snippet}
 
+{#snippet birch()}
   {#key say.text}
     <div class="birch">
       <Mascot mood={say.mood} size={64} />
       <p class="bubble">{say.text}</p>
     </div>
   {/key}
+{/snippet}
 
+{#snippet goal()}
   <section class="card goal" aria-label="Daily goal: {xp} of {app.goal} XP">
     <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
       <circle cx="32" cy="32" r="26" fill="none" stroke="var(--line)" stroke-width="8" />
@@ -139,10 +150,12 @@
       <div class="lvrow"><span>Level {lvl.level}</span><span class="lbar"><i style="width:{(lvl.into / lvl.span) * 100}%"></i></span><span class="t-num">{lvl.span - lvl.into} to go</span></div>
     </div>
   </section>
+{/snippet}
 
+{#snippet hero()}
   <section class="slab" style="animation: rise 420ms var(--ease) both">
     {#if next}
-      <div class="art"><Sigil path={nextPath} size={176} bare draw flip={next.side === 'b'} you={next.side} hue="var(--cobalt)" /></div>
+      <div class="art" bind:this={artEl}><Sigil path={nextPath} size={176} bare draw flip={next.side === 'b'} you={next.side} hue="var(--cobalt)" /></div>
       <p class="up">First up · {kindLine[next.kind]}</p>
       <h2 class="t-name name">{nextName.split(':')[0]}</h2>
       <p class="sub">{nextName.includes(':') ? nextName.split(': ')[1] : next.side === 'w' ? 'You play White' : 'You play Black'} {#if nextEco}<span class="eco">{nextEco}</span>{/if}</p>
@@ -164,7 +177,9 @@
     {/if}
     <div class="edge" aria-hidden="true"></div>
   </section>
+{/snippet}
 
+{#snippet catchUp()}
   {#if cuDay !== null && app.catchUp}
     <div class="card catch on" role="status">
       <Icon name="layers" size={22} />
@@ -184,7 +199,27 @@
       </div>
     </section>
   {/if}
+{/snippet}
 
+{#snippet queue()}
+  <section class="card queue" aria-label="Today's queue">
+    <div class="qh"><h2 class="t-head">The queue</h2><span class="t-small">{counts.queue.length ? `${qItems.length} card${qItems.length === 1 ? '' : 's'} · about ${mins} min` : 'Empty'}</span></div>
+    {#if qItems.length}
+      <div class="qbar" role="img" aria-label={qKinds.map(([k, c]) => `${c} ${kindLine[k]}`).join(', ')}>{#each qKinds as [k, c]}<i class="k-{k}" style="flex:{c}"></i>{/each}</div>
+      <p class="qleg">{#each qKinds as [k, c]}<span><i class="k-{k}"></i>{kindLine[k]} <b class="t-num">{c}</b></span>{/each}</p>
+      <ol class="qlist">
+        {#each qItems.slice(0, 5) as it, i}
+          <li><span class="qn t-num">{i + 1}</span><span class="grow"><span class="t-name qname">{it.label.replace(/ \([A-E]\d\d\)$/, '')}</span><span class="qord">{it.order}</span></span><span class="qk k-{it.kind}">{kindLine[it.kind]}</span></li>
+        {/each}
+      </ol>
+      {#if qItems.length > 5}<p class="t-small qmore">and {qItems.length - 5} more, in the order the schedule wants them</p>{/if}
+    {:else}
+      <p class="t-small">{nextDue ? `${nextDue.n} card${nextDue.n === 1 ? '' : 's'} come${nextDue.n === 1 ? 's' : ''} back ${whenText(nextDue.at)}.` : `Nothing else is due until tomorrow, ${rollText}.`}</p>
+    {/if}
+  </section>
+{/snippet}
+
+{#snippet mastery()}
   <div class="sect"><h2 class="t-head">Mastering</h2><button class="link" onclick={() => go('/repertoire')}>All openings</button></div>
   <div class="mast" class:one={ms.length < 2}>
     {#each ms as m, i (m.side + m.path.join(' '))}
@@ -202,7 +237,7 @@
           <p class="chap"><b>{at < 0 ? 'Every chapter learned' : `Chapter ${at + 1} of ${m.chapters.length}`}</b>{#if at >= 0} · {m.chapters[at].name} · {m.chapters[at].learned}/{m.chapters[at].total}{/if}</p>
           <span class="chs" aria-hidden="true">{#each m.chapters as c}<i style="flex:{Math.max(c.total, m.total / 14)}"><b style="width:{(c.learned / c.total) * 100}%"></b></i>{/each}</span>
         {/if}
-        <button class="btn wide sm" class:quiet={!m.fresh} onclick={() => train(m)}>{m.fresh ? `Learn ${Math.min(5, m.fresh)} new moves` : 'Drill it'}</button>
+        <button class="btn wide sm" class:quiet={!m.fresh} onclick={(e) => { takeOffFrom(e); train(m); }}>{m.fresh ? `Learn ${Math.min(5, m.fresh)} new moves` : 'Drill it'}</button>
       </article>
     {:else}
       <button class="card pickone" onclick={() => go('/repertoire')}>
@@ -212,7 +247,9 @@
       </button>
     {/each}
   </div>
+{/snippet}
 
+{#snippet arcadeCard()}
   <section class="card arc">
     <div class="grow">
       <h3 class="t-head">Arcade</h3>
@@ -221,14 +258,18 @@
     </div>
     <button class="btn" onclick={playArcade} aria-label="Play Arcade"><Icon name="play" size={20} fill /></button>
   </section>
+{/snippet}
 
+{#snippet syncing()}
   {#if sync.analysing || sync.running}
     <div class="card syncing" role="status">
       <p class="t-small">{sync.text}</p>
       {#if sync.total}<div class="meter"><i style="width:{(sync.done / sync.total) * 100}%"></i></div>{/if}
     </div>
   {/if}
+{/snippet}
 
+{#snippet duo()}
   <div class="duo">
     <section class="card">
       <p class="t-small">7-day retention</p>
@@ -250,7 +291,9 @@
       <p class="t-small" style="margin-top:10px">Longest streak {stats?.longest ?? 0} day{stats?.longest === 1 ? '' : 's'}{stats?.freezes ? ` · ${stats.freezes} freeze${stats.freezes === 1 ? '' : 's'}` : ''}</p>
     </section>
   </div>
+{/snippet}
 
+{#snippet banners()}
   {#if atRisk}
     <div class="banner risk" role="note">
       <Icon name="warn" size={20} />
@@ -265,7 +308,9 @@
       <Icon name="next" size={18} />
     </button>
   {/if}
+{/snippet}
 
+{#snippet games()}
   <section class="card games">
     <div><h3 class="t-head">Is it working?</h3><p class="t-small">Your last {rep?.recent.games ?? 10} analysed games against the ones before</p></div>
     {#if rep && proof}
@@ -290,7 +335,45 @@
       <p class="t-small empty">{app.username || app.lichessUser ? 'Appears once a few of your games are analysed.' : 'Add your chess.com or Lichess name in Settings to see how you leave the opening.'}</p>
     {/if}
   </section>
-</div>
+{/snippet}
+
+{#if desk.on}
+  <!-- desktop: a dashboard. The work on the left, the state of things on the right (DESIGN.md, "Desktop") -->
+  <div class="screen today">
+    <div class="dash">
+      <div class="col main">
+        {@render head()}
+        {@render hero()}
+        {@render catchUp()}
+        {@render queue()}
+        {@render mastery()}
+      </div>
+      <div class="col aside">
+        {@render birch()}
+        {@render goal()}
+        {@render duo()}
+        {@render arcadeCard()}
+        {@render syncing()}
+        {@render games()}
+        {@render banners()}
+      </div>
+    </div>
+  </div>
+{:else}
+  <div class="screen">
+    {@render head()}
+    {@render birch()}
+    {@render goal()}
+    {@render hero()}
+    {@render catchUp()}
+    {@render mastery()}
+    {@render arcadeCard()}
+    {@render syncing()}
+    {@render duo()}
+    {@render banners()}
+    {@render games()}
+  </div>
+{/if}
 
 <style>
   .hud { display: flex; gap: 8px; }
@@ -407,4 +490,55 @@
   .legend { display: flex; gap: 18px; font-size: 13px; color: var(--ink-2); }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
   .legend b { color: var(--ink); margin-left: 4px; }
+
+  /* ---------- desktop: the dashboard (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .today { padding: 28px 32px 48px; }
+    .dash { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr); gap: 28px; max-width: 1480px; margin: 0 auto; align-items: start; }
+    .col { display: flex; flex-direction: column; min-width: 0; }
+    .col > :global(*) { animation: rise 420ms var(--ease) both; }
+    .col > :global(*:nth-child(2)) { animation-delay: 45ms; }
+    .col > :global(*:nth-child(3)) { animation-delay: 90ms; }
+    .col > :global(*:nth-child(n + 4)) { animation-delay: 135ms; }
+    .aside { position: sticky; top: 0; gap: 14px; padding-top: 6px; }
+    .aside :global(.birch) { margin: 0; }
+    .aside .goal, .aside .duo, .aside .games, .aside .banner, .aside .syncing { margin: 0; }
+    .aside .duo { grid-template-columns: 1fr 1fr; }
+    .today .slab { padding: 30px 32px 44px; }
+    .today .slab .art { right: -34px; top: -56px; }
+    .today .slab .art :global(svg) { width: 290px; height: 290px; }
+    .today .name { font-size: clamp(52px, 4.6vw, 76px); max-width: 62%; }
+    .today .sub { max-width: 52%; font-size: 16px; }
+    .today .counts { max-width: 520px; margin: 30px 0 22px; }
+    .today .counts dd { font-size: 36px; }
+    .today .cta { width: auto; min-width: 320px; }
+    .today .slab .row { max-width: 420px; }
+    .today .mast { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); overflow: visible; margin: 0; padding: 0; }
+    .today .mc { width: auto; transition: transform 200ms var(--ease), box-shadow 200ms; }
+    .today .mc:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(21, 25, 54, 0.04), 0 16px 30px -14px rgba(21, 25, 54, 0.3); }
+    .today .mtop { border-radius: 12px; }
+    .today .mtop:hover .mn { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+    .today .btn:not(:disabled):hover { filter: brightness(1.07); }
+    .queue { margin-top: 16px; padding: 18px 20px 16px; }
+    .qh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+    .qbar { display: flex; gap: 3px; height: 10px; }
+    .qbar i { border-radius: 4px; min-width: 6px; }
+    .qleg { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 10px 0 6px; font-size: 13px; color: var(--ink-2); }
+    .qleg span { display: inline-flex; align-items: center; gap: 6px; }
+    .qleg i { width: 10px; height: 10px; border-radius: 3px; }
+    .qleg b { color: var(--ink); }
+    .k-line { background: var(--cobalt); } .k-new { background: var(--st-learning); } .k-punish { background: var(--good); } .k-danger { background: var(--bad); } .k-puzzle { background: var(--sun); } .k-mistake { background: #7a3fc4; } .k-drill { background: var(--ink-3); }
+    .qlist { list-style: none; margin: 6px 0 0; padding: 0; }
+    .qlist li { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 0; border-top: 1px solid var(--ground); }
+    .qn { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--ground); font-size: 13px; color: var(--ink-2); }
+    .qname { display: block; font-size: 17px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qord { display: block; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qk { flex: none; height: 24px; padding: 0 9px; border-radius: 8px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+    .qk.k-puzzle { color: #3d2800; } .qk.k-new { color: #3d1a00; }
+    .qmore { margin-top: 6px; }
+  }
+  @media (min-width: 1280px) and (min-height: 600px) {
+    .today .hud { display: none; }
+    .today { padding: 32px 40px 56px; }
+  }
 </style>

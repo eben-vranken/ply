@@ -1,8 +1,11 @@
+<script lang="ts" module>
+  export type Mood = 'idle' | 'cheer' | 'sad' | 'think' | 'wow' | 'sleep';
+</script>
+
 <script lang="ts">
   // Birch: Ply's mascot. A small birch pawn in a blue scarf: the piece everyone starts as,
   // and the one that gets to become anything. Round, soft and on your side; the face and
   // the little arms react to how you are doing, and it breathes while it waits.
-  export type Mood = 'idle' | 'cheer' | 'sad' | 'think' | 'wow' | 'sleep';
   let { mood = 'idle', size = 56, still = false }: { mood?: Mood; size?: number; still?: boolean } = $props();
   const W = '#5a3d22'; // warm outline
   const INK = '#2b1c10';

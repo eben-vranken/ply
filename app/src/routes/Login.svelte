@@ -1,5 +1,6 @@
 <script lang="ts">
-  // The first screen when accounts are on: your progress lives on your Ply account.
+  // The login, as the last panel of the landing page (routes/Landing.svelte): a birch slab in the
+  // night room. Your progress lives on your Ply account.
   import { cloud, sendEmail, verifyCode, withGoogle, withLichess } from '../lib/cloud/cloud.svelte';
   import Icon from '../lib/Icon.svelte';
 
@@ -16,13 +17,13 @@
   const emailOk = $derived(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()));
 </script>
 
-<div class="login">
+<div class="login" id="login">
   <div class="body">
-    <h1 class="t-name hl">Ply</h1>
-    <p class="lead">Log in to keep your repertoire, cards and progress on your account, so they are on every device you use. Training works offline once you are in.</p>
+    <h2 class="t-name hl">Log in to Ply</h2>
+    <p class="lead">One step, no password. New here? The same step makes your account. A second device just logs in, and your repertoire, cards and progress are there.</p>
 
     {#if !online}
-      <p class="note">You are offline. Logging in needs a connection.</p>
+      <p class="note" role="status">You are offline. Logging in needs a connection.</p>
     {/if}
 
     {#if cloud.sentTo}
@@ -45,26 +46,33 @@
     {/if}
 
     {#if cloud.authError}<p class="err" role="alert">{cloud.authError}</p>{/if}
-    <p class="t-small fine">Ply stores your progress with Supabase, nothing else. No ads, no tracking. Logging out keeps everything on your account.</p>
+    <p class="fine">Ply stores your progress with Supabase, nothing else. No ads, no tracking. Training works offline once you are in, and logging out keeps everything on your account.</p>
   </div>
+  <div class="edge" aria-hidden="true"></div>
 </div>
 
 <style>
-  .login { position: absolute; inset: 0; overflow-y: auto; background: var(--ground); display: flex; justify-content: center; padding: calc(env(safe-area-inset-top) + 40px) 16px calc(env(safe-area-inset-bottom) + 28px); }
-  .body { width: 100%; max-width: 440px; display: flex; flex-direction: column; }
-  .hl { font-size: 64px; line-height: 0.96; letter-spacing: -0.02em; margin-top: 8vh; }
-  .lead { margin-top: 12px; font-size: 16.5px; line-height: 1.4; color: var(--ink-2); margin-bottom: 26px; }
-  .col { display: flex; flex-direction: column; gap: 10px; }
+  /* a slab like the board and Today's hero: a birch face on its five-veneer edge. The wood stays wood in both themes. */
+  .login { position: relative; width: 100%; max-width: 480px; border-radius: var(--r-xl); background: var(--birch); color: var(--ink-fixed); overflow: hidden; box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.7); text-align: left;
+    --quiet-face: #fff; --quiet-edge: var(--birch-3); --ink: var(--ink-fixed); --accent-text: var(--cobalt-deep); }
+  .edge { height: 14px; background: linear-gradient(#d8bb8a 0 2px, #b08a57 2px 5px, #e0c797 5px 8px, #a67f4d 8px 11px, #d2b382 11px 14px); }
+  .body { display: flex; flex-direction: column; padding: 30px 26px 26px; }
+  .hl { font-size: 44px; line-height: 0.98; letter-spacing: -0.02em; }
+  .lead { margin: 10px 0 22px; font-size: 15.5px; line-height: 1.42; color: var(--walnut); }
+  .col { display: flex; flex-direction: column; gap: 12px; }
   .prov { justify-content: center; gap: 10px; }
+  .btn.quiet { --txt: var(--ink-fixed); }
+  .btn:not(:disabled):hover { filter: brightness(1.06); }
   .g { font-weight: 800; font-size: 18px; }
-  .or { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; color: var(--ink-3); font-size: 13px; }
-  .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line); }
-  .field { height: 58px; border-radius: 18px; border: 0; background: var(--card); padding: 0 18px; font-size: 18px; font-weight: 600; width: 100%; user-select: text; box-shadow: var(--shadow); color: var(--ink); }
-  .field:focus { outline: 3px solid var(--cobalt); }
+  .or { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; color: var(--walnut); font-size: 13px; font-weight: 600; }
+  .or::before, .or::after { content: ''; flex: 1; height: 1.5px; background: var(--birch-3); }
+  .field { height: 56px; border-radius: 16px; border: 0; background: #fff; padding: 0 18px; font-size: 18px; font-weight: 600; width: 100%; user-select: text; box-shadow: inset 0 0 0 1.5px var(--birch-3); color: var(--ink-fixed); }
+  .field::placeholder { color: #77684f; }
+  .field:focus { outline: 3px solid var(--cobalt); outline-offset: 1px; }
   .code { letter-spacing: 0.3em; text-align: center; font-size: 24px; }
   .sent { margin-bottom: 14px; line-height: 1.4; }
-  .note { padding: 12px 14px; border-radius: 14px; background: var(--card); margin-bottom: 14px; font-weight: 600; }
-  .err { color: var(--bad-text); font-weight: 600; font-size: 14px; margin-top: 14px; }
+  .note { padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.6); margin-bottom: 14px; font-weight: 600; }
+  .err { color: #a3230f; font-weight: 650; font-size: 14px; margin-top: 14px; }
   .link { align-self: center; padding: 8px; }
-  .fine { margin-top: auto; padding-top: 28px; color: var(--ink-3); }
+  .fine { margin-top: 22px; font-size: 13px; line-height: 1.4; color: var(--walnut); }
 </style>

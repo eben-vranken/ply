@@ -13,8 +13,11 @@
   import Tree from './routes/Tree.svelte';
   import Play from './routes/Play.svelte';
   import Onboarding from './routes/Onboarding.svelte';
-  import Login from './routes/Login.svelte';
-  import { configured, cloud, initCloud, autoSyncCloud } from './lib/cloud/cloud.svelte';
+  import { configured, cloud, initCloud, autoSyncCloud, likelyGuest } from './lib/cloud/cloud.svelte';
+  import { desk, ui } from './lib/desk.svelte';
+  import Sidebar from './lib/Sidebar.svelte';
+  import Palette from './lib/Palette.svelte';
+  import type { Component } from 'svelte';
   import { model, boot } from './lib/model.svelte';
   import { autoSync } from './lib/import/sync.svelte';
   import { onMount } from 'svelte';
@@ -26,14 +29,27 @@
     return () => removeEventListener('pointerdown', press);
   });
   // the session is restored while the opening data loads; opening the app syncs your account
+  // A visitor who is not logged in gets the landing page at once; the opening data (a few MB) is
+  // only fetched when they head for the login, so the page itself loads fast.
+  let booted = false;
+  function startBoot() {
+    if (booted) return;
+    booted = true;
+    void boot().then(() => { if (app.onboarded) void autoSync(); autoSyncCloud(); });
+  }
   onMount(() => {
     void initCloud();
-    void boot().then(() => { if (app.onboarded) void autoSync(); autoSyncCloud(); });
+    if (!likelyGuest) startBoot();
   });
+  $effect(() => { if (cloud.ready && (!configured || cloud.user)) startBoot(); });
   // leaving a training session or Play it out syncs it
   let wasTraining = false;
   $effect(() => { const t = training || base === '/play'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
   const needLogin = $derived(configured && !cloud.user);
+  // the landing page: for anyone not logged in, and at #/welcome for everyone else (builds without accounts too)
+  const landing = $derived(route.path.split('?')[0] === '/welcome' || (needLogin && (cloud.ready || likelyGuest) && model.status !== 'error'));
+  let Landing = $state<Component<{ onintent?: () => void }> | null>(null);
+  $effect(() => { if (landing && !Landing) void import('./routes/Landing.svelte').then((m) => (Landing = m.default)); });
   // finishing onboarding sends it all to the account
   let wasOnboarded = app.onboarded;
   $effect(() => { const o = app.onboarded; if (o && !wasOnboarded) autoSyncCloud(); wasOnboarded = o; });
@@ -53,6 +69,22 @@
   const training = $derived(base === '/train');
   // the session and the skill tree are rooms of their own: no tab bar
   const bare = $derived(training || base === '/tree' || base === '/play');
+  // Ctrl/Cmd+K, or / when nothing is being typed: the command palette
+  const canJump = $derived(model.status === 'ready' && app.onboarded && !landing && !bare);
+  onMount(() => {
+    const key = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        if (!canJump) return;
+        e.preventDefault();
+        ui.palette = !ui.palette;
+      }
+    };
+    addEventListener('keydown', key);
+    return () => removeEventListener('keydown', key);
+  });
+  $effect(() => { if (!canJump) ui.palette = false; });
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const dur = reduce ? 0 : 260;
   const mq = matchMedia('(prefers-color-scheme: dark)');
@@ -67,9 +99,9 @@
   });
 </script>
 
-{#if needLogin && cloud.ready && model.status !== 'error'}
-  <div out:fade={{ duration: dur }}><Login /></div>
-{:else if model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
+{#if landing && Landing}
+  <div out:fade={{ duration: dur }}><Landing onintent={startBoot} /></div>
+{:else if landing || model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
   <div class="boot" class:err={model.status === 'error'} role="status">
     <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     {#if model.status === 'error'}
@@ -90,8 +122,8 @@
   <div out:fade={{ duration: dur }}><Onboarding /></div>
 {:else}
   {#key base === '/tree' || base === '/play' ? route.path : base}
-    <div class="page" class:over={training}
-      in:fly={{ x: training ? 0 : 28 * route.dir, y: training ? 60 : 0, duration: dur, easing: cubicOut }}
+    <div class="page" class:over={training} class:full={bare}
+      in:fly={{ x: training || desk.on ? 0 : 28 * route.dir, y: training ? 60 : desk.on ? 10 : 0, duration: dur, easing: cubicOut }}
       out:fade={{ duration: dur * 0.5 }}>
       {#if base === '/today'}<Today />
       {:else if base === '/explore'}<Explore />
@@ -108,7 +140,9 @@
   {#if model.notice && !training}
     <button class="notice" transition:fly={{ y: -40, duration: dur }} onclick={() => (model.notice = '')}>{model.notice}</button>
   {/if}
-  {#if !bare}
+  {#if !bare && desk.on}
+    <div class="side" transition:fly={{ x: -80, duration: dur, easing: cubicOut }}><Sidebar current={tabOf(base)} /></div>
+  {:else if !bare}
     <nav transition:fly={{ y: 90, duration: dur }} aria-label="Main">
       {#each tabs as [href, icon, label]}
         <button class:on={tabOf(base) === href} onclick={() => { buzz(6); go(href); }} aria-current={tabOf(base) === href ? 'page' : undefined}>
@@ -118,6 +152,7 @@
       {/each}
     </nav>
   {/if}
+  <Palette />
 {/if}
 
 <style>
@@ -134,6 +169,16 @@
   .boot .bar i { display: block; height: 100%; background: var(--sun); transition: width 200ms; }
   .notice { position: absolute; z-index: 40; top: calc(env(safe-area-inset-top) + 10px); left: 12px; right: 12px; max-width: 520px; margin: 0 auto; padding: 14px 16px; border-radius: 18px; background: var(--ink); color: var(--on-ink); font-size: 14.5px; text-align: left; box-shadow: var(--shadow); }
   .page { position: absolute; inset: 0; }
+  .side { position: absolute; z-index: 10; left: 0; top: 0; bottom: 0; }
+  /* desktop: screens sit beside the sidebar; the rooms (trainer, play, tree) keep the whole window */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .page:not(.full) { left: 76px; }
+    .notice { left: 88px; }
+  }
+  @media (min-width: 1280px) and (min-height: 600px) {
+    .page:not(.full) { left: 232px; }
+    .notice { left: 244px; }
+  }
   .page.over { z-index: 20; }
   nav {
     position: absolute; z-index: 10; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); max-width: 520px; margin: 0 auto;

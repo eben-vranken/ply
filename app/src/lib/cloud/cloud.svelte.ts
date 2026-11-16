@@ -13,6 +13,15 @@ const KEY = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim
 /** Accounts are on in this build. */
 export const configured = !!(URL_ && KEY);
 
+/**
+ * Accounts are on and this browser holds no login (and is not coming back from one), so the
+ * landing page can show at once instead of waiting for the session to be looked up.
+ */
+export const likelyGuest = (() => {
+  if (!configured) return false;
+  try { return !localStorage.getItem('ply-auth') && !/[?&](code|error|error_description)=/.test(location.search); } catch { return false; }
+})();
+
 export const cloud = $state({
   /** the session is known (or accounts are off) */
   ready: !configured,

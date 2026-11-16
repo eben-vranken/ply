@@ -54,7 +54,8 @@
   };
 </script>
 
-<div class="screen">
+<div class="screen rep">
+  <div class="pane top">
   <header class="screen-head">
     <div>
       <p class="t-small">{totals.lines} lines · {totals.learned} of {totals.total} moves learned · {model.band} band</p>
@@ -75,6 +76,7 @@
     </div>
   {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
+  </div>
 
   {#if q.trim()}
     <div class="stack">
@@ -92,6 +94,7 @@
       {/each}
     </div>
   {:else}
+  <div class="pane main">
   {#each sections as s}
     {@const ops = all.filter((o) => o.section === s)}
     <div class="sect">
@@ -123,6 +126,9 @@
     </div>
   {/each}
 
+  </div>
+
+  <div class="pane aside">
   <div class="sect"><h2 class="t-head">Uncovered in your games</h2></div>
   <div class="stack">
     {#each uncovered as u}
@@ -139,7 +145,7 @@
     {/each}
   </div>
 
-  <div class="sect"><h2 class="t-head">Mistakes</h2>{#if withCards.length}<span class="t-small">Swipe a card left to delete</span>{/if}</div>
+  <div class="sect"><h2 class="t-head">Mistakes</h2>{#if withCards.length}<span class="t-small"><span class="byhand">Swipe a card left to delete</span><span class="bymouse">Point at a card to delete it</span></span>{/if}</div>
   <div class="stack">
     {#each withCards.slice(0, 30) as g (g.url)}
       <div class="card game">
@@ -149,7 +155,7 @@
             <span class="del"><Icon name="trash" size={18} /> Delete</span>
             <div class="mc" style="transform:translateX({drag[c!.id] ?? 0}px)" role="listitem"
               ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchmove={(e) => move(c!.id, e)} ontouchend={() => drop(c!.id)}>
-              <span class="q">?</span>{c!.text}<span class="loss">−{c!.loss}% win chance</span>
+              <span class="q">?</span>{c!.text}<span class="loss">−{c!.loss}% win chance</span><button class="mdel" onclick={() => deleteCard(c!.id)} aria-label="Delete the mistake card {c!.text}" title="Delete this card"><Icon name="trash" size={16} /></button>
             </div>
           </div>
         {/each}
@@ -163,6 +169,7 @@
   <div class="card unc">
     <p class="grow t-small"><b style="color:var(--ink)">{rare.length} card{rare.length === 1 ? '' : 's'}</b> sit in positions your lines no longer reach at this band. They keep their schedule until you retire them.</p>
     <button class="btn quiet sm" onclick={retireRare} disabled={!rare.length}>Retire rare cards</button>
+  </div>
   </div>
   {/if}
 </div>
@@ -180,7 +187,7 @@
   .search input::placeholder { color: var(--ink-3); }
   .search input::-webkit-search-cancel-button { display: none; }
   .search button { width: 40px; height: 40px; display: grid; place-items: center; color: var(--ink-2); }
-  .search + .stack { margin-top: 14px; }
+  .search + .stack, .top:has(.search:last-child) + .stack { margin-top: 14px; }
   .nm.sm { font-size: 18px; }
   .none { padding: 6px 4px; }
   .op { display: flex; align-items: center; gap: 14px; text-align: left; width: 100%; padding: 12px 16px 12px 12px; transition: transform 120ms var(--ease); }
@@ -204,4 +211,29 @@
   .mc { position: relative; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 12px; background: var(--ground); font-weight: 650; transition: transform 160ms var(--ease); touch-action: pan-y; }
   .q { width: 24px; height: 24px; border-radius: 7px; background: var(--bad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 14px; }
   .loss { margin-left: auto; font-weight: 500; font-size: 13px; color: var(--ink-2); }
+  .bymouse, .mdel { display: none; }
+  /* ---------- desktop: openings as a grid, your games in a column beside them (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .screen.rep { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); grid-template-areas: 'top top' 'main aside'; column-gap: 32px; align-content: start; align-items: start; padding: 28px max(32px, calc((100% - 1480px) / 2)) 48px; }
+    .rep .pane { display: block; min-width: 0; }
+    .rep .top { grid-area: top; display: grid; grid-template-columns: auto minmax(260px, 420px) auto; align-items: center; gap: 0 16px; margin-bottom: 4px; }
+    .rep .top .screen-head { margin: 0; }
+    .rep .top .search { margin: 0; }
+    .rep .top .io { margin: 0; justify-content: flex-end; }
+    .rep .top .toast { grid-column: 1 / -1; }
+    .rep .main { grid-area: main; }
+    .rep .aside { grid-area: aside; }
+    .rep > .stack { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); margin-top: 20px; }
+    .rep .main .stack { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+    .rep .op { transition: transform 200ms var(--ease), box-shadow 200ms; }
+    .rep .op:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(21, 25, 54, 0.04), 0 16px 30px -14px rgba(21, 25, 54, 0.3); }
+    .rep .btn:not(:disabled):hover { filter: brightness(1.05); }
+    .rep .aside .unc { flex-direction: column; align-items: stretch; }
+    .byhand { display: none; }
+    .bymouse { display: inline; }
+    .mdel { display: grid; place-items: center; width: 32px; height: 32px; margin: 0 -6px 0 4px; border-radius: 9px; color: var(--ink-3); opacity: 0; transition: opacity 120ms, background 120ms, color 120ms; }
+    .mc:hover .mdel, .mdel:focus-visible { opacity: 1; }
+    .mdel:hover { background: var(--bad-tint); color: var(--bad-text); }
+    .loss { margin-left: auto; }
+  }
 </style>

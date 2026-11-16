@@ -42,7 +42,10 @@
       drawable: { enabled: false, visible: true, brushes: {
         good: { key: 'good', color: '#0f7a55', opacity: 0.9, lineWidth: 11 },
         bad: { key: 'bad', color: '#cf331c', opacity: 0.85, lineWidth: 11 },
-        hint: { key: 'hint', color: '#f4b740', opacity: 1, lineWidth: 9 }
+        hint: { key: 'hint', color: '#f4b740', opacity: 1, lineWidth: 9 },
+        // what the other side plays (the landing page's fans, Explore's hover): ink, quieter than an answer
+        fan: { key: 'fan', color: '#151936', opacity: 0.5, lineWidth: 8 },
+        lead: { key: 'lead', color: '#2b4bee', opacity: 0.85, lineWidth: 10 }
       } as never },
       premovable: { enabled: false }
     });

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { land } from '../lib/flight';
   // Play it out: from the end of a line you keep playing against an opponent. While the
   // position is still in the book it answers the way people at your level do; after that
   // Stockfish takes over. Every move of yours is checked against the engine's best, and
@@ -148,7 +149,7 @@
     <p class="t-name nm">{name}</p>
     <p class="ord">Play it out · {path.length ? moveOrder(sans(path)) : 'from the start'}</p>
   </div>
-  <div class="boardwrap">
+  <div class="boardwrap" use:land>
     <Board {fen} {side} {dests} {lastMove} {badge} {check} {rev} {shake} dark {onmove} />
     {#if promo}<Promo {side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
     <MoveInput legal={legalNow} onmove={typed} onaction={onkey} dark />
@@ -179,6 +180,7 @@
     </div>
     <footer><p class="src">The opponent plays what your level plays, then Stockfish. Cards are not touched.</p></footer>
   {/if}
+  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>Esc</kbd> leave</p>
   </div>
 </div>
 
@@ -233,5 +235,30 @@
     .side { display: flex; flex-direction: column; grid-area: side; min-height: 0; overflow-y: auto; }
     .strip { flex-wrap: wrap; }
     .end { margin: 14px 16px 0 8px; }
+  }
+  .keys { display: none; }
+  /* ---------- desktop: as the trainer (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .room {
+      --bw: min(calc(100dvh - 124px), calc(100vw - 560px), 820px);
+      display: grid; grid-template-columns: var(--bw) minmax(360px, 460px); grid-template-rows: 56px auto minmax(0, 1fr);
+      grid-template-areas: 'head head' 'board lab' 'board side'; justify-content: center; column-gap: 32px; padding: 6px 32px 44px;
+    }
+    header { grid-area: head; height: 56px; padding: 0; max-width: calc(var(--bw) + 492px); width: 100%; justify-self: center; }
+    .x { border-radius: 14px; transition: background 140ms, color 140ms; }
+    .x:hover { background: var(--night-3); color: var(--night-ink); }
+    .boardwrap { grid-area: board; align-self: start; padding: 0; }
+    .label { grid-area: lab; height: auto; min-height: 76px; background: var(--night-2); border-radius: 26px 26px 0 0; padding: 20px 24px 8px; }
+    .nm { font-size: 24px; white-space: normal; }
+    .ord { white-space: normal; }
+    .side { display: flex; flex-direction: column; grid-area: side; min-height: 0; overflow-y: auto; background: var(--night-2); border-radius: 0 0 26px 26px; padding: 0 8px 10px; }
+    .ev { padding-top: 14px; border-top: 1px solid var(--night-3); margin-top: 4px; }
+    .msg { font-size: 19px; padding-top: 18px; }
+    .strip { flex-wrap: wrap; }
+    .end { margin: 14px 8px 0; background: var(--night-3); }
+    .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 10px 4px; font-size: 12.5px; color: var(--night-ink-2); }
+    .keys kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--night-3); color: var(--night-ink); margin-left: 8px; }
+    .keys kbd:first-child { margin-left: 0; }
+    .btn:hover { filter: brightness(1.08); }
   }
 </style>

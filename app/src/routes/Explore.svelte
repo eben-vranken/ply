@@ -12,6 +12,10 @@
   import Promo from '../lib/Promo.svelte';
   import MoveInput from '../lib/MoveInput.svelte';
   import type { KeyAction } from '../lib/keys';
+  import type { DrawShape } from '@lichess-org/chessground/draw';
+  import MiniBoard from '../lib/MiniBoard.svelte';
+  import { desk } from '../lib/desk.svelte';
+  import { takeOff } from '../lib/flight';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   let side = $state<Side>((q.get('side') as Side) ?? 'w');
@@ -98,6 +102,7 @@
       const again = missed.map((m) => ({ ...m, asks: Object.fromEntries(Object.entries(m.asks).map(([k, a]) => [k, { ...a, intro: false, graded: false }])), prompt: 'Your move', spec: undefined }));
       return [...again, ...learnRound(side, at)];
     };
+    fly();
     go('/train');
   }
 
@@ -118,11 +123,28 @@
       return l ? [l] : [];
     };
     drillOpen = false;
+    fly();
     go('/train');
   }
   function previewTrap(i: Item) { run.items = [i]; run.mode = 'drill'; run.title = 'Preview'; run.more = undefined; go('/train'); }
 
   let sx = 0;
+  // desktop: pointing at a move draws it on the board and shows where it leads
+  let hover = $state<{ u: string; top: number; left: number } | null>(null);
+  $effect(() => { void path; hover = null; });
+  function point(e: PointerEvent, u: string) {
+    if (!desk.on || e.pointerType !== 'mouse') return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    hover = { u, top: Math.max(12, Math.min(innerHeight - 300, r.top - 96)), left: r.left - 236 };
+  }
+  const lead = $derived.by(() => {
+    if (!hover) return null;
+    const e = child(epd, hover.u), n = nameOf(e, [...path, hover.u]), node = data()?.tree[e];
+    return { fen: fenOf(e), name: n[1], eco: n[0], games: node?.g ?? 0, san: san(epd, hover.u) };
+  });
+  const hoverShapes = $derived<DrawShape[]>(hover ? [{ orig: hover.u.slice(0, 2) as never, dest: hover.u.slice(2, 4) as never, brush: 'lead' }] : []);
+  let boardEl = $state<HTMLElement>();
+  const fly = () => takeOff(boardEl?.querySelector('.cg-wrap'));
   const pctOf = (r: { freq: number }) => Math.round(r.freq * 100);
   const isMineRow = (u: string) => mine.includes(u);
   const defRow = (u: string) => pos.turn === side && node?.d === u;
@@ -164,8 +186,8 @@
     </div>
   </div>
 
-  <div class="bw" role="presentation" ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
-    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} onmove={onBoardMove} />
+  <div class="bw" role="presentation" bind:this={boardEl} ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
+    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} shapes={hoverShapes} onmove={onBoardMove} />
     {#if promo}<Promo side={pos.turn} onpick={pickPromo} oncancel={cancelPromo} />{/if}
     <MoveInput legal={legalNow} onmove={(u) => (path = [...path, u])} onaction={onkey} />
   </div>
@@ -187,6 +209,7 @@
     </div>
   {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
+  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>←</kbd> step back <kbd>/</kbd> jump to an opening</p>
   </div>
 
   <div class="pane b">
@@ -195,7 +218,7 @@
       <div class="lh"><span>Move</span><span>Played</span><span>Results</span><span>Eval</span></div>
       {#each showRare ? rows : rows.slice(0, 8) as m (m.u)}
         {@const st = isMineRow(m.u) ? stageAt(side, epd, m.u) : null}
-        <button class="mv" class:out={pos.turn !== side && !coveredReply(m.u)} onclick={() => (path = [...path, m.u])}>
+        <button class="mv" class:out={pos.turn !== side && !coveredReply(m.u)} class:pointed={hover?.u === m.u} onclick={() => (path = [...path, m.u])} onpointerenter={(e) => point(e, m.u)} onpointerleave={() => (hover = null)}>
           <span class="san">
             {m.san}
             <span class="marks">
@@ -234,6 +257,9 @@
     <p class="t-small foot">{node.g.toLocaleString('en')} games at the {model.band} band reach this position · eval {evalText(node.e)} · {newBelow} new move{newBelow === 1 ? '' : 's'} below for you</p>
   {/if}
 
+  </div>
+
+  <div class="pane c">
   <div class="sect"><h2 class="t-head">Traps below this position</h2></div>
   <section class="card traps">
     {#if traps.punish.length + traps.danger.length + traps.puzzles.length}
@@ -253,6 +279,14 @@
   {/if}
   </div>
 </div>
+
+{#if hover && lead}
+  <div class="lead card" style="top:{hover.top}px;left:{hover.left}px" aria-hidden="true">
+    <MiniBoard fen={lead.fen} {side} last={[hover.u.slice(0, 2), hover.u.slice(2, 4)]} />
+    <p class="t-name ln">{lead.name}{#if lead.eco}<span class="eco">{lead.eco}</span>{/if}</p>
+    <p class="t-small">after {lead.san}{lead.games ? ` · ${lead.games.toLocaleString('en')} games` : ''}</p>
+  </div>
+{/if}
 
 {#if editing}<MoveEditor {side} {epd} onclose={() => (editing = false)} />{/if}
 
@@ -349,13 +383,14 @@
       /* room above for the name and moves, below for the buttons and the tab bar */
       --bw: min(calc(100vh - 320px), 54vw, 760px);
       --bw: min(calc(100dvh - 320px - env(safe-area-inset-bottom)), 54vw, 760px);
-      display: grid; grid-template-columns: var(--bw) minmax(340px, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'a top' 'a b';
+      display: grid; grid-template-columns: var(--bw) minmax(340px, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'a top' 'a b' 'a c';
       column-gap: 28px; align-items: start; padding-left: max(16px, calc((100% - 1260px) / 2)); padding-right: max(16px, calc((100% - 1260px) / 2));
     }
     .ex .pane { display: block; }
     .ex .top { grid-area: top; }
     .ex .a { grid-area: a; position: sticky; top: 0; }
     .ex .b { grid-area: b; }
+    .ex .c { grid-area: c; }
     .ex .where { margin-top: 4px; }
     .ex .crumbs { margin: 10px 0 0; padding: 0; flex-wrap: wrap; }
     .ex .list { margin-top: 0; }
@@ -365,7 +400,7 @@
     .screen.ex {
       --bw: min(calc(100vh - 110px), 40vw);
       --bw: min(calc(100dvh - 110px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 40vw);
-      display: grid; grid-template-columns: var(--bw) minmax(300px, 1fr); grid-template-rows: auto 1fr; grid-template-areas: 'a top' 'a b';
+      display: grid; grid-template-columns: var(--bw) minmax(300px, 1fr); grid-template-rows: auto auto 1fr; grid-template-areas: 'a top' 'a b' 'a c';
       column-gap: 20px; align-items: start; padding-top: calc(env(safe-area-inset-top) + 12px);
       padding-left: max(16px, env(safe-area-inset-left));
     }
@@ -373,9 +408,55 @@
     .ex .top { grid-area: top; }
     .ex .a { grid-area: a; }
     .ex .b { grid-area: b; }
+    .ex .c { grid-area: c; }
     .ex .where { margin-top: 0; }
     .ex .where .nm { font-size: 20px; }
     .ex .crumbs { margin: 6px 0 0; padding: 0; }
+  }
+  .keys, .lead { display: none; }
+  /* ---------- desktop: board, moves, context (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .screen.ex {
+      --bw: min(calc(100vh - 258px), calc(100% - 420px), 760px);
+      --bw: min(calc(100dvh - 258px), calc(100% - 420px), 760px);
+      display: grid; grid-template-columns: var(--bw) minmax(340px, 560px); grid-template-rows: auto auto 1fr; grid-template-areas: 'a top' 'a b' 'a c';
+      justify-content: center; column-gap: 32px; align-items: start; padding: 24px 32px 40px;
+    }
+    .ex .pane { display: block; min-width: 0; }
+    .ex .top { grid-area: top; }
+    .ex .a { grid-area: a; position: sticky; top: 0; }
+    .ex .b { grid-area: b; }
+    .ex .c { grid-area: c; }
+    .ex :global(.t-display) { font-size: 30px; }
+    .ex .screen-head { margin-bottom: 12px; align-items: center; }
+    .ex .where { margin: 0 0 12px; min-height: 84px; }
+    .ex .nm { font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ex .crumbs { flex-wrap: nowrap; overflow-x: auto; }
+    .ex .crumb { cursor: pointer; transition: background 140ms; }
+    .ex .crumb:not(.cur):hover { background: var(--line); color: var(--ink); }
+    .ex .acts { margin-top: 18px; }
+    .ex .btn:not(:disabled):hover { filter: brightness(1.06); }
+    .ex .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
+    .ex .keys kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--card); box-shadow: 0 1.5px 0 var(--quiet-edge); color: var(--ink-2); margin-left: 8px; }
+    .ex .keys kbd:first-child { margin-left: 0; }
+    .ex .list { margin-top: 12px; }
+    .ex .mv { min-height: 50px; transition: background 120ms; }
+    .ex .mv:hover, .ex .mv.pointed { background: var(--cobalt-tint); }
+    .ex .more:hover, .ex .edit:hover, .ex .plist button:hover, .ex .hits button:hover { background: var(--ground); }
+    .ex .traps button:not(:disabled) { padding: 6px 10px; margin: -6px -10px; transition: background 120ms; }
+    .ex .traps button:not(:disabled):hover { background: var(--ground); }
+    .ex .sect { margin-top: 20px; }
+    .lead { display: block; position: fixed; z-index: 45; width: 220px; padding: 10px 10px 12px; border-radius: 18px; pointer-events: none; box-shadow: 0 24px 50px -18px rgba(13, 16, 36, 0.5), 0 0 0 1px var(--line); animation: rise 140ms var(--ease) both; }
+    .lead .ln { font-size: 16px; line-height: 1.15; margin-top: 10px; }
+    .lead .t-small { margin-top: 2px; font-size: 12.5px; }
+  }
+  /* from 1600: search, traps and puzzles get a column of their own */
+  @media (min-width: 1600px) and (min-height: 600px) {
+    .screen.ex { grid-template-columns: var(--bw) minmax(380px, 480px) minmax(300px, 380px); grid-template-rows: auto 1fr; grid-template-areas: 'a b top' 'a b c'; --bw: min(calc(100dvh - 258px), calc(100% - 800px), 820px); }
+    .ex .list { margin-top: 0; }
+    .ex .c .sect { margin-top: 18px; }
+    .ex .traps { flex-direction: column; gap: 14px; }
+    .ex .traps button { flex-direction: row; align-items: baseline; gap: 10px; min-height: 44px; }
   }
   .dialog ul { margin: 10px 0 0; padding-left: 18px; font-size: 15px; }
   .dialog li { margin: 4px 0; }

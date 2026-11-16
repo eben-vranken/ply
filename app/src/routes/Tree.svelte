@@ -57,15 +57,15 @@
 
 <div class="room">
   <header>
-    <button class="ib" onclick={() => (history.length > 1 ? history.back() : go('/repertoire'))} aria-label="Back to Repertoire"><Icon name="back" /></button>
+    <button class="ib" onclick={() => (history.length > 1 ? history.back() : go('/repertoire'))} aria-label="Back to Repertoire" title="Back (Esc)"><Icon name="back" /></button>
     <Sigil path={path.slice(0, 8)} flip={side === 'b'} you={side} size={44} />
     <div class="grow">
       <h1 class="t-name ttl">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</h1>
       <p class="ord">{#if focused}<b class="fc">Mastering</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
     </div>
-    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop mastering this opening` : `Master this opening as ${colour}`}><Icon name="star" fill={focused} /></button>
-    <button class="ib" onclick={share} disabled={!roots.length} aria-label="Export this opening as PGN"><Icon name="share" /></button>
-    <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore"><Icon name="explore" /></button>
+    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop mastering this opening` : `Master this opening as ${colour}`} title={focused ? 'Mastering: click to stop' : 'Master this opening'}><Icon name="star" fill={focused} /></button>
+    <button class="ib" onclick={share} disabled={!roots.length} aria-label="Export this opening as PGN" title="Export as PGN"><Icon name="share" /></button>
+    <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore" title="Open in Explore"><Icon name="explore" /></button>
   </header>
 
   {#if roots.length}
@@ -88,4 +88,10 @@
   .ord { font-size: 13px; color: var(--night-ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .fc { color: var(--sun); font-weight: 700; margin-right: 6px; }
   .none { padding: 24px 20px; color: var(--night-ink-2); }
+  @media (min-width: 1024px) and (min-height: 600px) {
+    header { padding: 12px 20px; border-bottom: 1px solid var(--night-3); }
+    .ttl { font-size: 26px; }
+    .ib { transition: background 140ms; }
+    .ib:not(:disabled):hover { background: var(--night-3); }
+  }
 </style>

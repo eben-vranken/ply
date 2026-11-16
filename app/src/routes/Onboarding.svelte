@@ -8,6 +8,8 @@
   import { syncNow } from '../lib/import/sync.svelte';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
+  import Mascot from '../lib/Mascot.svelte';
+  import { desk } from '../lib/desk.svelte';
 
   let step = $state(0);
   const S = (s: string) => s.split(' '); // UCI
@@ -59,7 +61,20 @@
   }
 </script>
 
-<div class="ob" class:night={step === 0}>
+<div class="ob" class:night={step === 0} class:wide={desk.on}>
+  {#if desk.on}
+    <!-- desktop: the night panel stays through all four steps, Birch saying what each is for -->
+    <aside class="art" aria-hidden="true">
+      <div class="tiles">
+        <div class="tile t1"><Sigil path={S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6')} size={230} draw /></div>
+        <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={150} hue="#0f7a55" flip you="b" /></div>
+        <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={120} hue="#cf331c" /></div>
+      </div>
+      {#key step}
+        <div class="says"><Mascot mood={step === 0 ? 'cheer' : step === 3 ? 'think' : 'idle'} size={72} /><p>{['I am Birch. Four short steps and your first session is ready.', 'Pick what you want to play. You can change it any time, and every other opening is still there.', 'A few minutes now beats an hour on Sunday. These are easy to change later.', 'With your games I can match the lines to your level and turn your real mistakes into cards.'][step]}</p></div>
+      {/key}
+    </aside>
+  {/if}
   <div class="dots" aria-hidden="true">{#each Array(4) as _, i}<i class:on={i <= step}></i>{/each}</div>
 
   {#key step}
@@ -187,4 +202,24 @@
   .name:focus { outline: 3px solid var(--cobalt); }
   footer { display: flex; gap: 10px; padding-top: 14px; }
   footer .quiet { min-height: 64px; border-radius: 20px; padding: 0 20px; }
+  /* ---------- desktop: the steps on the right, the night panel on the left (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .ob.wide { display: grid; grid-template-columns: minmax(380px, 0.85fr) minmax(0, 1.15fr); grid-template-rows: auto minmax(0, 1fr) auto; column-gap: 0; padding: 0; }
+    .ob.wide > :global(*) { grid-column: 2; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; padding-left: 32px; padding-right: 32px; }
+    .ob.wide .dots { padding-top: 40px; }
+    .ob.wide footer { padding-bottom: 40px; }
+    .ob.wide .body { padding-top: 32px; justify-content: safe center; }
+    .art { grid-column: 1 !important; grid-row: 1 / -1; max-width: none !important; margin: 0 !important; padding: 40px !important; position: relative; display: flex; flex-direction: column; justify-content: flex-end; background: radial-gradient(90% 70% at 30% 30%, #1d2350 0%, var(--night) 70%); color: var(--night-ink); overflow: hidden; }
+    .tiles { position: absolute; inset: 8% 10% 30% 10%; }
+    .says { position: relative; display: flex; align-items: center; gap: 14px; animation: rise 360ms var(--ease) both; }
+    .says p { flex: 1; padding: 14px 18px; border-radius: 20px; background: var(--birch); color: var(--ink-fixed); font-size: 15.5px; line-height: 1.4; font-weight: 550; box-shadow: 0 4px 0 var(--birch-3); max-width: 420px; }
+    .ob.wide .hero { display: none; }
+    .ob.wide .hl { font-size: 72px; }
+    .ob.wide.night .lead { font-size: 18px; }
+    .ob.wide .opt, .ob.wide .levels button, .ob.wide .goals button { transition: box-shadow 160ms, transform 160ms var(--ease); }
+    .ob.wide .opt:hover, .ob.wide .levels button:hover, .ob.wide .goals button:hover { transform: translateY(-1px); box-shadow: inset 0 0 0 2px var(--line); }
+    .ob.wide .opt.on:hover, .ob.wide .levels button.on:hover, .ob.wide .goals button.on:hover { box-shadow: inset 0 0 0 2.5px var(--cobalt); }
+    .ob.wide .btn:not(:disabled):hover { filter: brightness(1.06); }
+    .ob.wide .stepper button:hover { background: var(--cobalt-tint); }
+  }
 </style>

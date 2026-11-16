@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, save, DEFAULTS, resetSettings } from '../lib/state.svelte';
+  import { app, save, DEFAULTS, resetSettings, go } from '../lib/state.svelte';
   import { summaries, isFocus, toggleFocus } from '../lib/model.svelte';
   import { GOALS } from '../lib/game';
   import { model, regenerate, switchBand, currentBand, depthLimit, reloadFromDb, resetAllProgress, bandList } from '../lib/model.svelte';
@@ -136,10 +136,12 @@
 </script>
 
 
-<div class="screen">
+<div class="screen settings">
   <header class="screen-head"><h1 class="t-display">Settings</h1></header>
+  <div class="pane cols">
 
   {#if configured && cloud.user}
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Account</h2></div>
     <section class="card rows">
       <div class="r">
@@ -170,8 +172,10 @@
         </div>
       {/if}
     </section>
+    </div>
   {/if}
 
+  <div class="pane grp">
   <div class="sect"><h2 class="t-head">Mastering</h2></div>
   <section class="card rows">
     <p class="t-small intro">Half of each day's new moves come from the openings you are mastering. Pick as many as you like for each colour; everything else still arrives in the order you are most likely to meet it.</p>
@@ -182,7 +186,9 @@
       </label>
     {/each}
   </section>
+  </div>
 
+  <div class="pane grp">
   <div class="sect"><h2 class="t-head">Daily goal</h2></div>
   <section class="card rows">
     <div class="r">
@@ -190,8 +196,10 @@
       <div class="pick">{#each GOALS as g}<button class:on={app.goal === g} aria-pressed={app.goal === g} onclick={() => { app.goal = g; save(); buzz(8); }}>{g}</button>{/each}</div>
     </div>
   </section>
+  </div>
 
   {#each groups as [title, rows]}
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">{title}</h2></div>
     <section class="card rows">
       {#each rows as n}
@@ -217,8 +225,10 @@
         {/each}
       {/if}
     </section>
+    </div>
   {/each}
 
+  <div class="pane grp">
   <div class="sect"><h2 class="t-head">Your schedule</h2></div>
   <section class="card rows">
     <div class="r col">
@@ -230,7 +240,9 @@
       </div>
     </div>
   </section>
+  </div>
 
+  <div class="pane grp">
   <div class="sect"><h2 class="t-head">Your games</h2></div>
   <section class="card rows">
     <p class="t-small intro">Ply fetches your games when you open it once a day or tap Sync now, and analyses them on this device. Nothing else is sent.</p>
@@ -276,8 +288,10 @@
       {/if}
     </div>
   </section>
+  </div>
 
 
+  <div class="pane grp">
   <div class="sect"><h2 class="t-head">Your data</h2></div>
   <section class="card rows">
     <div class="r two">
@@ -302,8 +316,10 @@
       </div>
     {/if}
   </section>
+  </div>
+  </div>
   {#if status}<p class="status" role="status">{status}</p>{/if}
-  <p class="foot">Ply 1.0 · opening data {model.version || '—'} · {model.band} band · GPL-3.0<br />Opening data from the Lichess open database (CC0)</p>
+  <p class="foot">Ply 1.0 · opening data {model.version || '—'} · {model.band} band · GPL-3.0<br />Opening data from the Lichess open database (CC0) · <button class="about" onclick={() => go('/welcome')}>About Ply</button></p>
 </div>
 
 <style>
@@ -342,4 +358,19 @@
   .pgn { width: 100%; border: 0; border-radius: 14px; background: var(--ground); padding: 12px; font: 13px/1.4 ui-monospace, monospace; color: var(--ink); user-select: text; resize: vertical; }
   .r.col { gap: 10px; }
   .foot { text-align: center; font-size: 12.5px; color: var(--ink-3); margin-top: 26px; }
+  .about { color: var(--accent-text); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  /* ---------- desktop: the same cards in balanced columns (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .screen.settings { padding: 28px max(32px, calc((100% - 1480px) / 2)) 48px; }
+    .settings .cols { display: block; columns: 2; column-gap: 28px; }
+    .settings .grp { display: block; break-inside: avoid; padding-bottom: 2px; }
+    .settings .grp .sect { margin-top: 0; padding-top: 18px; }
+    .settings .stepper button, .settings .pick button { transition: background 120ms, transform 90ms; }
+    .settings .stepper button:hover { background: var(--cobalt-tint); }
+    .settings .pick button:not(.on):hover { background: var(--line); color: var(--ink); }
+    .settings .btn:not(:disabled):hover { filter: brightness(1.06); }
+    .settings label.r { cursor: pointer; }
+    .settings .status { position: fixed; z-index: 30; left: 50%; bottom: 28px; margin: 0 0 0 -180px; width: 360px; box-shadow: var(--shadow); }
+  }
+  @media (min-width: 1600px) and (min-height: 600px) { .settings .cols { columns: 3; } }
 </style>

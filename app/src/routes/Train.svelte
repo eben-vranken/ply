@@ -19,6 +19,8 @@
   import Promo from '../lib/Promo.svelte';
   import MoveInput from '../lib/MoveInput.svelte';
   import type { KeyAction } from '../lib/keys';
+  import { desk } from '../lib/desk.svelte';
+  import { land } from '../lib/flight';
 
   let items = $state<Item[]>(run.items.slice());
   let idx = $state(0);
@@ -84,7 +86,8 @@
   let streakNow = $state(0);
   let streakGrew = $state(false);
   const PRAISE = ['Nice', 'Spot on', 'Clean', 'Exactly', 'Well played', 'Just right'];
-  const CONFETTI = Array.from({ length: 34 }, (_, i) => ({ x: (i * 37 + 11) % 100, d: (i * 53) % 900, r: (i * 71) % 360, c: ['var(--birch)', 'var(--sun)', 'var(--birch-3)', '#7f9bff', '#34e08f', '#ff7a6b'][i % 6], w: 7 + (i % 3) * 3 }));
+  // a big screen gets three times the confetti, across its whole width
+  const CONFETTI = Array.from({ length: desk.on ? 110 : 34 }, (_, i) => ({ x: (i * 37 + 11) % 100, d: (i * 53) % 900, r: (i * 71) % 360, c: ['var(--birch)', 'var(--sun)', 'var(--birch-3)', '#7f9bff', '#34e08f', '#ff7a6b'][i % 6], w: 7 + (i % 3) * 3 }));
 
   function sync(mv?: { from: string; to: string }) {
     fen = chess.fen();
@@ -495,14 +498,14 @@
         <p class="ord quiet">{item.side === 'w' ? 'You play White' : 'You play Black'}</p>
       {/if}
     </div>
-    {#if showOthers && item.others}
+    {#if (showOthers || (desk.on && phase !== 'play')) && item.others?.length}
       <div class="others" role="dialog" aria-label="Other move orders">
         {#each item.others as o}<p>{o}</p>{/each}
       </div>
     {/if}
     </div>
 
-    <div class="boardwrap">
+    <div class="boardwrap" use:land>
       <Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} />
       {#if cheer}
         {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
@@ -540,6 +543,7 @@
         <button class="btn night" onclick={hint} disabled={!dests}><Icon name="hint" size={20} /> Hint</button>
         <p class="src">{item.source ?? ''}<span class="keyhelp">Type a move · ? hint · Esc stop</span></p>
       </footer>
+      <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>?</kbd> hint <kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {:else}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="answer {gradeInfo[0]}" onpointerdown={hold}>
@@ -569,6 +573,7 @@
         {#if !drill}<button class="btn night sq" onclick={undo} disabled={undone || !applied || phase === 'replay'} aria-label="Undo grade"><Icon name="undo" size={22} /></button>{/if}
         <button class="btn grow go {gradeInfo[0]}" class:auto onclick={next}><span>Continue</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
       </footer>
+      <p class="keys" aria-hidden="true"><kbd>Enter</kbd> continue {#if !drill}<kbd>⌫</kbd> undo the grade {/if}<kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {/if}
     </div>
   {/if}
@@ -731,6 +736,49 @@
     .room.board .others { top: 100%; }
     .room.board .answer { margin: 12px 16px 0 8px; }
     .room.board .coach { left: auto; right: 16px; width: min(440px, calc(100% - 32px)); }
+  }
+  .keys { display: none; }
+  /* ---------- desktop: the board as the hero, one panel beside it (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .room.board {
+      --bw: min(calc(100dvh - 124px), calc(100vw - 560px), 820px);
+      display: grid; grid-template-columns: var(--bw) minmax(360px, 460px); grid-template-rows: 56px auto minmax(0, 1fr);
+      grid-template-areas: 'head head' 'board lab' 'board side'; justify-content: center; column-gap: 32px; padding: 6px 32px 44px;
+    }
+    .room.board header { grid-area: head; height: 56px; padding: 0; max-width: calc(var(--bw) + 492px); width: 100%; justify-self: center; }
+    .room.board .x { border-radius: 14px; transition: background 140ms, color 140ms; }
+    .room.board .x:hover, .room.board .stopbtn:hover { background: var(--night-3); color: var(--night-ink); }
+    .room.board .boardwrap { grid-area: board; align-self: start; padding: 0; }
+    .room.board .lab { display: block; grid-area: lab; position: relative; background: var(--night-2); border-radius: 26px 26px 0 0; padding: 8px 8px 0; }
+    .room.board .side { display: flex; flex-direction: column; grid-area: side; min-height: 0; overflow-y: auto; background: var(--night-2); border-radius: 0 0 26px 26px; padding: 0 8px 10px; }
+    .room.board .label { height: auto; min-height: 64px; padding: 12px 16px 6px; }
+    .room.board .nm { font-size: 24px; white-space: normal; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; }
+    .room.board .ord { white-space: normal; }
+    .room.board .also { text-decoration: none; pointer-events: none; display: block; margin: 10px 0 0; color: var(--night-ink-2); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .room.board .others { position: static; background: none; box-shadow: none; padding: 0 16px 6px; animation: none; font-size: 13.5px; color: var(--night-ink-2); }
+    .room.board .others p { padding: 5px 0; }
+    .room.board .prompt { min-height: 96px; padding-top: 18px; border-top: 1px solid var(--night-3); margin-top: 4px; }
+    .room.board .ask { font-size: 30px; }
+    .room.board .msg { font-size: 19px; }
+    .room.board .strip { flex-wrap: wrap; overflow: visible; padding: 14px 16px 8px; gap: 2px 4px; align-content: flex-start; }
+    .room.board .strip::before { content: 'The line so far'; flex: 0 0 100%; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--night-ink-2); opacity: 0.8; margin-bottom: 4px; }
+    .room.board .answer { margin: 14px 8px 0; background-clip: padding-box; }
+    .room.board footer { padding: 12px 8px 4px; }
+    .room.board .keyhelp { display: none; }
+    .room.board .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 10px 4px; font-size: 12.5px; color: var(--night-ink-2); }
+    .room.board .keys kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--night-3); color: var(--night-ink); margin-left: 8px; }
+    .room.board .keys kbd:first-child { margin-left: 0; }
+    .room.board .coach { left: auto; right: max(32px, calc((100vw - var(--bw) - 492px) / 2 + 16px)); bottom: 136px; width: 428px; }
+    .room .btn:not(:disabled):hover { filter: brightness(1.08); }
+    /* session complete fills the window: Birch on the stack on the left, the numbers on the right */
+    .complete:not(.summary) { max-width: 1120px; display: grid; grid-template-columns: 1fr minmax(380px, 480px); column-gap: 72px; align-content: center; align-items: center; padding: 0 48px 24px; }
+    .complete:not(.summary) > :global(*) { grid-column: 2; }
+    .complete:not(.summary) .confetti { position: fixed; grid-column: auto; }
+    .complete:not(.summary) .stackart { grid-column: 1; grid-row: 1 / span 6; padding: 0; transform: scale(1.5); }
+    .complete:not(.summary) h1 { font-size: 76px; }
+    .complete:not(.summary) .lead { font-size: 18px; }
+    .complete:not(.summary) dd { font-size: 40px; }
+    .summary { max-width: 680px; justify-content: center; }
   }
   .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
   .confetti i { position: absolute; top: -20px; height: 14px; border-radius: 3px; opacity: 0; animation: fall 2600ms cubic-bezier(0.3, 0.6, 0.6, 1) both; }

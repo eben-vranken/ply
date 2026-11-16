@@ -192,7 +192,7 @@ cg-board square.check { background: radial-gradient(circle, rgba(207, 51, 28, 0.
 .pane { display: contents; }
 
 /* a screen lays its parts down one after another */
-.screen > *, .screen > .pane > * { animation: rise 420ms var(--ease) both; }
+.screen > *, .screen > .pane > *, .screen > .pane > .pane > * { animation: rise 420ms var(--ease) both; }
 .screen > *:nth-child(2) { animation-delay: 45ms; }
 .screen > *:nth-child(3) { animation-delay: 90ms; }
 .screen > *:nth-child(4) { animation-delay: 135ms; }
@@ -212,6 +212,17 @@ cg-board square.check { background: radial-gradient(circle, rgba(207, 51, 28, 0.
 /* a phone on its side: the tab bar is a rail on the right (App.svelte), so screens keep clear of it */
 @media (orientation: landscape) and (max-height: 539px) and (min-width: 560px) {
   .screen { padding-right: calc(max(16px, env(safe-area-inset-right)) + 76px); padding-bottom: 40px; }
+}
+
+/* Desktop (docs/DESIGN.md, "Desktop"): from 1024 × 600 the list screens stop being one centred column;
+   each screen lays itself out in its own file. Here: what they share. */
+@media (min-width: 1024px) and (min-height: 600px) {
+  .screen { padding-top: 28px; padding-bottom: 48px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  .t-display { font-size: 34px; }
+  .link { border-radius: 8px; }
+  .link:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .btn { cursor: pointer; }
+  .btn:disabled { cursor: default; }
 }
 
 @media (prefers-reduced-motion: reduce) {

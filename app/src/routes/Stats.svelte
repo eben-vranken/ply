@@ -57,7 +57,7 @@
   const openCard = (c: StatsData['weakest'][number]['card']) => go(`/explore?side=${c.side}&p=${encodeURIComponent((c.path ?? []).join(' '))}`);
 </script>
 
-<div class="screen">
+<div class="screen stats">
   <header class="screen-head">
     <div><p class="t-small">{all} cards · {S?.suspended ?? 0} suspended</p><h1 class="t-display">Stats</h1></div>
   </header>
@@ -73,6 +73,8 @@
       </div>
     </section>
 
+    <div class="pane cols">
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Trophies</h2><span class="t-small">{won} of {trophies.length}</span></div>
     <section class="troph">
       {#each trophies as t}
@@ -84,7 +86,9 @@
         </div>
       {/each}
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Your deck, in layers</h2></div>
     <section class="card">
       {#if all}
@@ -107,7 +111,9 @@
         </tbody>
       </table>
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Next 30 days</h2><span class="t-small">reviews due per day</span></div>
     <section class="card">
       <div class="bars" role="img" aria-label="Forecast, {S.forecast[0]} due tomorrow">
@@ -115,7 +121,9 @@
       </div>
       <div class="axis"><span>Tomorrow <b>{S.forecast[0]}</b></span><span>+2 weeks</span><span>+30 days</span></div>
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Past year</h2><span class="t-small">reviews per day</span></div>
     <section class="card">
       <div class="heat" role="img" aria-label="Review calendar">
@@ -126,7 +134,9 @@
         <div class="mins" aria-hidden="true">{#each S.minutes as m}<i style="height:{Math.min(48, m * 3 + 2)}px"></i>{/each}</div>
       </div>
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Retention</h2><span class="t-small">first-try correct, target {target}%</span></div>
     <section class="card ret">
       {#each [['Young', S.retention.young7, S.retention.young30], ['Mature', S.retention.mature7, S.retention.mature30]] as [n, a, b]}
@@ -146,7 +156,9 @@
         </div>
       {/each}
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">By opening</h2></div>
     <section class="card ops">
       {#each ops as o (o.key)}
@@ -157,7 +169,9 @@
         </button>
       {/each}
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Weakest cards</h2><span class="t-small">lapses, last 30 days</span></div>
     <section class="card weak">
       {#each S.weakest as w (w.card.id)}
@@ -170,7 +184,9 @@
       {/each}
       {#if S.weakest.length}<button class="btn wide" style="margin-top:14px" onclick={drill}>Drill these</button>{/if}
     </section>
+    </div>
 
+    <div class="pane grp">
     <div class="sect"><h2 class="t-head">Your games</h2><span class="t-small">eval out of the opening, your view</span></div>
     <section class="card">
       {#if g && g.months.length}
@@ -193,10 +209,28 @@
         <p class="t-small">{app.username || app.lichessUser ? 'Shows up once your games are analysed.' : 'Add your chess.com or Lichess username in Settings to chart your games.'}</p>
       {/if}
     </section>
+    </div>
+    </div>
   {/if}
 </div>
 
 <style>
+  /* ---------- desktop: the same cards in balanced columns (DESIGN.md, "Desktop") ---------- */
+  @media (min-width: 1024px) and (min-height: 600px) {
+    .screen.stats { padding: 28px max(32px, calc((100% - 1480px) / 2)) 48px; }
+    .stats .cols { display: block; columns: 2; column-gap: 28px; }
+    .stats .grp { display: block; break-inside: avoid; padding-bottom: 2px; }
+    .stats .grp .sect { margin-top: 0; padding-top: 22px; }
+    .stats .troph { grid-template-columns: repeat(4, 1fr); }
+    .stats .tr { transition: transform 200ms var(--spring); }
+    .stats .tr.won:hover { transform: translateY(-3px) rotate(-1.5deg); }
+    .stats .ops button, .stats .weak > button:not(.btn) { border-radius: 10px; padding-left: 8px; padding-right: 8px; margin: 0 -8px; width: calc(100% + 16px); transition: background 120ms; }
+    .stats .ops button:hover, .stats .weak > button:not(.btn):hover { background: var(--ground); }
+    .stats .wo { max-width: none; }
+    .stats .btn:hover { filter: brightness(1.06); }
+  }
+  @media (min-width: 1600px) and (min-height: 600px) { .stats .cols { columns: 3; } .stats .troph { grid-template-columns: repeat(3, 1fr); } }
+
   .prof { display: flex; align-items: center; gap: 16px; }
   .badge { flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--sun); color: #3d2800; font-size: 30px; box-shadow: 0 5px 0 #c98a12; margin-bottom: 5px; }
   .lbar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: 8px 0 7px; }
