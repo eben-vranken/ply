@@ -21,9 +21,11 @@
     shake?: number;
     dark?: boolean;
     coords?: boolean;
+    /** right-click drags an arrow, right-click a square rings it; a left click clears them (off for the landing's demos) */
+    draw?: boolean;
     onmove?: (from: string, to: string) => void;
   }
-  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, coords = true, onmove = () => {} }: Props = $props();
+  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, coords = true, draw = true, onmove = () => {} }: Props = $props();
 
   let el = $state<HTMLDivElement>()!;
   let top = $state<HTMLDivElement>();
@@ -32,6 +34,7 @@
       top?.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-8px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(0)' }], { duration: 300, easing: 'ease-out' });
   });
   let api: Api | undefined = $state();
+  let shownFen = '', shownRev = -1;
 
   onMount(() => {
     api = Chessground(el, {
@@ -39,7 +42,9 @@
       animation: { enabled: true, duration: 170 },
       highlight: { lastMove: true, check: true },
       draggable: { showGhost: true },
-      drawable: { enabled: false, visible: true, brushes: {
+      // your own arrows, as on Lichess: plain right-drag is green, Shift red, Alt blue, Shift+Alt yellow
+      disableContextMenu: draw,
+      drawable: { enabled: draw, visible: true, brushes: {
         good: { key: 'good', color: '#0f7a55', opacity: 0.9, lineWidth: 11 },
         bad: { key: 'bad', color: '#cf331c', opacity: 0.85, lineWidth: 11 },
         hint: { key: 'hint', color: '#f4b740', opacity: 1, lineWidth: 9 },
@@ -61,8 +66,12 @@
     void rev;
     if (!api) return;
     const turn = fen.split(' ')[1] === 'w' ? 'white' : 'black';
+    // a new fen clears your arrows (chessground does that), so it is only passed when the position
+    // changes or rev asks for a redraw: a hint or a hover arrow appearing must not wipe what you drew
+    const moved = fen !== shownFen || rev !== shownRev;
+    shownFen = fen; shownRev = rev;
     api.set({
-      fen,
+      ...(moved ? { fen } : {}),
       orientation: side === 'w' ? 'white' : 'black',
       turnColor: turn,
       lastMove: (lastMove as Key[] | null) ?? undefined,

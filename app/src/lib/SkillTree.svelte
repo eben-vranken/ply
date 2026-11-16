@@ -405,7 +405,7 @@
       {@const fresh = newCount(m)}
       {#key sel.id}
         <div class="one" style="--c:{sel.colour}">
-          <div class="bd"><Board fen={fenOf(child(m.epd, m.uci))} {side} lastMove={[m.uci.slice(0, 2), m.uci.slice(2, 4)]} coords={false} dark /></div>
+          <div class="bd"><Board draw={false} fen={fenOf(child(m.epd, m.uci))} {side} lastMove={[m.uci.slice(0, 2), m.uci.slice(2, 4)]} coords={false} dark /></div>
           <div class="grow">
             <p class="t-name nm">{shortName(sel.name)}</p>
             <p class="mv">{moveNo(m)}{m.san}</p>

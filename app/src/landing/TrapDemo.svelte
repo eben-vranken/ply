@@ -54,7 +54,7 @@
 
 <div class="trap" use:inview={{ on: (s) => (seen = s), threshold: 0.35 }}>
   <div class="board">
-    <Board fen={f.fen} side={mode === 'danger' ? 'w' : 'b'} lastMove={f.last} shapes={f.shapes ?? []} badge={f.badge ?? null} {rev} dark />
+    <Board draw={false} fen={f.fen} side={mode === 'danger' ? 'w' : 'b'} lastMove={f.last} shapes={f.shapes ?? []} badge={f.badge ?? null} {rev} dark />
   </div>
   <div class="side">
     <div class="tabs" role="tablist" aria-label="Trap card type">

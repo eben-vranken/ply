@@ -60,7 +60,7 @@
 
 <div class="demo" use:inview={{ on: (s) => (seen = s), threshold: 0.25 }}>
   <div class="stage">
-    <Board {fen} side="w" lastMove={last} {shapes} {badge} {rev} dark />
+    <Board draw={false} {fen} side="w" lastMove={last} {shapes} {badge} {rev} dark />
   </div>
 
   <div class="panel">

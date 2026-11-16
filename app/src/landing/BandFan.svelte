@@ -62,7 +62,7 @@
       <p class="note"><b>{mover.san}</b> is played in {Math.round(mover.hi)}% of games at the {mover.at} band and {mover.lo < 1 ? 'under 1' : Math.round(mover.lo)}% at {mover.low}. A line you never meet is a line you do not have to learn yet.</p>
     </div>
 
-    <div class="board"><Board fen={F.fen} side="w" lastMove={[F.path.at(-1)!.slice(0, 2), F.path.at(-1)!.slice(2, 4)]} {shapes} /></div>
+    <div class="board"><Board draw={false} fen={F.fen} side="w" lastMove={[F.path.at(-1)!.slice(0, 2), F.path.at(-1)!.slice(2, 4)]} {shapes} /></div>
 
     <div class="table">
       <p class="th"><b class="t-num">{n(cur.games)}</b> games at the <b>{band}</b> band reach this position</p>
