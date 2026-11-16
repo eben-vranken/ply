@@ -15,6 +15,8 @@
   import { tipOnce, type Tip } from '../lib/voice';
   import Mascot from '../lib/Mascot.svelte';
   import Board, { type Badge } from '../lib/Board.svelte';
+  import EvalBar from '../lib/EvalBar.svelte';
+  import { Engine } from '../lib/engine/stockfish';
   import Icon from '../lib/Icon.svelte';
   import Promo from '../lib/Promo.svelte';
   import MoveInput from '../lib/MoveInput.svelte';
@@ -59,6 +61,33 @@
   /** Arcade: endless positions with their own rating; nothing reaches the cards */
   const arcade = $derived(run.mode === 'drill' && !!run.arcade);
   let arc = $state<ReturnType<NonNullable<typeof run.arcade>> | null>(null);
+  /** puzzles, traps, mistakes and the arcade: as on Lichess, a wrong move is not answered for you; try again, or ask for a hint or the move */
+  const PUZZLE_KINDS = new Set(['puzzle', 'punish', 'danger', 'mistake']);
+  const retry = $derived(!!item && (arcade || PUZZLE_KINDS.has(item.kind)));
+
+  // the evaluation bar: always on an opening position, on a puzzle only once you have played it
+  const evalOn = $derived(!!item && phase !== 'complete' && phase !== 'summary' && (!PUZZLE_KINDS.has(item.kind) || phase !== 'play'));
+  let evalCp = $state<number | null>(null);
+  let engine: Engine | null = null;
+  const evalCache = new Map<string, number>();
+  let evalSeq = 0;
+  /** White's view: the opening data's own eval where the position is in it, else a short Stockfish look */
+  async function evaluate(f: string) {
+    const seq = ++evalSeq;
+    const n = data()?.tree[f.split(' ').slice(0, 4).join(' ')];
+    if (n) { evalCp = n.e; return; }
+    const known = evalCache.get(f);
+    if (known !== undefined) { evalCp = known; return; }
+    try {
+      engine ??= new Engine();
+      const l = (await engine.analyse(f, 350))[0];
+      if (!l) return;
+      const w = f.split(' ')[1] === 'w' ? l.cp : -l.cp;
+      evalCache.set(f, w);
+      if (seq === evalSeq) evalCp = w;
+    } catch { /* no engine here: the bar stays as it was */ }
+  }
+  $effect(() => { if (evalOn) void evaluate(fen); });
   const rating0 = app.arcadeRating;
   const tally = { solved: 0, missed: 0, streak: 0 };
   // the streak is what the arcade plays for: a flame that heats up, and a cheer at 3, 5 and every 5 after
@@ -206,12 +235,14 @@
       return;
     }
     const isBait = it.bait?.uci === u;
-    if (!wrong) {
-      wrong = true;
-      if (drill || run.mode === 'learn') {
-        missed = [...missed, { side: it.side, epd, uci: expected, label: arcade ? it.label.replace(/ \([A-E]\d\d\)$/, '') : nameOf(epd)[1], order: it.order }];
-        if (run.mode === 'learn' && !roundMissed.includes(it)) roundMissed.push(it);
-      }
+    missOnce(epd, expected);
+    if (retry) {
+      // no answer given away: try again, or use Hint or Show me
+      shake++; buzz(50); sfx.bad();
+      badge = { square: mv.to, glyph: isBait ? '??' : '?', tone: 'bad' };
+      shapes = []; why = '';
+      msg = { tone: 'bad', text: isBait ? "That's the trap. Find a better move" : 'Not the move. Try again' };
+      return;
     }
     fixing = true; shake++;
     buzz(50); sfx.bad();
@@ -221,6 +252,29 @@
     why = reason(epd, expected);
     tip('wrong');
     msg = { tone: 'bad', text: isBait ? `That's the trap. The safe move is ${e.san}` : `Not that. The move is ${e.san}` };
+  }
+
+  /** the first miss at this move: it is graded as one, and Drill and Learn list it */
+  function missOnce(epd: string, expected: string) {
+    if (wrong) return;
+    wrong = true;
+    const it = items[idx];
+    if (drill || run.mode === 'learn') {
+      missed = [...missed, { side: it.side, epd, uci: expected, label: arcade ? it.label.replace(/ \([A-E]\d\d\)$/, '') : nameOf(epd)[1], order: it.order }];
+      if (run.mode === 'learn' && !roundMissed.includes(it)) roundMissed.push(it);
+    }
+  }
+  /** Show me: the arrow for the move, counted as a miss; you play it to go on */
+  function showMe() {
+    if (!dests) return;
+    const expected = items[idx].moves[step], epd = epdOf(chess);
+    missOnce(epd, expected);
+    fixing = true;
+    const e = peek(expected);
+    shapes = [{ orig: e.from as never, dest: e.to as never, brush: 'good' }];
+    badge = null;
+    msg = { tone: 'info', text: `The move is ${e.san}. Play it to go on` };
+    why = reason(epd, expected);
   }
 
   /** your later moves in a drill continuation accept any of your repertoire moves */
@@ -262,7 +316,7 @@
       }
       // a clean answer with nothing to read moves on by itself
       const told = !drill && tip('grade');
-      if (app.autoNext && clean && !told && !it.note && !it.bait && !it.played) { auto = true; timer = setTimeout(next, cheer ? 1700 : 1250); }
+      if (app.autoNext && clean && !told && !it.note && !it.bait && !it.played) autoNext(cheer ? 2900 : 2300);
     }
     if (arcade) {
       const rs = Object.values(results);
@@ -279,8 +333,8 @@
           if (mile && n >= 10) sfx.done();
           buzz([18, 50, 18, 50, 60]);
         } else buzz(n >= 3 ? [12, 40, 12] : 12);
-        // a clean answer moves straight on; a miss waits so you can look at it
-        timer = setTimeout(next, cheer ? 1700 : 1100);
+        // a clean answer moves on by itself after a moment (a touch or Stay holds it); a miss waits so you can look at it
+        autoNext(cheer ? 2900 : 2300);
       }
     }
     lastXp = xpFor(arcade ? 'arcade' : drill ? 'drill' : intro ? 'intro' : 'card', arcade ? !!arc?.clean : clean, arcade ? arc?.streak ?? 0 : combo);
@@ -289,7 +343,10 @@
     if (g.level) levelUp = g.level;
     if (g.goal) { goalHit = true; if (!cheer) { cheer = { text: 'Daily goal reached', n: ++cheers }; sfx.combo(8); } }
   }
-  /** a touch on the answer holds it on screen */
+  /** move on by itself after `ms`, with the Continue button filling meanwhile */
+  let autoMs = $state(2300);
+  function autoNext(ms: number) { autoMs = ms; auto = true; timer = setTimeout(next, ms); }
+  /** a touch anywhere (the board, the answer, Stay) holds it on screen */
   function hold() { if (auto) { clearTimeout(timer); auto = false; } }
 
   async function next() {
@@ -367,7 +424,7 @@
     if (!items.length) { go('/today'); return; }
     void loadStats(allCards().values(), app.rollover).then((s) => { streak0 = s.streak; held0 = s.freezes; });
     load(0);
-    return () => { clearTimeout(timer); run.arcade = undefined; };
+    return () => { clearTimeout(timer); run.arcade = undefined; engine?.quit(); };
   });
 
   const mins = $derived(Math.max(1, Math.round((Date.now() - total.started) / 60000)));
@@ -399,7 +456,8 @@
   const playedSan = $derived(item?.played ? sanOf(epdAfter(item.setup, item.start.split(' ').slice(0, 4).join(' ')), item.played.uci) : '');
 </script>
 
-<div class="room" class:board={phase !== 'complete' && phase !== 'summary'}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="room" class:board={phase !== 'complete' && phase !== 'summary'} onpointerdown={hold}>
   {#if phase === 'complete'}
     <div class="complete">
       <div class="confetti" aria-hidden="true">{#each CONFETTI as c}<i style="left:{c.x}%;width:{c.w}px;background:{c.c};animation-delay:{c.d}ms;--r:{c.r}deg"></i>{/each}</div>
@@ -506,7 +564,10 @@
     </div>
 
     <div class="boardwrap" use:land>
-      <Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} />
+      <div class="withbar">
+        {#if evalOn}<EvalBar cp={evalCp} side={item.side} />{/if}
+        <div class="bd"><Board {fen} side={item.side} {dests} {lastMove} {shapes} {badge} {check} {rev} {shake} dark {onmove} /></div>
+      </div>
       {#if cheer}
         {#key cheer.n}<p class="cheer" role="status"><Icon name="flame" size={30} fill /><b>{cheer.text}</b></p>{/key}
       {/if}
@@ -541,12 +602,12 @@
       </div>
       <footer>
         <button class="btn night" onclick={hint} disabled={!dests}><Icon name="hint" size={20} /> Hint</button>
+        {#if retry}<button class="btn night" onclick={showMe} disabled={!dests || fixing}><Icon name="explore" size={20} /> Show me</button>{/if}
         <p class="src">{item.source ?? ''}<span class="keyhelp">Type a move · ? hint · Esc stop</span></p>
       </footer>
       <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>?</kbd> hint <kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {:else}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div class="answer {gradeInfo[0]}" onpointerdown={hold}>
+      <div class="answer {gradeInfo[0]}">
         <div class="row">
           {#key idx}<span class="gm"><Mascot mood={gradeInfo[0] === 'good' ? 'cheer' : gradeInfo[0] === 'bad' ? 'sad' : gradeInfo[0] === 'warn' ? 'think' : 'idle'} size={54} /></span>{/key}
           <div class="grow">
@@ -571,7 +632,8 @@
       </div>
       <footer>
         {#if !drill}<button class="btn night sq" onclick={undo} disabled={undone || !applied || phase === 'replay'} aria-label="Undo grade"><Icon name="undo" size={22} /></button>{/if}
-        <button class="btn grow go {gradeInfo[0]}" class:auto onclick={next}><span>Continue</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
+        {#if auto}<button class="btn night stay" onclick={hold}>Stay</button>{/if}
+        <button class="btn grow go {gradeInfo[0]}" class:auto style="--auto:{autoMs}ms" onclick={next}><span>Continue</span> <Icon name="next" size={20} /><kbd class="keyhelp">Enter</kbd></button>
       </footer>
       <p class="keys" aria-hidden="true"><kbd>Enter</kbd> continue {#if !drill}<kbd>⌫</kbd> undo the grade {/if}<kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {/if}
@@ -624,6 +686,11 @@
   .branch b { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   .boardwrap { padding: 0 8px; flex: none; position: relative; }
+  .withbar { display: flex; gap: 6px; align-items: stretch; }
+  .withbar .bd { flex: 1; min-width: 0; }
+  /* the bar stops at the board's edge, not the plywood under it */
+  .withbar > :global(.bar) { margin-bottom: 12px; }
+  .stay { flex: none; padding: 0 18px; }
 
   .prompt { min-height: 62px; padding: 14px 16px 0; flex: none; }
   .ask { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
@@ -680,7 +747,7 @@
   .btn.go.bad { --face: #e5412b; --edge: #8f1f0e; --txt: #fff; }
   .btn.go :global(svg), .btn.go span { position: relative; }
   /* while it is about to move on by itself, the button fills */
-  .btn.go.auto::before { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.22); transform-origin: left; animation: fill 1250ms linear both; }
+  .btn.go.auto::before { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.22); transform-origin: left; animation: fill var(--auto, 2300ms) linear both; }
   @keyframes fill { from { transform: scaleX(0); } }
   .srcline { font-size: 13.5px; color: var(--night-ink-2); margin-top: 10px; }
   .srcline b { color: var(--night-ink); }

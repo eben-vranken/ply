@@ -78,7 +78,12 @@ for (let i = 0; i < 400 && answered < 12; i++) {
   await playSan(legal[legal.length - 1]);
   await page.waitForTimeout(300);
   const after = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ');
-  const fix = after.match(/(?:move is|Play|safe move is) ([^ .]+)/);
+  let fix = after.match(/(?:move is|Play|safe move is) ([^ .]+)/);
+  // puzzles keep the answer back after a miss: Show me names it
+  if (!fix && await page.getByRole('button', { name: 'Show me' }).isEnabled().catch(() => false)) {
+    await page.getByRole('button', { name: 'Show me' }).click(); await page.waitForTimeout(200);
+    fix = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ').match(/move is ([^ .]+)/);
+  }
   if (fix) await playSan(fix[1]);
   asked++;
   if (asked === 1) await shot('train-wrong');
@@ -167,6 +172,8 @@ for (let i = 0; i < 40 && !typedOk; i++) {
     const fen = await page.locator('.room .slab').getAttribute('data-fen');
     const legal = new Chess(fen!).moves();
     await page.keyboard.type(legal[legal.length - 1]); await page.waitForTimeout(300);
+  } else if (hintOn && await page.getByRole('button', { name: 'Show me' }).isEnabled().catch(() => false)) {
+    await page.getByRole('button', { name: 'Show me' }).click(); await page.waitForTimeout(200);
   }
   if (await page.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false)) {
     await page.keyboard.press('Enter'); await page.waitForTimeout(500);

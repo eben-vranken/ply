@@ -124,7 +124,12 @@ async function train(d: Dev, cards: number) {
     const fen = await page.locator('.room .slab').getAttribute('data-fen');
     await playSan(new Chess(fen!).moves()[0]);
     await page.waitForTimeout(300);
-    const fix = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ').match(/(?:move is|Play|safe move is) ([^ .]+)/);
+    let fix = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ').match(/(?:move is|Play|safe move is) ([^ .]+)/);
+    // puzzles keep the answer back after a miss: Show me names it
+    if (!fix && await page.getByRole('button', { name: 'Show me' }).isEnabled().catch(() => false)) {
+      await page.getByRole('button', { name: 'Show me' }).click(); await page.waitForTimeout(200);
+      fix = (await page.locator('.prompt').innerText().catch(() => '')).replace(/\s+/g, ' ').match(/move is ([^ .]+)/);
+    }
     if (fix) await playSan(fix[1]);
   }
   // leaving the session syncs it
