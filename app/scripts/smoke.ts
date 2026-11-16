@@ -3,6 +3,7 @@
 import { chromium, webkit, devices } from 'playwright';
 import { preview } from 'vite';
 import { Chess } from 'chess.js';
+import { readFileSync } from 'node:fs';
 
 const server = await preview({ preview: { port: 4180 } });
 const url = 'http://localhost:4180/ply/';
@@ -195,7 +196,6 @@ step('import: ' + imported);
 // PGN export: the whole repertoire downloads as one file that reads back
 await page.getByRole('button', { name: 'Export PGN' }).click();
 const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 10_000 }), page.getByRole('button', { name: 'Everything' }).click()]);
-const { readFileSync } = await import('node:fs');
 const exported = readFileSync((await dl.path())!, 'utf8');
 const games = (exported.match(/\[Event /g) ?? []).length;
 if (games !== 2 || !exported.includes('[Orientation "black"]')) errors.push('export: expected a White and a Black game');
@@ -210,6 +210,63 @@ await page.getByRole('button', { name: 'Replace and import' }).click();
 const restored = await page.getByText('Backup imported').waitFor({ timeout: 15_000 }).then(() => true, () => false);
 if (!restored) errors.push('backup import from Settings did not finish');
 step('backup: exported ' + bk.suggestedFilename() + (restored ? ' and imported back' : ', import FAILED'));
+
+// the landing page: in a build without accounts it lives at #/welcome and its buttons open the app
+await page.goto(url + '#/welcome');
+await page.locator('.landing h1').waitFor({ timeout: 20_000 });
+const pitch = (await page.locator('.landing h1').innerText()).replace(/\s+/g, ' ');
+const facts = (await page.locator('.landing .facts').innerText()).replace(/\s+/g, ' ');
+const openings = JSON.parse(readFileSync(new URL('../public/data/openings.json', import.meta.url), 'utf8')).length as number;
+if (!/Openings that stay learned/.test(pitch)) errors.push('landing headline: ' + pitch);
+if (!facts.includes(openings.toLocaleString('en'))) errors.push(`landing: expected ${openings.toLocaleString('en')} openings in "${facts}"`);
+if (!(await page.locator('.landing .demo cg-board').isVisible())) errors.push('landing: the hero board is missing');
+await page.locator('.landing .top .in').click();
+await page.waitForSelector('h1:text("Today")', { timeout: 10_000 });
+step(`landing: "${pitch}", ${openings.toLocaleString('en')} openings, button opens the app`);
+await shot('landing');
+
+// a desktop-sized window: the sidebar instead of the tab bar, the command palette, a card answered by typing
+if (process.env.DEVICE !== 'iphone') {
+  const dctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+  const d = await dctx.newPage();
+  d.on('pageerror', (e) => errors.push('desktop pageerror: ' + e.message));
+  d.on('console', (m) => { if (m.type() === 'error') errors.push('desktop console: ' + m.text()); });
+  await d.goto(url);
+  await d.getByText('Set up Ply').click({ timeout: 30_000 });
+  for (const t of ['Continue', 'Continue', 'Skip and start']) await d.getByText(t).click();
+  await d.waitForSelector('h1:text("Today")', { timeout: 15_000 });
+  if (!(await d.locator('aside.sb').isVisible())) errors.push('desktop: no sidebar');
+  if (await d.locator('nav[aria-label="Main"] .lbl').first().isHidden()) errors.push('desktop: sidebar labels hidden at 1440');
+  if (!(await d.locator('.queue').isVisible())) errors.push('desktop: Today has no queue card');
+  await d.locator('aside.sb').getByText('Explore').click();
+  await d.waitForSelector('.screen.ex');
+  await d.keyboard.press('Control+k');
+  await d.getByRole('dialog', { name: 'Jump to' }).waitFor();
+  await d.keyboard.type('caro-kann');
+  await d.waitForTimeout(300);
+  await d.keyboard.press('Enter');
+  await d.waitForTimeout(900);
+  const jumped = d.url();
+  if (!/#\/(tree|explore)\?/.test(jumped)) errors.push('desktop: the palette did not open an opening: ' + jumped);
+  const where = (await d.locator('.ttl, .where .nm').first().innerText()).replace(/\s+/g, ' ');
+  if (!/Caro-Kann/.test(where)) errors.push('desktop: palette opened ' + where);
+  await d.goto(url + '#/today'); await d.waitForTimeout(500);
+  await d.getByRole('button', { name: /Start|Continue/ }).first().click();
+  await d.waitForSelector('.room');
+  let dOk = false;
+  for (let i = 0; i < 30 && !dOk; i++) {
+    await d.waitForTimeout(300);
+    const want = (await d.locator('.prompt').innerText({ timeout: 500 }).catch(() => '')).replace(/\s+/g, ' ').match(/(?:move is|Play|safe move is) ([^ .]+)/)?.[1];
+    if (want && (await d.getByRole('button', { name: 'Hint' }).isEnabled().catch(() => false))) await d.keyboard.type(want);
+    dOk = await d.getByRole('button', { name: /Continue/ }).isVisible().catch(() => false);
+  }
+  if (!dOk) errors.push('desktop: could not answer a card by typing');
+  if (out) await d.screenshot({ path: `${out}/desktop-answer.png` });
+  await d.keyboard.press('Escape'); await d.waitForTimeout(500);
+  if (!(await d.locator('aside.sb').isVisible())) errors.push('desktop: the sidebar did not come back after the session');
+  step(`desktop 1440×900: sidebar, palette → ${where}, ${dOk ? 'a card answered by typing' : 'typing FAILED'}`);
+  await dctx.close();
+}
 
 console.log(errors.length ? 'ERRORS\n' + errors.join('\n') : 'no page errors');
 await browser.close();
