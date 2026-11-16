@@ -1,0 +1,5 @@
+# Only what differs from the Supabase defaults. The project is configured in the dashboard
+# (docs/DECISIONS.md, "Accounts and sync"); this file is read by `supabase functions deploy`.
+[functions.lichess-login]
+# called before anyone is logged in
+verify_jwt = false
