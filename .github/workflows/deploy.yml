@@ -59,6 +59,20 @@ jobs:
           SHOTS: smoke-shots/iphone
           BROWSER: webkit
           DEVICE: iphone
+      # two devices, one account, against a stand-in Supabase (its own build in dist-devices)
+      - run: npm run devices
+        working-directory: app
+        env:
+          SHOTS: smoke-shots
+      # the deployed build. Accounts are on once the Supabase project is set up: the repository
+      # variable PLY_ACCOUNTS = true passes the project URL and the public anon key (secrets) to
+      # Vite. Without it the site works as before, on the device only.
+      - run: npm run build
+        if: github.ref == 'refs/heads/main'
+        working-directory: app
+        env:
+          VITE_SUPABASE_URL: ${{ vars.PLY_ACCOUNTS == 'true' && secrets.VITE_SUPABASE_URL || '' }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.PLY_ACCOUNTS == 'true' && secrets.VITE_SUPABASE_ANON_KEY || '' }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

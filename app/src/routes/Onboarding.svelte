@@ -1,5 +1,6 @@
 <script lang="ts">
   import { app, save } from '../lib/state.svelte';
+  import { configured } from '../lib/cloud/cloud.svelte';
   import { chooseStarter, summaries, isFocus, toggleFocus, switchBand, model, bandList } from '../lib/model.svelte';
   import OpeningPicker from '../lib/OpeningPicker.svelte';
   import type { Side } from '../lib/chess';
@@ -113,7 +114,7 @@
         </div>
       {:else}
         <h1 class="t-title">Your online games</h1>
-        <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Your games are fetched from chess.com or Lichess and analysed on this device; Ply has no server and keeps no account.</p>
+        <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Your games are fetched from chess.com or Lichess and analysed on this device.{configured ? ' Your progress is kept on your Ply account, so it is there on every device you log in on.' : ' Everything stays on this device.'}</p>
         <input class="name" placeholder="chess.com username" aria-label="chess.com username" bind:value={app.username} autocapitalize="off" autocomplete="off" spellcheck="false" />
         <input class="name two" placeholder="Lichess username" aria-label="Lichess username" bind:value={app.lichessUser} autocapitalize="off" autocomplete="off" spellcheck="false" />
         <p class="t-small" style="margin-top:12px">Either or both, or neither.</p>

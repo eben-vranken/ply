@@ -1,7 +1,7 @@
 // Game sync from chess.com and Lichess, and the on-phone analysis (docs/BRIEF.md, "Mistake import").
 // Both sources feed the same pipeline: repertoire deviations, uncovered replies, mistake cards.
 import { app, save } from '../state.svelte';
-import { db, type CardRow, type GameRow } from '../db';
+import { db, removeRows, type CardRow, type GameRow } from '../db';
 import { archives, monthGames, rapidRating, lastMonths, monthOf, monthStart, windowStart, monthsToSync } from './chesscom';
 import { parsePgn, splitPgns, sideOf, findMistakes, type PlyAnalysis, type ParsedGame } from './mistakes';
 import { Engine } from '../engine/stockfish';
@@ -176,7 +176,7 @@ async function dropOutsideWindow() {
   if (!app.syncFrom) return;
   const from = app.gamesFrom ? fromMs(app.gamesFrom) : monthStart(app.syncFrom);
   const old = await db.games.where('analyzed').equals(0).filter((g) => g.date < from && g.url.includes('chess.com/')).primaryKeys();
-  if (old.length) await db.games.bulkDelete(old);
+  if (old.length) await removeRows('games', old);
 }
 
 /** Parallel engines: Stockfish lite is single-threaded, phones have 4–8 cores. */

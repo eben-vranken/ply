@@ -1,8 +1,8 @@
 // The app model: loaded data, your repertoire and lines, cards and grading.
 // Big structures live outside $state (they are large and change wholesale);
 // `model.rev` ticks whenever they change, so views re-derive from it.
-import { app, save, onSave, replaceSettings, type Settings } from './state.svelte';
-import { db, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory, type BookRow } from './db';
+import { app, save, onSave, replaceSettings, DEFAULTS, type Settings } from './state.svelte';
+import { db, rawDb, removeRows, removeReview, SYNCED, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory, type BookRow } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
@@ -13,6 +13,7 @@ import { limitsFor, planCatchUp, dayOf } from './srs/catchup';
 import { setWeights } from './srs/fsrs';
 import type { Item, Outcome, Ask } from './session';
 import { Chess } from 'chess.js';
+import { restamp } from './cloud/merge';
 
 export const model = $state({
   status: 'boot' as 'boot' | 'downloading' | 'loading' | 'ready' | 'error',
@@ -64,9 +65,11 @@ export async function boot() {
   try {
     navigator.storage?.persist?.();
     const stored = await db.settings.get('app');
+    savedApp = { value: (stored?.value ?? {}) as Record<string, unknown>, stamps: stored?.stamps ?? {} };
+    floor = ((await db.meta.get('floor'))?.value as number | undefined) ?? 0;
     if (stored?.value) replaceSettings(stored.value as Partial<Settings>);
     setWeights(app.fsrsWeights);
-    onSave((s) => { void db.settings.put({ key: 'app', value: s }); });
+    onSave(mirrorSettings);
     save();
     await loadAll(currentBand());
     void autoUpdate();
@@ -75,6 +78,19 @@ export async function boot() {
     model.status = 'error';
     model.error = e instanceof Error ? e.message : String(e);
   }
+}
+
+// Settings are one row; sync merges it one setting at a time, so each save stamps the settings
+// that changed (lib/cloud/merge.ts, restamp). Choices made during onboarding are stamped 0.
+let savedApp: { value: Record<string, unknown>; stamps: Record<string, number> } = { value: {}, stamps: {} };
+/** the change time defaults get: 0, or just after an account-wide Reset all progress */
+let floor = 0;
+function mirrorSettings(s: Settings) {
+  const next = s as unknown as Record<string, unknown>;
+  const { stamps, changed } = restamp(savedApp.value, savedApp.stamps, next, Date.now(), !savedApp.value.onboarded, DEFAULTS as unknown as Record<string, unknown>, floor);
+  if (!changed) return;
+  savedApp = { value: next, stamps };
+  void db.settings.put({ key: 'app', value: s, stamps });
 }
 
 async function loadAll(band: number) {
@@ -191,18 +207,28 @@ function sectionOfEpd(side: Side, epd: string): Section | null {
 }
 
 async function applyStarter(sections: Section[]) {
+  // before onboarding is done the starter rows are defaults (updatedAt 0, no tombstones), so on a
+  // new device they never replace the repertoire an account already has
+  const fresh = !app.onboarded;
+  const raw = rawDb();
   for (const s of sections) {
     // drop overrides in this section, then write the starter ones
+    const dropRep: [Side, string][] = [];
     for (const r of [...rep.values()]) {
       const sec = r.side === 'w' ? 'White' : sectionOfEpd('b', r.epd);
-      if (sec === s) { rep.delete(rk(r.side, r.epd)); await db.repertoire.delete([r.side, r.epd]); }
+      if (sec === s) { rep.delete(rk(r.side, r.epd)); dropRep.push([r.side, r.epd]); }
     }
-    for (const r of starterRows(s)) { rep.set(rk(r.side, r.epd), r); await db.repertoire.put(r); }
+    if (fresh) await raw.repertoire.bulkDelete(dropRep); else await removeRows('repertoire', dropRep);
+    const rows = starterRows(s);
+    for (const r of rows) rep.set(rk(r.side, r.epd), r);
+    if (fresh) await raw.repertoire.bulkPut(rows.map((r) => ({ ...r, updatedAt: floor }))); else await db.repertoire.bulkPut(rows);
     // your own book replies in this section go too
+    const dropBook: [Side, string][] = [];
     for (const b of [...book.values()]) {
       const sec = b.side === 'w' ? 'White' : sectionOfEpd('b', b.epd);
-      if (sec === s) { book.delete(rk(b.side, b.epd)); await db.book.delete([b.side, b.epd]); }
+      if (sec === s) { book.delete(rk(b.side, b.epd)); dropBook.push([b.side, b.epd]); }
     }
+    if (fresh) await raw.book.bulkDelete(dropBook); else await removeRows('book', dropBook);
   }
 }
 
@@ -231,7 +257,7 @@ export async function addCards(rows: CardRow[]) {
 }
 export async function deleteCard(id: string) {
   cards.delete(id);
-  await db.cards.delete(id);
+  await removeRows('cards', [id]);
   bump();
 }
 
@@ -1006,10 +1032,10 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
     rating: shown, due,
     undo: async () => {
       for (const l of [...log].reverse()) {
-        await db.reviews.delete(l.rid);
+        await removeReview(l.rid);
         reviewsToday = reviewsToday.filter((r) => r.id !== l.rid);
         if (l.prev) { cards.set(l.prev.id, l.prev); await db.cards.put(l.prev); }
-        else { cards.delete(l.card.id); await db.cards.delete(l.card.id); }
+        else { cards.delete(l.card.id); await removeRows('cards', [l.card.id]); }
       }
       regenerateCandidates();
       bump();
@@ -1249,10 +1275,38 @@ export async function noteRating(rating: number) {
 
 // ---------------------------------------------------------------- reset / backup support
 export async function reloadFromDb() { setWeights(app.fsrsWeights); if (D) await loadAll(model.band); }
-export async function resetAllProgress() {
-  await db.transaction('rw', [db.cards, db.reviews, db.repertoire, db.games, db.settings, db.book], async () => {
-    await Promise.all([db.cards.clear(), db.reviews.clear(), db.repertoire.clear(), db.games.clear(), db.settings.clear(), db.book.clear()]);
+/**
+ * Empty every user table on this device (Reset all progress, logging out). The opening data stays.
+ * `after`: the time of an account-wide reset; what this device writes next counts as newer.
+ */
+export async function resetAllProgress(after?: number) {
+  await db.transaction('rw', [...SYNCED.map((t) => db.table(t)), db.tomb, db.meta], async () => {
+    await Promise.all([...SYNCED.map((t) => db.table(t).clear()), db.tomb.clear(), db.meta.clear()]);
+    if (after) await db.meta.put({ key: 'floor', value: after });
   });
+  floor = after ?? 0;
   cards.clear(); rep.clear(); book.clear(); reviewsToday = []; arcMem = emptyArc();
+  savedApp = { value: {}, stamps: {} };
+}
+
+/** After a sync brought rows in: reload what changed, regenerate lines, follow a band change. */
+export async function applyRemote(changed: Set<string>) {
+  if (!D) return;
+  if (changed.has('settings')) {
+    const row = await db.settings.get('app');
+    if (row?.value) {
+      savedApp = { value: row.value as Record<string, unknown>, stamps: row.stamps ?? {} };
+      replaceSettings(row.value as Partial<Settings>);
+    }
+    setWeights(app.fsrsWeights);
+    await loadArcade();
+  }
+  if (changed.has('repertoire')) { rep.clear(); for (const r of await db.repertoire.toArray()) rep.set(rk(r.side, r.epd), r); }
+  if (changed.has('book')) { book.clear(); for (const b of await db.book.toArray()) book.set(rk(b.side, b.epd), b); }
+  if (changed.has('cards')) { cards.clear(); for (const c of await db.cards.toArray()) cards.set(c.id, c); }
+  if (changed.has('reviews')) reviewsToday = await db.reviews.where('at').aboveOrEqual(today0()).toArray();
+  if (currentBand() !== model.band) { await switchBand(currentBand()); return; }
+  regenerate();
+  bump();
 }
 export { hashId, fenOf };

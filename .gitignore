@@ -6,3 +6,8 @@ pipeline/target
 pipeline/cache
 app/smoke-shots
 docs/screenshots/layouts
+
+# local secrets (Supabase URL and anon key)
+.env.local
+.env.*.local
+dist-devices

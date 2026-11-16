@@ -251,6 +251,9 @@ ${moves} 1-0` });
     expect(b.tables.book!.length).toBeGreaterThan(0);
     expect(await dbm.db.book.count()).toBe(b.tables.book!.length);
     const again = await makeBackup();
-    expect(JSON.stringify(again.tables.cards)).toBe(JSON.stringify(b.tables.cards));
+    // restored rows count as changed now (sync); reviews get new local ids
+    const bare = (rows: object[], dropId = false) => JSON.stringify(rows.map((r) => { const { updatedAt: _u, ...rest } = r as Record<string, unknown>; if (dropId) delete rest.id; return rest; }));
+    expect(bare(again.tables.cards)).toBe(bare(b.tables.cards));
+    expect(bare(again.tables.reviews, true)).toBe(bare(b.tables.reviews, true));
   });
 });

@@ -11,6 +11,7 @@
   import Icon from '../lib/Icon.svelte';
   import { canVibrate } from '../lib/platform';
   import { fitMySchedule, useDefaultWeights, MIN_REVIEWS } from '../lib/srs/personal';
+  import { configured, cloud, requestSync, syncLabel, logOut, deleteAccount, resetAccount } from '../lib/cloud/cloud.svelte';
 
   type Num = { k: 'newMoves' | 'newTraps' | 'newMistakes' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
   const groups: [string, Num[]][] = [
@@ -94,9 +95,31 @@
     catch (e) { say((e as Error).message); }
   }
   async function resetEverything() {
-    await resetAllProgress();
+    try {
+      // with an account, the reset reaches every device
+      const after = await resetAccount();
+      await resetAllProgress(after);
+    } catch (e) { say('Could not reset your account: ' + (e as Error).message); return; }
     resetSettings();
     location.reload();
+  }
+  // account
+  let now = $state(Date.now());
+  $effect(() => { const t = setInterval(() => (now = Date.now()), 30_000); return () => clearInterval(t); });
+  const label = $derived((void cloud.status, void cloud.lastAt, syncLabel(now)));
+  let leaving = $state<null | number>(null);
+  let deleting = $state(false);
+  let deleteWord = $state('');
+  let accountBusy = $state(false);
+  async function out(force = false) {
+    accountBusy = true;
+    try { const r = await logOut(force); if (!r.ok) leaving = r.pending; }
+    finally { accountBusy = false; }
+  }
+  async function removeAccount() {
+    accountBusy = true;
+    try { await deleteAccount(); } catch (e) { say('Could not delete your account: ' + (e as Error).message); }
+    finally { accountBusy = false; }
   }
   const summary = $derived(sync.summary);
   // your own schedule: FSRS weights fitted to your reviews
@@ -115,6 +138,39 @@
 
 <div class="screen">
   <header class="screen-head"><h1 class="t-display">Settings</h1></header>
+
+  {#if configured && cloud.user}
+    <div class="sect"><h2 class="t-head">Account</h2></div>
+    <section class="card rows">
+      <div class="r">
+        <div class="grow"><p class="lb">{cloud.user.name}</p><p class="t-small">Logged in with {cloud.user.via}{cloud.user.via !== 'email' && cloud.user.email && !cloud.user.email.endsWith('.invalid') ? ` · ${cloud.user.email}` : ''}</p></div>
+      </div>
+      <div class="r col">
+        <p class="t-small" class:err={cloud.status === 'error'} role="status">{label}</p>
+        <button class="btn quiet wide" onclick={() => requestSync()} disabled={cloud.status === 'syncing'}><Icon name="wifi" size={20} /> {cloud.status === 'syncing' ? 'Syncing…' : 'Sync now'}</button>
+        <p class="t-small">Your repertoire, cards, reviews, games and settings are kept on your account and sync between your devices. Appearance, sounds and vibration stay per device.</p>
+      </div>
+      {#if leaving !== null}
+        <div class="r col">
+          <p class="t-small">The last sync did not go through{leaving ? `, so ${leaving.toLocaleString('en')} change${leaving === 1 ? '' : 's'} on this device would be lost` : ''}. Logging out clears this device.</p>
+          <div class="row" style="gap:8px"><button class="btn quiet sm grow" onclick={() => (leaving = null)}>Stay logged in</button><button class="btn sm bad grow" disabled={accountBusy} onclick={() => out(true)}>Log out anyway</button></div>
+        </div>
+      {:else}
+        <div class="r"><button class="link" disabled={accountBusy} onclick={() => out()}>{accountBusy ? 'Syncing…' : 'Log out'}</button><p class="t-small grow" style="text-align:right">Everything stays on your account</p></div>
+      {/if}
+      {#if !deleting}
+        <div class="r"><button class="link danger" onclick={() => (deleting = true)}>Delete my account and synced data</button></div>
+      {:else}
+        <div class="r col">
+          <p class="t-small">This deletes your account and everything synced to it, and clears this device. Your other devices keep what they have until they log in again. Export a backup first if you want a copy. Type DELETE to confirm.</p>
+          <div class="row">
+            <input class="txt grow" style="text-align:left" placeholder="DELETE" bind:value={deleteWord} autocapitalize="characters" />
+            <button class="btn sm bad" disabled={deleteWord !== 'DELETE' || accountBusy} onclick={removeAccount}>Delete</button>
+          </div>
+        </div>
+      {/if}
+    </section>
+  {/if}
 
   <div class="sect"><h2 class="t-head">Mastering</h2></div>
   <section class="card rows">
@@ -230,7 +286,7 @@
     </div>
     {#if pending}
       <div class="r col">
-        <p class="t-small">Replace everything on this phone with the backup from {pending.exportedAt.slice(0, 10)}? It holds {pending.tables.cards.length} cards and {pending.tables.reviews.length} reviews.</p>
+        <p class="t-small">Replace everything on this phone with the backup from {pending.exportedAt.slice(0, 10)}? It holds {pending.tables.cards.length} cards and {pending.tables.reviews.length} reviews.{configured && cloud.user ? ' Your account keeps what it has: the next sync merges the two, and a card keeps its latest review.' : ''}</p>
         <div class="row" style="gap:8px"><button class="btn quiet sm grow" onclick={() => (pending = null)}>Cancel</button><button class="btn sm grow" onclick={importBackup}>Replace and import</button></div>
       </div>
     {/if}
@@ -238,7 +294,7 @@
       <div class="r"><button class="link danger" onclick={() => (asking = true)}>Reset all progress</button></div>
     {:else}
       <div class="r col">
-        <p class="t-small">This deletes every card, review and setting on this phone. Type RESET to confirm.</p>
+        <p class="t-small">This deletes every card, review and setting {configured && cloud.user ? 'on this device and on your account, so your other devices reset too' : 'on this phone'}. Type RESET to confirm.</p>
         <div class="row">
           <input class="txt grow" style="text-align:left" placeholder="RESET" bind:value={confirm} autocapitalize="characters" />
           <button class="btn sm bad" disabled={confirm !== 'RESET'} onclick={resetEverything}>Reset</button>

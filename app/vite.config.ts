@@ -4,6 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
   base: '/ply/',
+  // VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY live in the repo root's .env.local (see .env.example)
+  envDir: '..',
   plugins: [
     svelte(),
     VitePWA({

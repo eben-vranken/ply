@@ -1,17 +1,18 @@
 // IndexedDB via Dexie. Schema documented in docs/backup-format.md.
-import Dexie, { type Table } from 'dexie';
+import Dexie, { type Table, type IndexableType } from 'dexie';
 import type { Card as FsrsCard } from 'ts-fsrs';
 import type { Side } from './chess';
 
 /** Dexie schema version: every change to the stores bumps it and adds a version() block. */
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 /**
  * Backup file format (docs/backup-format.md, `schemaVersion`): bumps whenever what the
  * file holds changes shape. Every older version stays importable.
  * 2: Arcade's miss memory is a `settings` row (key "arcade"); it lived in localStorage before.
  * 3: the `book` table: opponent replies you added yourself (imported PGN, Explore).
+ * 4: rows carry `updatedAt` (sync change time) and the "app" settings row its per-key `stamps`.
  */
-export const BACKUP_VERSION = 3;
+export const BACKUP_VERSION = 4;
 
 /** Arcade: positions you missed (key → solves still needed) and the ones seen lately. */
 export interface ArcadeMemory { miss: Record<string, number>; recent: string[] }
@@ -24,7 +25,7 @@ export type Mode = 'today' | 'learn' | 'drill-again';
  */
 export const LEGACY_MODES: Record<string, Mode> = { extra: 'today' };
 
-export interface CardRow {
+export interface CardRow extends Tracked {
   id: string;
   type: CardType;
   side: Side;
@@ -62,7 +63,7 @@ export interface CardRow {
   loss?: number;
 }
 
-export interface ReviewRow {
+export interface ReviewRow extends Tracked {
   id?: number;
   cardId: string;
   at: number;
@@ -75,7 +76,7 @@ export interface ReviewRow {
   prev?: FsrsCard | null;
 }
 
-export interface RepRow {
+export interface RepRow extends Tracked {
   side: Side;
   epd: string;
   moves: string[];
@@ -83,13 +84,13 @@ export interface RepRow {
 }
 
 /** Opponent replies your lines follow at a position, beyond the band's tree (imported PGN, Explore). */
-export interface BookRow {
+export interface BookRow extends Tracked {
   side: Side;
   epd: string;
   replies: string[];
 }
 
-export interface GameRow {
+export interface GameRow extends Tracked {
   url: string;
   pgn: string;
   colour: Side;
@@ -114,10 +115,23 @@ export interface DataRow {
   version: string;
 }
 
-export interface SettingRow {
+export interface SettingRow extends Tracked {
   key: string;
   value: unknown;
+  /** the "app" row: when each setting last changed (ms; 0 = an onboarding or default value), for sync */
+  stamps?: Record<string, number>;
 }
+
+/** Sync (lib/cloud): when a row last changed on this device, ms since the epoch. 0 = a default nobody chose. */
+export interface Tracked { updatedAt?: number }
+/** A deleted row of a synced table, kept so the deletion reaches your other devices. */
+export interface TombRow { t: SyncedTable; k: string; at: number }
+/** Device-only bookkeeping (sync cursors). Never synced, never in a backup. */
+export interface MetaRow { key: string; value: unknown }
+
+/** The tables that sync. The opening data (`data`) never does. */
+export const SYNCED = ['settings', 'repertoire', 'book', 'cards', 'reviews', 'games'] as const;
+export type SyncedTable = (typeof SYNCED)[number];
 
 export class PlyDB extends Dexie {
   settings!: Table<SettingRow, string>;
@@ -127,7 +141,10 @@ export class PlyDB extends Dexie {
   games!: Table<GameRow, string>;
   book!: Table<BookRow, [Side, string]>;
   data!: Table<DataRow, string>;
-  constructor(name = 'ply') {
+  tomb!: Table<TombRow, [string, string]>;
+  meta!: Table<MetaRow, string>;
+  /** track: stamp every write with updatedAt (the app). The sync engine writes through an untracked connection. */
+  constructor(name = 'ply', track = true) {
     super(name);
     this.version(1).stores({
       settings: 'key',
@@ -141,7 +158,65 @@ export class PlyDB extends Dexie {
     this.version(2).stores({}).upgrade((tx) => tx.table('reviews').toCollection().modify((r: { mode: string }) => { if (r.mode in LEGACY_MODES) r.mode = LEGACY_MODES[r.mode]; }));
     // 3: your own book replies
     this.version(3).stores({ book: '[side+epd], side' });
+    // 4: sync. Every synced row gets updatedAt (existing rows: now), deletions leave a tombstone,
+    // reviews get a natural key (card + time) since their numeric ids differ per device
+    this.version(4).stores({
+      settings: 'key, updatedAt',
+      repertoire: '[side+epd], side, updatedAt',
+      book: '[side+epd], side, updatedAt',
+      cards: 'id, type, due, suspended, side, epd, updatedAt',
+      reviews: '++id, cardId, at, [cardId+at], updatedAt',
+      games: 'url, date, analyzed, updatedAt',
+      tomb: '[t+k], at',
+      meta: 'key'
+    }).upgrade(async (tx) => {
+      const now = Date.now();
+      for (const t of SYNCED) await tx.table(t).toCollection().modify((r: Tracked & Partial<SettingRow>) => {
+        r.updatedAt = now;
+        if (t === 'settings' && r.key === 'app' && r.value && typeof r.value === 'object') r.stamps = Object.fromEntries(Object.keys(r.value).map((k) => [k, now]));
+      });
+    });
+    if (track) for (const t of SYNCED) {
+      const table = this.table(t);
+      table.hook('creating', (_k, obj: Tracked) => { obj.updatedAt = Date.now(); });
+      table.hook('updating', () => ({ updatedAt: Date.now() }));
+    }
   }
 }
 
 export const db = new PlyDB();
+let rawConn: PlyDB | null = null;
+/** The same database without change stamps: for the sync engine and for defaults written with updatedAt 0. */
+export const rawDb = () => (rawConn ??= new PlyDB(db.name, false));
+
+/** The sync key of a row: one string per row, the same on every device. */
+export function rowKey(t: SyncedTable, r: Record<string, unknown>): string {
+  switch (t) {
+    case 'settings': return r.key as string;
+    case 'repertoire': case 'book': return r.side + '|' + r.epd;
+    case 'cards': return r.id as string;
+    case 'reviews': return r.cardId + '|' + r.at;
+    case 'games': return r.url as string;
+  }
+}
+
+/** Delete rows from a synced table and leave tombstones, so the deletion syncs. */
+export async function removeRows(t: Exclude<SyncedTable, 'reviews'>, keys: IndexableType[]) {
+  if (!keys.length) return;
+  const table = db.table(t);
+  await db.transaction('rw', [table, db.tomb], async () => {
+    const rows = (await table.bulkGet(keys)).filter(Boolean) as Record<string, unknown>[];
+    const at = Date.now();
+    await db.tomb.bulkPut(rows.map((r) => ({ t, k: rowKey(t, r), at })));
+    await table.bulkDelete(keys);
+  });
+}
+/** Delete a review by its local id, leaving a tombstone (Undo grade). */
+export async function removeReview(id: number) {
+  await db.transaction('rw', [db.reviews, db.tomb], async () => {
+    const r = await db.reviews.get(id);
+    if (!r) return;
+    await db.tomb.put({ t: 'reviews', k: rowKey('reviews', r as unknown as Record<string, unknown>), at: Date.now() });
+    await db.reviews.delete(id);
+  });
+}

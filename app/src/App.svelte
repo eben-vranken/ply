@@ -13,6 +13,8 @@
   import Tree from './routes/Tree.svelte';
   import Play from './routes/Play.svelte';
   import Onboarding from './routes/Onboarding.svelte';
+  import Login from './routes/Login.svelte';
+  import { configured, cloud, initCloud, autoSyncCloud } from './lib/cloud/cloud.svelte';
   import { model, boot } from './lib/model.svelte';
   import { autoSync } from './lib/import/sync.svelte';
   import { onMount } from 'svelte';
@@ -23,7 +25,18 @@
     addEventListener('pointerdown', press);
     return () => removeEventListener('pointerdown', press);
   });
-  onMount(() => { void boot().then(() => { if (app.onboarded) void autoSync(); }); });
+  // the session is restored while the opening data loads; opening the app syncs your account
+  onMount(() => {
+    void initCloud();
+    void boot().then(() => { if (app.onboarded) void autoSync(); autoSyncCloud(); });
+  });
+  // leaving a training session or Play it out syncs it
+  let wasTraining = false;
+  $effect(() => { const t = training || base === '/play'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
+  const needLogin = $derived(configured && !cloud.user);
+  // finishing onboarding sends it all to the account
+  let wasOnboarded = app.onboarded;
+  $effect(() => { const o = app.onboarded; if (o && !wasOnboarded) autoSyncCloud(); wasOnboarded = o; });
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => { if (model.notice) { clearTimeout(noticeTimer); noticeTimer = setTimeout(() => (model.notice = ''), 7000); } });
 
@@ -54,7 +67,9 @@
   });
 </script>
 
-{#if model.status !== 'ready'}
+{#if needLogin && cloud.ready && model.status !== 'error'}
+  <div out:fade={{ duration: dur }}><Login /></div>
+{:else if model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
   <div class="boot" class:err={model.status === 'error'} role="status">
     <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     {#if model.status === 'error'}
@@ -65,6 +80,8 @@
       <p class="t-head">Fetching every opening</p>
       <div class="bar"><i style="width:{Math.round(model.progress * 100)}%"></i></div>
       <p class="t-small">{Math.round(model.progress * 100)}% · one time, then it all lives on this phone</p>
+    {:else if cloud.restoring}
+      <p class="t-head">Bringing in your progress</p>
     {:else}
       <p class="t-head">Laying out your lines</p>
     {/if}

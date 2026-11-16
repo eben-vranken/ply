@@ -34,10 +34,17 @@ export function parseBackup(text: string): Backup {
   return j;
 }
 
-/** Replace every user table with the backup's contents. */
+/**
+ * Replace every user table with the backup's contents. With an account, the next sync starts
+ * over and merges: rows on the account that the backup lacks come back, and the backup's rows
+ * count as changed now (a card still keeps its later review), so an old file never wipes newer
+ * progress from your other devices.
+ */
 export async function restoreBackup(b: Backup) {
-  await db.transaction('rw', [db.settings, db.repertoire, db.cards, db.reviews, db.games, db.book], async () => {
-    await Promise.all([db.settings.clear(), db.repertoire.clear(), db.cards.clear(), db.reviews.clear(), db.games.clear(), db.book.clear()]);
+  await db.transaction('rw', [db.settings, db.repertoire, db.cards, db.reviews, db.games, db.book, db.tomb, db.meta], async () => {
+    await Promise.all([db.settings.clear(), db.repertoire.clear(), db.cards.clear(), db.reviews.clear(), db.games.clear(), db.book.clear(), db.tomb.clear(), db.meta.delete('sync')]);
+    // reviews get new local ids; their key is card + time
+    for (const r of b.tables.reviews) delete r.id;
     await db.book.bulkPut(b.tables.book ?? []);
     await db.settings.bulkPut(b.tables.settings);
     await db.repertoire.bulkPut(b.tables.repertoire);
