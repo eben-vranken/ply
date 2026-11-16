@@ -257,7 +257,7 @@
           <p class="lead">Ply is free software under the GPL-3.0 licence, and its opening data comes from the Lichess open database (CC0). It contains no analytics, advertising or third-party scripts, sets no cookies, and loads its fonts and icons from its own files.</p>
           <details>
             <summary>What does Ply store, and where?</summary>
-            <p>{#if configured}Your login (an email address and a password Supabase keeps only as a hash, or who you are on Google or Lichess, with no Google or Lichess password), and a copy of your repertoire, cards, review history, games and settings, kept with Supabase, our database provider, so your devices can share them. Only your own login can read your rows. You can delete the account and everything on it from Settings.{:else}This build has no accounts: everything stays in this browser's storage and is never sent anywhere.{/if}</p>
+            <p>{#if configured}Your login (an email address and a password Supabase keeps only as a hash, or who you are on Lichess, with no Lichess password), and a copy of your repertoire, cards, review history, games and settings, kept with Supabase, our database provider, so your devices can share them. Only your own login can read your rows. You can delete the account and everything on it from Settings.{:else}This build has no accounts: everything stays in this browser's storage and is never sent anywhere.{/if}</p>
           </details>
           <details>
             <summary>When does it connect to the internet?</summary>

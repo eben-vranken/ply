@@ -1,7 +1,7 @@
 <script lang="ts">
   // The login, as the last panel of the landing page (routes/Landing.svelte): a birch slab in the
   // night room. Your progress lives on your Ply account.
-  import { cloud, logInWithPassword, signUpWithPassword, sendPasswordReset, withGoogle, withLichess } from '../lib/cloud/cloud.svelte';
+  import { cloud, logInWithPassword, signUpWithPassword, sendPasswordReset, withLichess } from '../lib/cloud/cloud.svelte';
   import Icon from '../lib/Icon.svelte';
 
   let email = $state('');
@@ -26,14 +26,13 @@
 <div class="login" id="login">
   <div class="body">
     <h2 class="t-name hl">{mode === 'signup' ? 'Sign up for Ply' : mode === 'reset' ? 'Reset your password' : 'Log in to Ply'}</h2>
-    <p class="lead">{mode === 'signup' ? 'Free. Your repertoire, cards and progress live on your account, so they are the same on your phone and your desktop.' : 'Log in with Google, Lichess or your email and password. Your repertoire, cards and progress are waiting.'}</p>
+    <p class="lead">{mode === 'signup' ? 'Free. Your repertoire, cards and progress live on your account, so they are the same on your phone and your desktop.' : 'Log in with Lichess or your email and password. Your repertoire, cards and progress are waiting.'}</p>
 
     {#if !online}
       <p class="note" role="status">You are offline. Logging in needs a connection.</p>
     {/if}
 
     <div class="col">
-      <button class="btn wide prov" disabled={busy || !online} onclick={() => run(withGoogle)}><span class="g" aria-hidden="true">G</span> Continue with Google</button>
       <button class="btn wide prov" disabled={busy || !online} onclick={() => run(withLichess)}><Icon name="explore" size={20} /> Continue with Lichess</button>
     </div>
     <p class="or"><span>{mode === 'signup' ? 'or make an account with your email' : mode === 'reset' ? 'or reset your password' : 'or with your email'}</span></p>
@@ -81,7 +80,6 @@
   .prov { justify-content: center; gap: 10px; }
   .btn.quiet { --txt: var(--ink-fixed); }
   .btn:not(:disabled):hover { filter: brightness(1.06); }
-  .g { font-weight: 800; font-size: 18px; }
   .or { display: flex; align-items: center; gap: 10px; margin: 22px 0 12px; color: var(--walnut); font-size: 13px; font-weight: 600; }
   .or::before, .or::after { content: ''; flex: 1; height: 1.5px; background: var(--birch-3); }
   .field { height: 56px; border-radius: 16px; border: 0; background: #fff; padding: 0 18px; font-size: 18px; font-weight: 600; width: 100%; user-select: text; box-shadow: inset 0 0 0 1.5px var(--birch-3); color: var(--ink-fixed); }

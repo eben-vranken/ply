@@ -148,11 +148,6 @@ export async function setPassword(password: string) {
   if (error) throw new Error(error.message);
   cloud.recovering = false;
 }
-export async function withGoogle() {
-  cloud.authError = '';
-  const { error } = await (await client()).auth.signInWithOAuth({ provider: 'google', options: { redirectTo: appUrl() } });
-  if (error) cloud.authError = error.message;
-}
 
 // Lichess: OAuth with PKCE straight to lichess.org (no app registration needed), then the
 // `lichess-login` Edge Function swaps the code for the Lichess account and returns a one-time
