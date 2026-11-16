@@ -14,7 +14,8 @@
     "shots": "tsx scripts/screenshots.ts",
     "layouts": "tsx scripts/layouts.ts",
     "optimizer": "cd ../optimizer && cargo build --release --target wasm32-unknown-unknown --lib && node -e \"require('fs').copyFileSync('target/wasm32-unknown-unknown/release/ply_optimizer.wasm','../app/public/fsrs/ply_optimizer.wasm')\"",
-    "devices": "tsx scripts/devices.ts"
+    "devices": "tsx scripts/devices.ts",
+    "landing-data": "tsx scripts/landing-data.ts"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
