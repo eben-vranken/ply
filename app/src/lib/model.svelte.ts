@@ -427,6 +427,37 @@ export const studyDay = () => today0();
 // ---------------------------------------------------------------- items
 const ask = (a: Ask): Ask => a;
 
+/** One colour per main branch of an opening: the skill tree paints its lines with these, and the trainer echoes them. */
+export const LINE_COLOURS = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
+const tintTrees = { rev: -1, by: new Map<string, TreeMove[]>() };
+/**
+ * The colour a line has in its opening's skill tree: the tree starts where the opening's name
+ * first appears on the line, stays uncoloured along its trunk, and gives each branch of the
+ * first split its own colour. `from` is the index in `path` of the branch's first move.
+ */
+function lineTint(side: Side, path: string[]): Item['tint'] {
+  if (!D) return;
+  const family = (e: string) => { const o = D!.tree[e]?.o; return o === undefined ? undefined : D!.openings[o].family; };
+  const epds = [START_EPD];
+  for (const u of path.slice(0, -1)) epds.push(child(epds[epds.length - 1], u));
+  let fam: string | undefined;
+  for (let i = epds.length - 1; i >= 0 && !fam; i--) fam = family(epds[i]);
+  if (!fam) return;
+  const root = path.slice(0, epds.findIndex((e) => family(e) === fam));
+  if (tintTrees.rev !== model.rev) { tintTrees.rev = model.rev; tintTrees.by.clear(); }
+  const key = side + root.join(' ');
+  let top = tintTrees.by.get(key);
+  if (!top) tintTrees.by.set(key, (top = openingTree(side, root)));
+  const yours = (ms: TreeMove[]) => ms.flatMap((r) => (r.mine ? [r] : r.children.filter((c) => c.mine)));
+  const line = path.join(' ') + ' ';
+  for (let steps = yours(top), i = 0; steps.length && i < 40; i++) {
+    const at = steps.findIndex((n) => line.startsWith([...n.path, n.uci].join(' ') + ' '));
+    if (at < 0) return;
+    if (steps.length > 1) return { from: steps[at].path.length, colour: LINE_COLOURS[at % LINE_COLOURS.length] };
+    steps = yours(steps[at].children);
+  }
+}
+
 /** Ask every one of your moves along a path; due cards change schedule. */
 function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind'] } = {}): Item {
   const asks: Record<number, Ask> = {};
@@ -458,7 +489,7 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
     prompt: opts.intro ? 'New move' : 'Your move',
     label: labelOf(cardEpd, path.slice(0, last)),
     order: moveOrder(sans(path.slice(0, last)), true),
-    others, note, spec: opts.intro
+    others, note, tint: lineTint(side, path), spec: opts.intro
   };
 }
 

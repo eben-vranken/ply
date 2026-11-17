@@ -249,7 +249,7 @@
         for (let i = 0; i <= step; i++) if (it.asks[i]) asks[i] = it.asks[i];
         items[idx] = { ...it, moves, asks: fillDrillAsks(it.side, it.start, it.setup, moves, asks, step) };
       }
-      badge = fixing ? null : { square: mv.to, glyph: mv.san.includes('#') ? '#' : '!', tone: 'good' };
+      badge = fixing ? null : { square: mv.to, glyph: mv.san.includes('#') ? '#' : '!', tone: 'good', line: it.tint && step >= it.tint.from ? it.tint.colour : undefined };
       msg = fixing ? null : { tone: 'good', text: mv.san.includes('#') ? 'Checkmate' : wrong ? 'Now you have it' : 'Correct' };
       fixing = false; shapes = []; step++; dests = null;
       sync(mv); advance();

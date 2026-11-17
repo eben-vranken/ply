@@ -95,6 +95,17 @@ describe('model on real data', () => {
     expect(r2.rating).toBe(1); // Again
   });
 
+  it('a line carries the colour of its branch in the skill tree', () => {
+    const root = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4'];
+    const next = (ms: import('./model.svelte').TreeMove[]) => ms.flatMap((r) => (r.mine ? [r] : r.children.filter((c) => c.mine)));
+    const top = next(m.openingTree('w', root));
+    expect(top.length).toBeGreaterThan(1);
+    top.slice(0, 3).forEach((n, i) => {
+      const [it] = m.learnItemsFor([{ side: 'w', epd: n.epd, uci: n.uci }]);
+      expect(it.tint).toEqual({ from: n.path.length, colour: m.LINE_COLOURS[i] });
+    });
+  });
+
   it('a second move creates a branch; changing a move retires the cards below the old one', async () => {
     const e = chess.epdAfter(['e2e4', 'e7e5', 'g1f3', 'b8c6']);
     await m.setMoves('w', e, ['f1c4', 'f1b5']);

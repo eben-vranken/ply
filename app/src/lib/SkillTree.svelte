@@ -6,7 +6,7 @@
   // from learning to mature; the moves you can learn next are outlined in their branch colour.
   // Branches fold and unfold in place, and tapping a tile shows its position on a board.
   import { untrack } from 'svelte';
-  import { branchName, type TreeMove } from './model.svelte';
+  import { branchName, LINE_COLOURS as PALETTE, type TreeMove } from './model.svelte';
   import { child, fenOf, type Side } from './chess';
   import type { Stage } from './srs/fsrs';
   import Board from './Board.svelte';
@@ -30,7 +30,6 @@
   }
   let { roots, rootName, rootMove = '', side, sum, newCount, onexplore, ondrill, onlearn, onplay }: Props = $props();
 
-  const PALETTE = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
   const TRUNK = '#e8d3a8';
   const W = 112, H = 44, COL = 164, ROW = 68, GAP = 22, PLY = 2.5;
   const KMIN = 0.1, KMAX = 1.6, MS = 300;

@@ -38,6 +38,8 @@ export interface Item {
   others?: string[];
   source?: string;
   note?: string;
+  /** the line's colour in the skill tree, for your moves from index `from` on (before it the line is still the opening's trunk) */
+  tint?: { from: number; colour: string };
   /** Danger: the tempting wrong move and how it is punished */
   bait?: { uci: string; san: string; refute: string[] };
   /** Mistake: what you played in the game and how it was punished */
