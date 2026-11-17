@@ -1,6 +1,7 @@
 <script lang="ts">
-  // An opening as a skill tree on a canvas you drag and pinch. It grows left to right from
-  // the opening's position. Each tile is one of your moves, with the reply it answers written
+  // An opening as a skill tree on a canvas you drag and pinch. It grows from the opening's
+  // position to the right and down: a move's answers either stack below one another or sit
+  // side by side on the row under it, whichever keeps the tree wide instead of tall. Each tile is one of your moves, with the reply it answers written
   // above it. A learned tile turns to birch and sits on one, two or four veneers as it goes
   // from learning to mature; the moves you can learn next are outlined in their branch colour.
   // Branches fold and unfold in place, and tapping a tile shows its position on a board.
@@ -32,7 +33,13 @@
   const PALETTE = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
   const TRUNK = '#e8d3a8';
   const W = 112, H = 44, COL = 164, ROW = 68, GAP = 22, PLY = 2.5;
-  const KMIN = 0.22, KMAX = 1.6, MS = 300;
+  const KMIN = 0.1, KMAX = 1.6, MS = 300;
+  // a row of answers under a move: how far down it sits, its indent, and the gap between neighbours
+  const HROW = 86, IN = 36, HGAP = 8, LEFT = W / 2 + 16, BUS = 36;
+  /** the shape a part of the tree aims for, width over height */
+  const ASPECT = 1.6;
+  /** the smallest zoom at which a tile can still be read */
+  const READ = 0.5;
   const NAV = 0; // the tree has the whole screen: the tab bar is hidden here
   const TOP = 60; // the row of tools over the canvas
   const PLIES: Record<string, number> = { new: 0, learning: 1, young: 2, mature: 4 };
@@ -88,22 +95,37 @@
   let open = $state.raw(untrack(firstOpen));
 
   interface P { x: number; y: number }
+  /** a move with everything unfolded below it: its size, and whether its answers sit in a row under it */
+  interface Box { id: string; n: N | null; w: number; h: number; row: boolean; kids: Box[] }
   const layout = $derived.by(() => {
+    // Each part of the tree is given a shape to aim for. Stacking k answers makes a part k times
+    // taller and putting them in a row makes it k times wider, so the answers are asked for the
+    // opposite: wide ones to stack, tall ones to stand in a row. Both ways are tried, top down.
+    const measure = (id: string, n: N | null, kids: N[], aim: number): Box => {
+      if (!kids.length) return { id, n, w: COL, h: ROW, row: false, kids: [] };
+      const sub = (k: N, a: number) => measure(k.id, k, k.kids.length && open.has(k.id) ? k.kids : [], Math.min(8, Math.max(0.2, a)));
+      const st = kids.map((k) => sub(k, aim * kids.length));
+      const sw = COL + Math.max(...st.map((b) => b.w)), sh = st.reduce((a, b) => a + b.h, 0);
+      const stacked: Box = { id, n, w: sw, h: sh, row: false, kids: st };
+      if (kids.length < 2) return stacked;
+      const rs = kids.map((k) => sub(k, aim / kids.length));
+      const rw = Math.max(COL, IN + rs.reduce((a, b) => a + b.w, 0) + HGAP * (rs.length - 1)), rh = HROW + Math.max(...rs.map((b) => b.h));
+      const off = (w: number, h: number) => Math.abs(Math.log(w / h / aim));
+      // a row has to be clearly better: a stack reads more easily
+      return off(rw, rh) < off(sw, sh) - 0.15 ? { id, n, w: rw, h: rh, row: true, kids: rs } : stacked;
+    };
     const pos = new Map<string, P>();
     const vis: N[] = [];
-    let y = 0;
-    const place = (n: N): number => {
-      vis.push(n);
-      let at: number;
-      if (n.kids.length && open.has(n.id)) { const ys = n.kids.map(place); at = (ys[0] + ys[ys.length - 1]) / 2; }
-      else { at = y; y += ROW; }
-      pos.set(n.id, { x: n.depth * COL, y: at });
-      return at;
+    const rows = new Set<string>();
+    const place = (b: Box, x: number, y: number) => {
+      pos.set(b.id, { x, y });
+      if (b.n) vis.push(b.n);
+      if (b.row) { rows.add(b.id); let cx = x + IN; for (const k of b.kids) { place(k, cx, y + HROW); cx += k.w + HGAP; } }
+      else { let cy = y; for (const k of b.kids) { place(k, x + COL, cy); cy += k.h; } }
     };
-    const ys = tree.top.map((n) => { const at = place(n); y += GAP; return at; });
-    pos.set('root', { x: 0, y: ys.length ? (ys[0] + ys[ys.length - 1]) / 2 : 0 });
-    const right = Math.max(0, ...vis.map((n) => n.depth)) * COL;
-    return { pos, vis, box: { x0: -W / 2, y0: -H / 2 - 22, x1: right + W / 2 + 40, y1: Math.max(0, y - ROW - GAP) + H / 2 + 14 } };
+    place(measure('root', null, tree.top, ASPECT), 0, 0);
+    const ps = [...pos.values()];
+    return { pos, vis, rows, box: { x0: -W / 2, y0: -H / 2 - 22, x1: Math.max(...ps.map((q) => q.x)) + W / 2 + 40, y1: Math.max(...ps.map((q) => q.y)) + H / 2 + 14 } };
   });
 
   // positions on screen follow the layout with a short ease, so a branch unfolds out of its parent
@@ -161,16 +183,23 @@
     const k = clampK(Math.min((uw() - pad * 2) / (b.x1 - b.x0), (room - pad * 2) / (b.y1 - b.y0), 1.1));
     glide({ k, x: (uw() - (b.x0 + b.x1) * k) / 2, y: TOP + (room - (b.y0 + b.y1) * k) / 2 });
   }
+  /** everything unfolded: the whole tree if its moves can still be read at that size, otherwise from its first move */
+  function overview() {
+    const b = layout.box, room = clear() - TOP;
+    const all = Math.min((uw() - 36) / (b.x1 - b.x0), (room - 36) / (b.y1 - b.y0), 1.1);
+    if (all >= READ) return fit();
+    glide({ k: READ, x: 18 - b.x0 * READ, y: TOP + 18 - b.y0 * READ });
+  }
   /** where you start: the whole tree when it is readable at that size, otherwise the moves you can learn next */
   function start() {
     const b = layout.box, room = clear() - TOP;
     const all = Math.min((uw() - 36) / (b.x1 - b.x0), (room - 28) / (b.y1 - b.y0), 1);
     if (all >= 0.72) return { k: all, x: (uw() - (b.x0 + b.x1) * all) / 2, y: TOP + (room - (b.y0 + b.y1) * all) / 2 };
-    // the move before them at the left edge, so its answers fill the screen
-    const k = Math.min(1, Math.max(0.78, uw() / 440));
+    // a readable size, with the first move you can learn next a little left of the middle
+    const k = Math.min(1, Math.max(0.7, uw() / 520));
     const n = layout.vis.find((v) => v.state === 'next') ?? layout.vis[0];
-    const p = layout.pos.get(n?.id ?? 'root')!, q = layout.pos.get(n?.parent?.id ?? 'root')!;
-    return { k, x: 18 + (W / 2) * k - q.x * k, y: TOP + room * 0.5 - p.y * k };
+    const p = layout.pos.get(n?.id ?? 'root')!;
+    return { k, x: uw() * 0.4 - p.x * k, y: TOP + room * 0.45 - p.y * k };
   }
   let placed = false;
   $effect(() => { if (!placed && vw && vh && sheetH) { placed = true; untrack(() => (view = bound(start()))); } });
@@ -227,23 +256,24 @@
       if (e.ctrlKey || e.metaKey || e.altKey || (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
       const pan: Record<string, [number, number]> = { ArrowLeft: [90, 0], ArrowRight: [-90, 0], ArrowUp: [0, 90], ArrowDown: [0, -90] };
       if (pan[e.key]) { e.preventDefault(); glide({ k: view.k, x: view.x + pan[e.key][0], y: view.y + pan[e.key][1] }); }
-      else if (e.key === '+' || e.key === '=') zoomBy(1.25);
-      else if (e.key === '-' || e.key === '_') zoomBy(0.8);
+      else if (e.key === '+' || e.key === '=') zoomBy(ZOOM);
+      else if (e.key === '-' || e.key === '_') zoomBy(1 / ZOOM);
       else if (e.key === '0') fit();
       else if (e.key === 'Escape' && selId) { e.preventDefault(); selId = null; }
     };
     addEventListener('keydown', key);
     return () => removeEventListener('keydown', key);
   });
+  const ZOOM = 1.4;
+  /** zoom about the middle of the part of the canvas you can see */
   function zoomBy(f: number) {
-    const k = clampK(view.k * f), r = k / view.k, cx = uw() / 2, cy = vh / 2;
+    const k = clampK(view.k * f), r = k / view.k, cx = uw() / 2, cy = (TOP + clear()) / 2;
     glide({ k, x: cx - (cx - view.x) * r, y: cy - (cy - view.y) * r });
   }
 
   // ---------------------------------------------------------------- selecting and folding
   let selId = $state<string | null>(null);
   const sel = $derived(selId ? tree.all.get(selId) ?? null : null);
-  let showKey = $state(false);
 
   /** bring a tile into the part of the canvas that is free, moving as little as possible */
   function reveal(p: P, sheet: number, room = 0) {
@@ -255,7 +285,6 @@
   }
   function pick(n: N) {
     if (moved) return;
-    showKey = false;
     if (selId === n.id) { selId = null; return; }
     selId = n.id;
     glide(reveal(layout.pos.get(n.id)!, 262));
@@ -274,17 +303,16 @@
     const want = s.has(n.id) ? Math.max((W / 2) * kept.k + 12, Math.min(sx, uw() - (COL + W / 2 + 18) * kept.k)) : sx;
     glide({ ...kept, x: kept.x + want - sx });
   }
-  /** back to the main branches and what you have learned */
-  function foldAll() { open = firstOpen(); selId = null; showKey = false; glide(start()); }
-  /** jump to the move you can learn next */
-  function nextUp() {
-    const n = layout.vis.find((v) => v.state === 'next');
-    if (!n) return;
-    showKey = false; selId = n.id;
-    glide(reveal(layout.pos.get(n.id)!, 262));
+  // every line unfolded, or back to the main branches and what you have learned
+  const unfoldable = $derived([...tree.all.values()].filter((n) => n.kids.length).map((n) => n.id));
+  const allOpen = $derived(unfoldable.length > 0 && unfoldable.every((id) => open.has(id)));
+  const canUnfold = $derived(allOpen || unfoldable.some((id) => !open.has(id)));
+  function expandAll() {
+    selId = null;
+    if (allOpen) { open = firstOpen(); glide(start()); }
+    else { open = new Set(unfoldable); overview(); }
   }
-  const hasNext = $derived(layout.vis.some((v) => v.state === 'next'));
-  function ground() { if (!moved) { selId = null; showKey = false; } }
+  function ground() { if (!moved) selId = null; }
   const key = (fn: () => void) => (e: KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
 
   // ---------------------------------------------------------------- drawing
@@ -299,8 +327,18 @@
     const r = Math.min(9, Math.abs(dy) / 2), s = Math.sign(dy);
     return `M${x1} ${y1}H${tx - r}Q${tx} ${y1} ${tx} ${y1 + s * r}V${y2 - s * r}Q${tx} ${y2} ${tx + r} ${y2}H${x2}`;
   }
+  /** to an answer in the row below: down from under the move, along the row's rail, and into the tile from its left */
+  function hook(ax: number, ay: number, bx: number, by: number) {
+    const x1 = ax - W / 2 + IN - 16, x2 = bx - LEFT, top = ay + H / 2, rail = Math.min(ay + BUS, by), end = bx - W / 2;
+    const r2 = Math.max(0, Math.min(9, (by - rail) / 2, (end - x2) / 2));
+    if (Math.abs(x2 - x1) < 1) { const r = Math.max(0, Math.min(9, (by - top) / 2)); return `M${x1} ${top}V${by - r}Q${x1} ${by} ${x1 + r} ${by}H${end}`; }
+    const s = Math.sign(x2 - x1), r1 = Math.max(0, Math.min(9, (rail - top) / 2, Math.abs(x2 - x1) / 2)), r3 = Math.min(r1, r2);
+    return `M${x1} ${top}V${rail - r1}Q${x1} ${rail} ${x1 + s * r1} ${rail}H${x2 - s * r3}Q${x2} ${rail} ${x2} ${rail + r3}V${by - r2}Q${x2} ${by} ${x2 + r2} ${by}H${end}`;
+  }
   const edges = $derived(layout.vis.map((n) => {
-    const a = at(n.parent?.id ?? 'root'), b = at(n.id);
+    const pid = n.parent?.id ?? 'root';
+    const a = at(pid), b = at(n.id);
+    if (layout.rows.has(pid)) return { n, d: hook(a.x, a.y, b.x, b.y), o: b.o };
     const out = a.x + W / 2 + (n.parent ? pillW(n.parent) - 6 : 0);
     return { n, d: elbow(out, a.y, b.x - W / 2, b.y), o: b.o };
   }));
@@ -378,24 +416,10 @@
   </div>
 
   <div class="tools">
-    {#if hasNext}<button class="nx" onclick={nextUp}><Icon name="next" size={16} /> Next up</button>{/if}
-    <button class="zm" onclick={() => zoomBy(0.8)} aria-label="Zoom out" title="Zoom out (−)">−</button>
-    <button class="zm" onclick={() => zoomBy(1.25)} aria-label="Zoom in" title="Zoom in (+)">+</button>
-    <button onclick={fit} aria-label="Fit the whole tree on screen" title="Fit the whole tree (0)"><Icon name="fit" size={20} /></button>
-    <button onclick={foldAll} aria-label="Fold the tree back to its main branches" title="Fold back to the main branches"><Icon name="fold" size={20} /></button>
-    <button class:on={showKey} onclick={() => (showKey = !showKey)} aria-expanded={showKey}>Key</button>
+    <button class="zm" onclick={() => zoomBy(1 / ZOOM)} disabled={view.k <= KMIN + 0.001} aria-label="Zoom out" title="Zoom out (−)">−</button>
+    <button class="zm" onclick={() => zoomBy(ZOOM)} disabled={view.k >= KMAX - 0.001} aria-label="Zoom in" title="Zoom in (+)">+</button>
+    {#if canUnfold}<button class="all" class:on={allOpen} onclick={expandAll} aria-pressed={allOpen}>{allOpen ? 'Collapse' : 'Expand all'}</button>{/if}
   </div>
-  {#if showKey}
-    <div class="key" role="note">
-      <p><i class="k next"></i>You can learn this next</p>
-      <p><i class="k far"></i>Further down the line</p>
-      <p><i class="k lit p1"></i>Learning: one veneer</p>
-      <p><i class="k lit p2"></i>Young: two veneers</p>
-      <p><i class="k lit p4"></i>Mature: four veneers</p>
-      <p><i class="k dot">2</i>Times you forgot it</p>
-      <p class="how">The small line on a tile is your opponent's move and how often it is played at your level. The large one is your answer. Drag to move around, pinch to zoom.</p>
-    </div>
-  {/if}
 
   <p class="how2" aria-hidden="true"><kbd>scroll</kbd> zoom <kbd>drag</kbd> move <kbd>← ↑ ↓ →</kbd> pan <kbd>0</kbd> fit</p>
 
@@ -484,21 +508,13 @@
   .pill.has text { fill: var(--c); }
   .pill:focus-visible .body { stroke: #fff; stroke-width: 2.5; }
 
-  .tools { position: absolute; top: 10px; right: 12px; display: flex; gap: 8px; }
-  .tools button { min-width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.92); border: 1px solid #2c3366; color: #d6d9ee; font-size: 12.5px; font-weight: 700; }
-  .tools .nx { display: flex; align-items: center; gap: 4px; padding: 0 12px 0 8px; color: var(--sun); }
+  .tools { position: absolute; z-index: 4; top: 10px; right: 12px; display: flex; gap: 8px; }
+  .tools button { min-width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.94); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13.5px; font-weight: 700; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
+  .tools .zm { font-size: 24px; font-weight: 600; line-height: 1; }
+  .tools .all { padding: 0 14px; }
+  .tools button:disabled { opacity: 0.4; }
+  .tools button:active:not(:disabled) { background: #2c3366; }
   .tools button.on { background: var(--birch); color: var(--ink-fixed); border-color: var(--birch); }
-  .key { position: absolute; z-index: 6; top: 62px; right: 12px; width: min(264px, calc(100% - 24px)); padding: 14px; border-radius: 18px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13px; box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45); animation: rise 200ms var(--ease) both; }
-  .key p { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-  .key .how { display: block; margin: 12px 0 0; color: #aab0d2; line-height: 1.4; }
-  .k { flex: none; width: 30px; height: 14px; border-radius: 5px; box-sizing: border-box; }
-  .k.next { background: #1d2350; border: 1.5px solid #34e08f; }
-  .k.far { background: #141936; border: 1.5px solid #2a3162; }
-  .k.lit { background: #f1e0bf; }
-  .k.p1 { box-shadow: 0 2.5px 0 #a67f4d; }
-  .k.p2 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f; }
-  .k.p4 { box-shadow: 0 2.5px 0 #a67f4d, 0 5px 0 #dcc08f, 0 7.5px 0 #a67f4d, 0 10px 0 #dcc08f; margin-bottom: 8px; }
-  .k.dot { width: 18px; height: 18px; margin: 0 6px; border-radius: 50%; background: #e5412b; color: #fff; font-style: normal; font-weight: 800; font-size: 10.5px; display: grid; place-items: center; }
 
   .sheet { position: absolute; z-index: 5; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px); max-width: 600px; margin: 0 auto; padding: 14px; border-radius: 24px; background: rgba(29, 34, 71, 0.97); border: 1px solid #2c3366; color: var(--night-ink); box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5); }
   .one { display: flex; gap: 14px; align-items: flex-start; animation: rise 220ms var(--ease) both; }
@@ -524,15 +540,13 @@
   .chs .done small, .chs .done b { color: var(--walnut); }
   .acts { display: flex; gap: 8px; margin: 14px 0 5px; }
   .acts .btn { min-height: 46px; font-size: 15px; padding: 0 10px; border-radius: 14px; }
-  .tools .zm, .how2 { display: none; }
+  .how2 { display: none; }
   /* ---------- desktop: a full-window canvas, the sheet as a panel on the right (DESIGN.md, "Desktop") ---------- */
   @media (min-width: 1024px) and (min-height: 600px) {
     .canvas { border-radius: 0; }
     .tools { right: auto; left: 16px; top: 14px; }
-    .tools .zm { display: grid; font-size: 20px; font-weight: 600; }
     .tools button { transition: background 140ms, color 140ms; }
     .tools button:not(.on):hover { background: #2c3366; color: #fff; }
-    .key { right: auto; left: 16px; top: 66px; }
     .how2 { display: flex; align-items: center; gap: 6px; position: absolute; left: 18px; bottom: 16px; font-size: 12.5px; color: #868db6; pointer-events: none; }
     .how2 kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: rgba(29, 34, 71, 0.92); border: 1px solid #2c3366; color: #d6d9ee; margin-left: 8px; }
     .how2 kbd:first-child { margin-left: 0; }
