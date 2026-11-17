@@ -70,7 +70,7 @@
           {/each}
         </div>
       </div>
-      <p class="tag">Free · Open source · No ads · Works offline</p>
+      <p class="tag">Free · No ads · Works offline</p>
     </div>
   </aside>
 

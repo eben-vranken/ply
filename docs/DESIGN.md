@@ -130,7 +130,7 @@ Sections, top to bottom:
 5. **Spaced repetition**: the forgetting curve (`landing/Curve.svelte`, an illustration, labelled as one) drawing itself, reviews popping in order.
 6. **Features**: your level (`landing/Bands.svelte`: the Italian after 3.Bc4 at every band, climbing the bands by itself while on screen; a pick takes over. No pinned scrolling), your mistakes as cards, the skill tree, the game layer, typing a move (desktop only), offline on every device.
 7. **Traps, both ways** (night): TrapDemo.
-8. **Free and open source**: three pillars and what is free.
+8. **Free and private**: three pillars (free to use, open data from Lichess, private by design) and what is included. The page does not call Ply open source or promise it stays free.
 9. **FAQ**: an accordion that opens one answer at a time.
 10. **The way in** (night): Birch, the closing line, Create your free account / I have an account, and the footer.
 

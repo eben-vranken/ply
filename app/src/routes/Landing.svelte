@@ -96,9 +96,9 @@
   const learn = demo.hero[4], before = demo.hero[3];
   const short = (s: string) => s.split(': ')[0];
   const rowA = demo.sigils.slice(0, 12), rowB = demo.sigils.slice(12, 24);
-  const FREE = ['Unlimited openings and unlimited reviews', 'Today, Learn, Drill, Arcade and Play it out', 'PGN import and export, Lichess studies', 'Your chess.com and Lichess games, analysed', 'Streak freezes you earn, never buy'];
+  const FREE = ['Unlimited openings and unlimited reviews', 'Today, Learn, Drill, Arcade and Play it out', 'PGN import and export, Lichess studies', 'Your chess.com and Lichess games, analysed', 'Streak freezes you earn by playing'];
   const FAQ = $derived<[string, string][]>([
-    ['Is Ply really free?', 'Yes, all of it. Unlimited openings and reviews, every way to train, game import and analysis. Ply is free software under the GPL-3.0. There is no paid tier and there are no ads, and streak freezes are earned, never sold.'],
+    ['Is Ply really free?', 'Yes. Unlimited openings and reviews, every way to train, and your games imported and analysed, with no ads.'],
     ['I am not a strong player. Is it for me?', `Ply builds your lines from what players at your level actually play, in ${C.bands.length} rating bands from ${C.bands[0]} to ${C.bands.at(-1)}. A line you will never meet is a line you do not have to learn yet.`],
     ['Can I bring my own repertoire?', 'Yes. Import a PGN or a Lichess study, or build your lines move by move from the opening tree, with every move\'s frequency, results and engine eval beside it. Export them again whenever you like.'],
     ['Does it work offline?', `After the first launch, yes: every opening ships inside the app. ${configured ? 'Your progress syncs to your account when you are back online, so your phone and your desktop stay the same.' : 'This build keeps everything on this device; export a backup from Settings whenever you like.'}`],
@@ -119,7 +119,7 @@
         <button onclick={() => to('how')}>How it works</button>
         <button onclick={() => to('features')}>Features</button>
         <button onclick={() => to('traps')}>Traps</button>
-        <button onclick={() => to('open')}>Open source</button>
+        <button onclick={() => to('open')}>Privacy</button>
         <button onclick={() => to('faq')}>FAQ</button>
       </nav>
       <div class="acts-top">
@@ -133,7 +133,7 @@
   {#if menu}
     <div class="menu" role="dialog" aria-modal="true" aria-label="Menu">
       <nav>
-        {#each [['how', 'How it works'], ['features', 'Features'], ['traps', 'Traps'], ['open', 'Open source'], ['faq', 'FAQ']] as [id, label], i}
+        {#each [['how', 'How it works'], ['features', 'Features'], ['traps', 'Traps'], ['open', 'Privacy'], ['faq', 'FAQ']] as [id, label], i}
           <button style="--i:{i}" onclick={() => to(id)}>{label}<Icon name="next" size={20} /></button>
         {/each}
       </nav>
@@ -148,7 +148,7 @@
   <section class="hero">
     <div class="sky" aria-hidden="true" style="--p:{tilt}"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><i class="checks"></i></div>
     <div class="wrap hero-in" style="--p:{tilt}">
-      <p class="badge"><span class="dot"></span>Free and open source <span class="sep">·</span> No ads, ever</p>
+      <p class="badge"><span class="dot"></span>Free to use <span class="sep">·</span> No ads</p>
       <h1 aria-label="Openings that stay learned.">
         <span class="w" style="--w:0">Openings</span>{' '}<span class="w" style="--w:1">that</span>{' '}<span class="w" style="--w:2"><em>stay</em></span>{' '}<span class="w" style="--w:3">learned.</span>
       </h1>
@@ -374,12 +374,12 @@
   <section id="open" class="open">
     <div class="wrap">
       <header class="head center">
-        <p class="kick" use:reveal>Free and open source</p>
-        <h2 use:reveal={60}>No ads. No tracking. No cap.</h2>
-        <p class="lead" use:reveal={120}>Ply is made to be used, not to be sold. Everything is free, and it stays that way.</p>
+        <p class="kick" use:reveal>Free and private</p>
+        <h2 use:reveal={60}>No ads. No tracking.</h2>
+        <p class="lead" use:reveal={120}>Ply is free to use, and your training is nobody's business but yours.</p>
       </header>
       <div class="pillars">
-        <div class="pl" use:reveal={0} use:spotlight><span class="pi"><Icon name="share" size={22} /></span><h3>Free software</h3><p>GPL-3.0. Read the code, change it, run your own.</p></div>
+        <div class="pl" use:reveal={0} use:spotlight><span class="pi"><Icon name="star" size={22} /></span><h3>Free to use</h3><p>Every way to train, with unlimited openings and reviews.</p></div>
         <div class="pl" use:reveal={100} use:spotlight><span class="pi"><Icon name="explore" size={22} /></span><h3>Open data</h3><p>Built from the Lichess open database, released as CC0.</p></div>
         <div class="pl" use:reveal={200} use:spotlight><span class="pi"><Icon name="layers" size={22} /></span><h3>Private by design</h3><p>No analytics, no cookies, no third-party scripts.</p></div>
       </div>
@@ -395,7 +395,7 @@
       <header class="head">
         <p class="kick" use:reveal>Questions</p>
         <h2 use:reveal={60}>Good to know.</h2>
-        <p class="lead" use:reveal={120}>Something else? The <a href="https://github.com/eben-vranken/ply" rel="noopener">source and the issue tracker</a> are on GitHub.</p>
+        <p class="lead" use:reveal={120}>The short answers to what people ask first.</p>
       </header>
       <div class="qs" use:reveal={120}>
         {#each FAQ as [q, a], i}
@@ -428,12 +428,12 @@
     <footer class="foot wrap">
       <div class="fbrand">
         <span class="mark"><span class="logo" aria-hidden="true"><i></i><i></i><i></i></span><span class="t-name">Ply</span></span>
-        <p>Chess openings that stay learned. Free, open and offline.</p>
+        <p>Chess openings that stay learned. Free, private and offline.</p>
       </div>
       <div class="fcol"><b>Product</b><button onclick={() => to('how')}>How it works</button><button onclick={() => to('features')}>Features</button><button onclick={() => to('traps')}>Traps</button><button onclick={() => to('faq')}>FAQ</button></div>
-      <div class="fcol"><b>Open</b><a href="https://github.com/eben-vranken/ply" rel="noopener">Source code</a><a href="https://database.lichess.org" rel="noopener">Lichess open database</a><a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GPL-3.0 licence</a></div>
+      
       {#if login}<div class="fcol"><b>Account</b><button onclick={() => enter('signup')}>Sign up</button><button onclick={() => enter('login')}>Log in</button></div>{/if}
-      <p class="legal">Ply 1.0 · opening data {demo.version} · Opening data from the Lichess open database (CC0)</p>
+      <div class="legal"><span>© {new Date().getFullYear()} Ply · opening data {demo.version}</span><span>Opening data from the <a href="https://database.lichess.org" rel="noopener">Lichess open database</a> (CC0)</span></div>
     </footer>
   </section>
 
@@ -757,16 +757,17 @@
   .os:nth-child(n + 3) { display: none; }
   @keyframes float { 50% { transform: translateY(-14px); } }
 
-  .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 20px; margin-top: 110px; padding-top: 40px; padding-bottom: calc(env(safe-area-inset-bottom) + 104px); text-align: left; position: relative; }
-  .foot::before { content: ''; position: absolute; top: 0; left: 20px; right: 20px; height: 1px; background: var(--night-3); }
+  .foot { display: grid; grid-template-columns: 1fr 1fr; gap: 44px 24px; margin-top: 110px; padding-top: 56px; padding-bottom: calc(env(safe-area-inset-bottom) + 112px); text-align: left; position: relative; }
   .fbrand { grid-column: 1 / -1; }
   .foot .mark { padding: 0; height: auto; display: inline-flex; }
-  .fbrand p { margin-top: 10px; font-size: 14.5px; color: var(--night-ink-2); max-width: 32ch; }
-  .fcol { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 14.5px; }
-  .fcol b { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--night-ink-2); margin-bottom: 6px; }
-  .fcol button, .fcol a { min-height: 36px; display: inline-flex; align-items: center; text-decoration: none; color: var(--night-ink); opacity: 0.85; transition: opacity 200ms, transform 200ms var(--ease); }
-  .fcol button:hover, .fcol a:hover { opacity: 1; transform: translateX(3px); }
-  .legal { grid-column: 1 / -1; padding-top: 22px; border-top: 1px solid var(--night-3); font-size: 12.5px; color: var(--night-ink-2); }
+  .fbrand p { margin-top: 14px; font-size: 15px; line-height: 1.55; color: var(--night-ink-2); max-width: 30ch; }
+  .fcol { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 15px; }
+  .fcol b { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--night-ink-2); margin-bottom: 10px; }
+  .fcol button { min-height: 40px; display: inline-flex; align-items: center; text-decoration: none; color: var(--night-ink); opacity: 0.85; transition: opacity 200ms, transform 200ms var(--ease); }
+  .fcol button:hover { opacity: 1; transform: translateX(3px); }
+  .legal { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 28px; border-top: 1px solid var(--night-3); font-size: 13px; line-height: 1.5; color: var(--night-ink-2); }
+  .legal a { color: var(--night-ink); }
+  .foot::before { content: ''; position: absolute; top: 0; left: 20px; right: 20px; height: 1px; background: var(--night-3); }
 
   /* the phone's bottom bar */
   .dock { position: fixed; z-index: 12; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(env(safe-area-inset-bottom) + 12px); background: color-mix(in srgb, var(--night) 88%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.08); transform: translateY(110%); transition: transform 460ms var(--ease); }
@@ -785,8 +786,9 @@
     .acts { flex-direction: row; width: auto; }
     .enter .acts { max-width: none; justify-content: center; }
     .pillars { grid-template-columns: repeat(3, 1fr); }
-    .foot { grid-template-columns: 2fr 1fr 1fr 1fr; }
+    .foot { grid-template-columns: minmax(0, 2fr) minmax(160px, 1fr) minmax(160px, 1fr); column-gap: 48px; }
     .fbrand { grid-column: auto; }
+    .legal { flex-direction: row; justify-content: space-between; gap: 24px; }
   }
 
   /* ------------------------------------------------ desktop: a design of its own */
@@ -860,7 +862,7 @@
     .fc.f .lap { width: 190px; }
     .fc.f .ls { height: 118px; }
     .enter { padding-top: 160px; }
-    .foot { margin-top: 150px; padding-bottom: calc(env(safe-area-inset-bottom) + 40px); }
+    .foot { margin-top: 160px; padding-top: 72px; padding-bottom: calc(env(safe-area-inset-bottom) + 56px); }
   }
   @media (min-width: 1200px) {
     .f1 { left: -64px; } .f2 { left: -80px; } .f3 { right: -70px; } .f4 { right: -56px; }
