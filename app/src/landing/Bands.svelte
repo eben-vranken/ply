@@ -55,7 +55,14 @@
   .seg { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); padding: 4px; border-radius: 14px; background: var(--ground); }
   .thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / var(--n)); border-radius: 10px; background: var(--ink); transform: translateX(calc(var(--at) * 100%)); transition: transform 420ms var(--spring); box-shadow: 0 4px 10px -4px rgba(21, 25, 54, 0.45); }
   .seg button { position: relative; height: 36px; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: var(--ink-3); transition: color 260ms; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-  @media (max-width: 899px) { .seg button { font-size: 11px; } }
+  /* a phone: the eight bands as a 4 × 2 grid of chips, the picked one filled */
+  @media (max-width: 899px) {
+    .seg { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .thumb { display: none; }
+    .seg button { height: 40px; font-size: 14px; transition: color 260ms, background 260ms, transform 300ms var(--spring); }
+    .seg button.on { background: var(--ink); box-shadow: 0 4px 10px -4px rgba(21, 25, 54, 0.45); transform: scale(1.04); }
+    .pos { width: min(100%, 230px); }
+  }
   .seg button:hover { color: var(--ink); }
   .seg button.on { color: var(--on-ink); }
   .th { font-size: 13px; color: var(--ink-2); }

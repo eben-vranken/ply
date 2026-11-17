@@ -118,7 +118,7 @@ The phone and the desktop are designed separately, not one layout stretched:
 | --- | --- | --- |
 | Bar | Wordmark, Get started, a menu button that opens a full-screen night menu | Wordmark, section links (underline grows on hover), Log in, Get started |
 | Hero | Left-aligned, full-width buttons, the live board below in a compact frame (no reply table) | Centred headline, the live board large in an app-window frame with four floating cards around it |
-| Features | A swipe carousel of five cards with dots | A bento grid of six cards with a pointer spotlight |
+| Features | Five cards one under another, each at its own height; the eight bands as a 4 × 2 grid of chips | A bento grid of six cards with a pointer spotlight |
 | Way in | A dock with Start and Log in slides up once the hero's buttons scroll away and hides at the closing section | The bar's buttons |
 
 Sections, top to bottom:

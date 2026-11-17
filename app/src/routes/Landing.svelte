@@ -68,15 +68,6 @@
   // the heavy demos (they own a chessground board) are built just before they scroll in
   let near = $state({ trap: false });
 
-  // the carousel on the phone: which card is in front
-  let rail = $state<HTMLDivElement>();
-  let slide = $state(0);
-  function onrail() {
-    if (!rail) return;
-    const w = (rail.firstElementChild as HTMLElement | null)?.offsetWidth ?? 1;
-    slide = Math.round(rail.scrollLeft / (w + 12));
-  }
-  const toSlide = (i: number) => rail?.scrollTo({ left: i * (((rail.firstElementChild as HTMLElement).offsetWidth) + 12), behavior: desk.still ? 'auto' : 'smooth' });
 
   // typing a move: N, f, 3, then it is played
   const KEYS = ['N', 'f', '3'];
@@ -284,7 +275,7 @@
           <h3>Matched to your rating</h3>
           <p>Lines built from {C.bands.length} rating bands. <b>{mover.san}</b> is played in {Math.round(mover.hi)}% of games at {mover.at} and {mover.lo < 1 ? 'under 1' : Math.round(mover.lo)}% at {mover.low}, so you learn what you will meet.</p>
         </div>
-        <div class="fc-ill"><Bands rows={narrow ? 4 : 5} board={!narrow} /></div>
+        <div class="fc-ill"><Bands rows={5} board /></div>
       {/snippet}
       {#snippet mistakes()}
         <div class="fc-copy">
@@ -352,13 +343,11 @@
       {/snippet}
 
       {#if narrow}
-        <div class="rail" bind:this={rail} onscroll={onrail} use:reveal={120}>
-          {#each [level, mistakes, tree, game, offline] as card, i}
-            <article class="fc" class:dark={card === tree} aria-roledescription="slide" aria-label="{i + 1} of 5">{@render card()}</article>
+        <!-- the phone: one card after another, each at its own height, each arriving as it scrolls in -->
+        <div class="flow-f">
+          {#each [level, mistakes, tree, game, offline] as card}
+            <article class="fc" class:dark={card === tree} use:reveal>{@render card()}</article>
           {/each}
-        </div>
-        <div class="dots" role="group" aria-label="Choose a feature">
-          {#each [0, 1, 2, 3, 4] as i}<button class:on={slide === i} onclick={() => toSlide(i)} aria-label="Feature {i + 1}"></button>{/each}
         </div>
       {:else}
         <div class="bento">
@@ -715,14 +704,11 @@
   @keyframes beam { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.3); } }
 
   /* the phone: a carousel */
-  .rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -20px; padding: 4px 20px 20px; scroll-padding: 0 20px; scrollbar-width: none; overscroll-behavior-x: contain; }
-  .rail::-webkit-scrollbar { display: none; }
-  .rail .fc { flex: none; width: min(86%, 380px); scroll-snap-align: start; }
-  .rail .fc-ill { justify-content: center; }
-  .dots { display: flex; justify-content: center; gap: 4px; margin-top: 2px; }
-  .dots button { width: 28px; height: 28px; display: grid; place-items: center; }
-  .dots button::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: var(--ink-3); opacity: 0.35; transition: width 360ms var(--spring), opacity 300ms, background 300ms; }
-  .dots button.on::before { width: 24px; opacity: 1; background: var(--cobalt); }
+
+  /* the phone: the features one under another */
+  .flow-f { display: flex; flex-direction: column; gap: 14px; }
+  .flow-f .fc { padding: 22px 20px; }
+  .flow-f .devs { max-width: 240px; }
 
   /* ------------------------------------------------ traps */
   .traps { background: var(--night); color: var(--night-ink); overflow: hidden; }
