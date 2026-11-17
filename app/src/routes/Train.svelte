@@ -67,7 +67,8 @@
   const PUZZLE_KINDS = new Set(['puzzle', 'punish', 'danger', 'mistake']);
   const retry = $derived(!!item && (arcade || PUZZLE_KINDS.has(item.kind)));
 
-  // the evaluation bar: always on an opening position, on a puzzle only once you have played it
+  // the evaluation bar: on an opening line it stays blank until you have answered (a swing after the
+  // opponent's move would say which line this is); on a puzzle it only appears once you have played it
   const evalOn = $derived(!!item && phase !== 'complete' && phase !== 'summary' && (!PUZZLE_KINDS.has(item.kind) || phase !== 'play'));
   let evalCp = $state<number | null>(null);
   let engine: Engine | null = null;
@@ -606,7 +607,7 @@
 
     <div class="boardwrap" use:land>
       <div class="withbar">
-        {#if evalOn}<EvalBar cp={evalCp} side={item.side} />{/if}
+        {#if evalOn}<EvalBar cp={phase === 'play' ? null : evalCp} side={item.side} />{/if}
         <div class="bd"><Board fen={shown ? shown.fen : fen} side={item.side} dests={shown ? null : dests} lastMove={shown ? shown.last : lastMove} shapes={shown ? [] : shapes} badge={shown ? null : badge} check={shown ? false : check} {rev} {shake} dark {onmove} /></div>
       </div>
       {#if cheer}
