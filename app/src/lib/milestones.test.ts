@@ -53,13 +53,12 @@ describe.runIf(real)(`shipped data, band ${BAND}`, () => {
     expect(n.m.some(([u]) => u === n.d)).toBe(true);
   });
 
-  it('the starter repertoire gets ≥ 20 Punish and ≥ 50 Puzzle cards', () => {
+  it('the starter repertoire gets ≥ 20 Punish cards and no Puzzle cards', () => {
     const t = m.candidates().traps;
     const punish = t.filter((x) => x.type === 'punish').length;
-    const puzzles = t.filter((x) => x.type === 'puzzle').length;
-    console.log(`band ${BAND}: ${punish} punish, ${t.filter((x) => x.type === 'danger').length} danger, ${puzzles} puzzles for the starter repertoire; boot ${Math.round(bootMs)} ms`);
+    console.log(`band ${BAND}: ${punish} punish, ${t.filter((x) => x.type === 'danger').length} danger for the starter repertoire; boot ${Math.round(bootMs)} ms`);
     expect(punish).toBeGreaterThanOrEqual(20);
-    expect(puzzles).toBeGreaterThanOrEqual(50);
+    expect(t.every((x) => x.type === 'punish' || x.type === 'danger')).toBe(true);
   });
 
   it('every trap and puzzle opens correctly from its position', () => {

@@ -164,8 +164,8 @@ describe('queue', () => {
   const specs = [...L.cards.values()];
   const asCard = (i: number, extra: Partial<CardRow> = {}) => card({ id: specs[i].id, epd: specs[i].epd, move: specs[i].move, ...extra });
   const base = (over: Partial<QueueInput>): QueueInput => ({
-    now: 1000, cards: [], lines: { w: L }, newMoves: [], newTraps: [], limits: { newMoves: 10, newTraps: 5, newMistakes: 10, maxReviews: 150 },
-    done: { newMoves: 0, newTraps: 0, newMistakes: 0, reviews: 0 }, retrievability: () => 0.5, ...over
+    now: 1000, cards: [], lines: { w: L }, newMoves: [], newTraps: [], limits: { newMoves: 10, newTraps: 5, maxReviews: 150 },
+    done: { newMoves: 0, newTraps: 0, reviews: 0 }, retrievability: () => 0.5, ...over
   });
 
   it('groups due cards on one path into one line, ending at the deepest', () => {
@@ -179,32 +179,30 @@ describe('queue', () => {
     expect(first.due.length).toBe(2);
   });
 
-  it('orders mistakes, lines, traps, then new moves, traps and mistakes', () => {
+  it('orders lines, traps, then new moves and new traps; puzzles and mistakes are never scheduled', () => {
     const items = buildQueue(base({
       cards: [
-        card({ id: 'k1', type: 'mistake' }), asCard(0), card({ id: 'p1', type: 'punish' }),
+        card({ id: 'k1', type: 'mistake' }), asCard(0), card({ id: 'p1', type: 'punish' }), card({ id: 'z1', type: 'puzzle' }),
         card({ id: 'k2', type: 'mistake', fsrs: createEmptyCard(new Date(0)), created: 5 })
       ],
-      newMoves: [specs[1]], newTraps: [{ id: 'z', type: 'puzzle', score: 9 }, { id: 'd', type: 'danger', score: 1 }]
+      newMoves: [specs[1]], newTraps: [{ id: 'p', type: 'punish', score: 9 }, { id: 'd', type: 'danger', score: 1 }]
     }));
-    expect(items.map((i) => i.kind === 'card' ? i.card.id : i.kind === 'newtrap' ? i.spec.id : i.kind)).toEqual(['k1', 'line', 'p1', 'new', 'd', 'z', 'k2']);
+    expect(items.map((i) => i.kind === 'card' ? i.card.id : i.kind === 'newtrap' ? i.spec.id : i.kind)).toEqual(['line', 'p1', 'new', 'p', 'd']);
   });
 
   it('respects every limit', () => {
     const many = specs.map((s) => s);
     const items = buildQueue(base({
       newMoves: many, newTraps: Array.from({ length: 9 }, (_, i) => ({ id: 't' + i, type: 'punish' as const, score: i })),
-      cards: Array.from({ length: 6 }, (_, i) => card({ id: 'n' + i, type: 'mistake', fsrs: createEmptyCard(new Date(0)) })),
-      limits: { newMoves: 2, newTraps: 3, newMistakes: 4, maxReviews: 150 }, done: { newMoves: 1, newTraps: 0, newMistakes: 0, reviews: 0 }
+      limits: { newMoves: 2, newTraps: 3, maxReviews: 150 }, done: { newMoves: 1, newTraps: 0, reviews: 0 }
     }));
     expect(items.filter((i) => i.kind === 'new').length).toBe(1);
     expect(items.filter((i) => i.kind === 'newtrap').length).toBe(3);
-    expect(items.filter((i) => i.kind === 'card').length).toBe(4);
   });
 
   it('caps reviews at the limit, lowest retrievability first', () => {
     const cards = Array.from({ length: 5 }, (_, i) => card({ id: 'p' + i, type: 'punish', lapses: i }));
-    const items = buildQueue(base({ cards, limits: { newMoves: 0, newTraps: 0, newMistakes: 0, maxReviews: 20 }, done: { newMoves: 0, newTraps: 0, newMistakes: 0, reviews: 18 }, retrievability: (c) => -c.lapses }));
+    const items = buildQueue(base({ cards, limits: { newMoves: 0, newTraps: 0, maxReviews: 20 }, done: { newMoves: 0, newTraps: 0, reviews: 18 }, retrievability: (c) => -c.lapses }));
     expect(items.map((i) => (i.kind === 'card' ? i.card.id : ''))).toEqual(['p4', 'p3']);
   });
 
@@ -214,7 +212,7 @@ describe('queue', () => {
   });
 
   it('new moves come highest probability first', () => {
-    const items = buildQueue(base({ newMoves: [...specs].reverse(), limits: { newMoves: 2, newTraps: 0, newMistakes: 0, maxReviews: 150 } }));
+    const items = buildQueue(base({ newMoves: [...specs].reverse(), limits: { newMoves: 2, newTraps: 0, maxReviews: 150 } }));
     const probs = items.map((i) => (i.kind === 'new' ? i.spec.prob : 0));
     expect(probs[0]).toBe(1);
     expect(probs[0]).toBeGreaterThanOrEqual(probs[1]);
@@ -223,7 +221,7 @@ describe('queue', () => {
   it('gives half of the new moves to the focus opening, the rest by probability', () => {
     const order = [...specs].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
     const focus = order.slice(-3);
-    const items = buildQueue(base({ newMoves: specs, focus, limits: { newMoves: 4, newTraps: 0, newMistakes: 0, maxReviews: 150 } }));
+    const items = buildQueue(base({ newMoves: specs, focus, limits: { newMoves: 4, newTraps: 0, maxReviews: 150 } }));
     const ids = items.map((i) => (i.kind === 'new' ? i.spec.id : ''));
     expect(ids.length).toBe(4);
     expect(ids).toContain(focus[0].id);
@@ -233,7 +231,7 @@ describe('queue', () => {
     expect(ids).toContain(order[1].id);
     // a focus opening with nothing left to learn leaves every place to probability
     const rest = order.slice(0, -3);
-    const none = buildQueue(base({ newMoves: rest, focus, limits: { newMoves: 4, newTraps: 0, newMistakes: 0, maxReviews: 150 } }));
+    const none = buildQueue(base({ newMoves: rest, focus, limits: { newMoves: 4, newTraps: 0, maxReviews: 150 } }));
     expect(none.map((i) => (i.kind === 'new' ? i.spec.id : ''))).toEqual(rest.slice(0, 4).map((s) => s.id));
   });
 

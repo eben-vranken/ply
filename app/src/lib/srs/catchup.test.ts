@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { shouldOffer, suggestDays, planCatchUp, dayOf, limitsFor, daysAway } from './catchup';
 
 const DAY = 864e5;
-const L = { newMoves: 10, newTraps: 5, newMistakes: 10, maxReviews: 150 };
+const L = { newMoves: 10, newTraps: 5, maxReviews: 150 };
 
 describe('catching up', () => {
   it('is offered for a real backlog only', () => {
@@ -20,7 +20,7 @@ describe('catching up', () => {
   it('caps reviews at the share and pauses new cards while it runs, then ends', () => {
     const c = planCatchUp(300, 5, 10 * DAY);
     expect(dayOf(c, 10 * DAY)).toBe(0);
-    expect(limitsFor(L, c, 12 * DAY)).toEqual({ newMoves: 0, newTraps: 0, newMistakes: 0, maxReviews: 60 });
+    expect(limitsFor(L, c, 12 * DAY)).toEqual({ newMoves: 0, newTraps: 0, maxReviews: 60 });
     expect(dayOf(c, 15 * DAY)).toBe(null);
     expect(limitsFor(L, c, 15 * DAY)).toEqual(L);
     expect(limitsFor(L, null, 0)).toEqual(L);

@@ -86,7 +86,7 @@
     if (!rep || rep.recent.eval10 === null) return '';
     const now = fmt(rep.recent.eval10);
     if (delta !== null && delta >= 0.15) return `You now leave the opening at ${now} on average, up from ${fmt(rep.before!.eval10)}. The work is showing.`;
-    if (delta !== null && delta <= -0.15) return `You leave the opening at ${now}, down from ${fmt(rep.before!.eval10)}. The mistake cards from these games are already in your queue.`;
+    if (delta !== null && delta <= -0.15) return `You leave the opening at ${now}, down from ${fmt(rep.before!.eval10)}. See which replies took you out of book in Repertoire.`;
     return `You leave the opening at ${now} on average. ${rep.recent.covered >= 70 ? 'Your lines covered most of what you met.' : 'Opponents left your lines often: see Uncovered in Repertoire.'}`;
   });
   const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
@@ -253,7 +253,7 @@
   <section class="card arc">
     <div class="grow">
       <h3 class="t-head">Arcade</h3>
-      <p class="t-small">Endless puzzles, traps and positions from your openings. Your cards stay as they are.</p>
+      <p class="t-small">Endless Lichess puzzles from your openings, at your level. Your cards stay as they are.</p>
       <p class="arcnum"><span><b class="t-num">{app.arcadeRating}</b> rating</span><span class="fl"><Icon name="flame" size={17} fill /><b class="t-num">{app.arcadeBest}</b> best streak</span><span><b class="t-num">{app.arcadeSolved}</b> solved</span></p>
     </div>
     <button class="btn" onclick={playArcade} aria-label="Play Arcade"><Icon name="play" size={20} fill /></button>

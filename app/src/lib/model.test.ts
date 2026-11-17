@@ -153,6 +153,14 @@ describe('model on real data', () => {
     expect(row.miss[it.arcade!.key]).toBeGreaterThanOrEqual(1);
   });
 
+  it('Arcade serves only Lichess puzzles, and Today schedules none', () => {
+    const a = m.arcade();
+    const items = [...a.next(), ...a.next(), ...a.next(), ...a.next()];
+    expect(items.length).toBeGreaterThan(0);
+    for (const i of items) { expect(i.kind).toBe('puzzle'); expect(i.arcade!.key.startsWith('z:')).toBe(true); expect(i.card).toBeUndefined(); }
+    expect(m.candidates().traps.every((t) => t.type === 'punish' || t.type === 'danger')).toBe(true);
+  });
+
   it('imports a PGN repertoire, following it past the end of the tree', async () => {
     const { readPgn } = await import('./pgn');
     const { plan, rows } = await import('./import/repertoire');

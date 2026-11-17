@@ -1,8 +1,8 @@
 <script lang="ts">
   import { go, app } from '../lib/state.svelte';
-  import { model, isFocus as mastered, searchOpenings, summaries, resetSection, rareCards, retireRare, allCards, deleteCard, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
+  import { model, isFocus as mastered, searchOpenings, summaries, resetSection, rareCards, retireRare, nameOf, sectionCoverage, type OpeningSummary } from '../lib/model.svelte';
   import { db, type GameRow } from '../lib/db';
-  import { sans, moveOrder, epdAfter, san } from '../lib/chess';
+  import { sans, moveOrder, epdAfter } from '../lib/chess';
   import type { Section } from '../lib/srs/lines';
   import Sigil from '../lib/Sigil.svelte';
   import Icon from '../lib/Icon.svelte';
@@ -28,7 +28,6 @@
   function done(msg: string) { importing = false; exporting = false; toast = msg; setTimeout(() => (toast = ''), 6000); }
   let games = $state<GameRow[]>([]);
   $effect(() => { void model.rev; void db.games.orderBy('date').reverse().toArray().then((g) => (games = g)); });
-  const withCards = $derived(games.filter((g) => (g.mistakes ?? []).some((id) => allCards().has(id))));
   const uncovered = $derived.by(() => {
     const m = new Map<string, { path: string[]; side: 'w' | 'b'; times: number }>();
     for (const g of games) if (g.uncovered) {
@@ -39,19 +38,7 @@
     return [...m.values()].sort((a, b) => b.times - a.times).slice(0, 12);
   });
 
-  // swipe left to delete a mistake card
-  let drag = $state<Record<string, number>>({});
-  let sx = 0;
-  function move(id: string, e: TouchEvent) { drag[id] = Math.min(0, e.touches[0].clientX - sx); }
-  async function drop(id: string) { if ((drag[id] ?? 0) < -110) await deleteCard(id); drag[id] = 0; }
   async function reset(s: Section) { asking = null; await resetSection(s); }
-  const label = (id: string) => {
-    const c = allCards().get(id);
-    if (!c) return null;
-    const ply = c.path?.length ?? 0;
-    const num = ply % 2 === 0 ? `${ply / 2 + 1}.` : `${(ply + 1) / 2}…`;
-    return { id, text: num + san(c.epd, c.played ?? c.move), loss: c.loss ?? 0 };
-  };
 </script>
 
 <div class="screen rep">
@@ -145,26 +132,6 @@
     {/each}
   </div>
 
-  <div class="sect"><h2 class="t-head">Mistakes</h2>{#if withCards.length}<span class="t-small"><span class="byhand">Swipe a card left to delete</span><span class="bymouse">Point at a card to delete it</span></span>{/if}</div>
-  <div class="stack">
-    {#each withCards.slice(0, 30) as g (g.url)}
-      <div class="card game">
-        <p class="gh"><b>vs {g.opponent}</b><span>{g.colour === 'w' ? 'White' : 'Black'} · {g.result === 'win' ? 'Won' : g.result === 'draw' ? 'Drew' : 'Lost'} · {new Date(g.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span></p>
-        {#each (g.mistakes ?? []).map(label).filter((x) => !!x) as c (c!.id)}
-          <div class="swipe">
-            <span class="del"><Icon name="trash" size={18} /> Delete</span>
-            <div class="mc" style="transform:translateX({drag[c!.id] ?? 0}px)" role="listitem"
-              ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchmove={(e) => move(c!.id, e)} ontouchend={() => drop(c!.id)}>
-              <span class="q">?</span>{c!.text}<span class="loss">−{c!.loss}% win chance</span><button class="mdel" onclick={() => deleteCard(c!.id)} aria-label="Delete the mistake card {c!.text}" title="Delete this card"><Icon name="trash" size={16} /></button>
-            </div>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="t-small">{app.username || app.lichessUser ? 'No mistake cards yet. They appear as your games are analysed.' : 'Add your chess.com or Lichess username in Settings, or paste PGN there.'}</p>
-    {/each}
-  </div>
-
   <div class="sect"><h2 class="t-head">Rare cards</h2></div>
   <div class="card unc">
     <p class="grow t-small"><b style="color:var(--ink)">{rare.length} card{rare.length === 1 ? '' : 's'}</b> sit in positions your lines no longer reach at this band. They keep their schedule until you retire them.</p>
@@ -204,14 +171,6 @@
   .confirm { margin-bottom: 10px; }
   .unc { display: flex; align-items: center; gap: 12px; }
   .btn.sm { min-height: 44px; padding: 0 14px; font-size: 14.5px; border-radius: 13px; box-shadow: 0 4px 0 var(--edge); white-space: nowrap; }
-  .gh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
-  .gh span { font-size: 13px; color: var(--ink-2); }
-  .swipe { position: relative; margin-top: 6px; border-radius: 12px; overflow: hidden; background: var(--bad); }
-  .del { position: absolute; right: 14px; top: 0; bottom: 0; display: flex; align-items: center; gap: 6px; color: #fff; font-weight: 650; font-size: 14px; }
-  .mc { position: relative; display: flex; align-items: center; gap: 10px; min-height: 46px; padding: 0 12px; background: var(--ground); font-weight: 650; transition: transform 160ms var(--ease); touch-action: pan-y; }
-  .q { width: 24px; height: 24px; border-radius: 7px; background: var(--bad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 14px; }
-  .loss { margin-left: auto; font-weight: 500; font-size: 13px; color: var(--ink-2); }
-  .bymouse, .mdel { display: none; }
   /* ---------- desktop: openings as a grid, your games in a column beside them (DESIGN.md, "Desktop") ---------- */
   @media (min-width: 1024px) and (min-height: 600px) {
     .screen.rep { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); grid-template-areas: 'top top' 'main aside'; column-gap: 32px; align-content: start; align-items: start; padding: 28px max(32px, calc((100% - 1480px) / 2)) 48px; }
@@ -229,11 +188,5 @@
     .rep .op:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(21, 25, 54, 0.04), 0 16px 30px -14px rgba(21, 25, 54, 0.3); }
     .rep .btn:not(:disabled):hover { filter: brightness(1.05); }
     .rep .aside .unc { flex-direction: column; align-items: stretch; }
-    .byhand { display: none; }
-    .bymouse { display: inline; }
-    .mdel { display: grid; place-items: center; width: 32px; height: 32px; margin: 0 -6px 0 4px; border-radius: 9px; color: var(--ink-3); opacity: 0; transition: opacity 120ms, background 120ms, color 120ms; }
-    .mc:hover .mdel, .mdel:focus-visible { opacity: 1; }
-    .mdel:hover { background: var(--bad-tint); color: var(--bad-text); }
-    .loss { margin-left: auto; }
   }
 </style>

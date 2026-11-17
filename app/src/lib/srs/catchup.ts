@@ -33,9 +33,9 @@ export function dayOf(c: CatchUp | null, today: number): number | null {
 }
 
 /** The day's limits while catching up: reviews capped at the share, no new cards. */
-export function limitsFor<T extends { newMoves: number; newTraps: number; newMistakes: number; maxReviews: number }>(limits: T, c: CatchUp | null, today: number): T {
+export function limitsFor<T extends { newMoves: number; newTraps: number; maxReviews: number }>(limits: T, c: CatchUp | null, today: number): T {
   if (dayOf(c, today) === null) return limits;
-  return { ...limits, newMoves: 0, newTraps: 0, newMistakes: 0, maxReviews: Math.min(limits.maxReviews, c!.perDay) };
+  return { ...limits, newMoves: 0, newTraps: 0, maxReviews: Math.min(limits.maxReviews, c!.perDay) };
 }
 
 /** Whole days since the last study day (0 = studied today). `history` is reviews per day, today last. */

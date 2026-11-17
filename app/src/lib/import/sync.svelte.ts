@@ -1,16 +1,15 @@
-// Game sync from chess.com and Lichess, and the on-phone analysis (docs/BRIEF.md, "Mistake import").
-// Both sources feed the same pipeline: repertoire deviations, uncovered replies, mistake cards.
+// Game sync from chess.com and Lichess, and the on-phone analysis (docs/BRIEF.md, "Mistake import"; mistakes no longer become cards).
+// Both sources feed the same pipeline: repertoire deviations, uncovered replies, and on-device evals for the charts.
 import { app, save } from '../state.svelte';
-import { db, removeRows, type CardRow, type GameRow } from '../db';
+import { db, removeRows, type GameRow } from '../db';
 import { archives, monthGames, rapidRating, lastMonths, monthOf, monthStart, windowStart, monthsToSync } from './chesscom';
-import { parsePgn, splitPgns, sideOf, findMistakes, type PlyAnalysis, type ParsedGame } from './mistakes';
+import { parsePgn, splitPgns, sideOf } from './mistakes';
 import { Engine } from '../engine/stockfish';
-import { epdOf, hashId, sans, moveOrder, child, START_EPD, turnOf, winPct, type Side } from '../chess';
+import { epdOf, sans, moveOrder, child, START_EPD, turnOf, winPct, type Side } from '../chess';
 import { lichessRapid, lichessGames, lichessRow } from './lichess';
 import { keepGame, lichessPerfs, monthInRange, fromMs, toMs, type GameFilters } from './filters';
-import { lines, movesAt, labelOf, lapse, addCards, noteRating, openingAt, data } from '../model.svelte';
+import { lines, movesAt, labelOf, lapse, noteRating, data } from '../model.svelte';
 import { moveId } from '../srs/lines';
-import { createEmptyCard } from '../srs/fsrs';
 
 export const sync = $state({
   running: false,
@@ -19,7 +18,7 @@ export const sync = $state({
   done: 0,
   total: 0,
   error: '',
-  summary: null as null | { imported: number; lapsed: string[]; uncovered: number; mistakes: number }
+  summary: null as null | { imported: number; lapsed: string[]; uncovered: number }
 });
 
 const filters = (): GameFilters => ({ rated: app.gamesRated, classes: app.timeClasses, from: app.gamesFrom, to: app.gamesTo });
@@ -45,7 +44,7 @@ export async function syncNow() {
   if (!app.username && !app.lichessUser) { sync.error = 'Add your chess.com or Lichess username first.'; return; }
   sync.running = true; sync.error = ''; sync.summary = null;
   const errors: string[] = [];
-  const total = { imported: 0, lapsed: [] as string[], uncovered: 0, mistakes: 0 };
+  const total = { imported: 0, lapsed: [] as string[], uncovered: 0 };
   const add = (s: typeof total) => { total.imported += s.imported; total.lapsed.push(...s.lapsed); total.uncovered += s.uncovered; };
   if (app.username) { try { add(await syncChesscom()); } catch (e) { errors.push(e instanceof Error ? e.message : 'chess.com could not be reached'); } }
   if (app.lichessUser) { try { add(await syncLichess()); } catch (e) { errors.push(e instanceof Error ? e.message : 'Lichess could not be reached'); } }
@@ -164,7 +163,7 @@ async function importGames(rows: GameRow[]) {
     }
   }
   if (rows.length) await db.games.bulkPut(rows);
-  return { imported: rows.length, lapsed, uncovered, mistakes: 0 };
+  return { imported: rows.length, lapsed, uncovered };
 }
 
 /**
@@ -194,18 +193,16 @@ export async function analysePending() {
     sync.total = todo.length; sync.done = 0;
     sync.text = `Analysing your games · 0 of ${sync.total}`;
     engines = Array.from({ length: Math.min(ENGINES(), todo.length) }, () => new Engine());
-    let next = 0, found = 0, failed = false;
+    let next = 0, failed = false;
     await Promise.all(engines.map(async (eng) => {
       while (!failed && next < todo.length) {
         const row = todo[next++];
-        try { found += await analyseGame(row, eng); }
+        try { await analyseGame(row, eng); }
         catch (e) { failed = true; throw e; }
         sync.done++;
         sync.text = `Analysing your games · ${sync.done} of ${sync.total}`;
       }
     }));
-    if (sync.summary) sync.summary.mistakes += found;
-    else sync.summary = { imported: 0, lapsed: [], uncovered: 0, mistakes: found };
   } catch (e) {
     console.error(e);
     sync.error = 'Game analysis stopped; it continues next time Ply opens.';
@@ -216,14 +213,13 @@ export async function analysePending() {
   }
 }
 
-/** Win% outside this range on both sides of a move cannot be a mistake (see findMistakes). */
+/** Win% outside this range: the game is decided, a quick look is enough. */
 const decided = (cp: number) => winPct(cp) < 10 || winPct(cp) > 90;
 
-async function analyseGame(row: GameRow, eng: Engine): Promise<number> {
+async function analyseGame(row: GameRow, eng: Engine): Promise<void> {
   const g = parsePgn(row.pgn);
-  if (!g) { await db.games.update(row.url, { analyzed: 1 }); return 0; }
+  if (!g) { await db.games.update(row.url, { analyzed: 1 }); return; }
   const evals: (number | null)[] = new Array(g.fens.length).fill(null);
-  const plies: PlyAnalysis[] = [];
   const whiteView = (fen: string, cp: number) => (fen.split(' ')[1] === 'w' ? cp : -cp);
   const tree = data()?.tree;
   let lastCp: number | null = null; // your eval after your previous move, your view
@@ -243,20 +239,18 @@ async function analyseGame(row: GameRow, eng: Engine): Promise<number> {
       const probe = (await eng.analyse(fen, 60, 1))[0];
       if (probe && decided(probe.cp)) { evals[i] = whiteView(fen, probe.cp); lastCp = probe.cp; continue; }
     }
-    const lines = await eng.analyse(fen, 300, 3);
+    const lines = await eng.analyse(fen, 300, 1);
     if (!lines.length) continue;
     evals[i] = whiteView(fen, lines[0].cp);
     const hit = lines.find((l) => l.pv[0] === played);
-    let afterCp: number, reply: string[];
-    if (hit) { afterCp = hit.cp; reply = hit.pv.slice(1, 4); }
+    let afterCp: number;
+    if (hit) afterCp = hit.cp;
     else {
       const next = (await eng.analyse(g.fens[i + 1], 150, 1))[0];
       afterCp = next ? -next.cp : lines[0].cp;
-      reply = next?.pv.slice(0, 3) ?? [];
       if (next) evals[i + 1] = whiteView(g.fens[i + 1], next.cp);
     }
     lastCp = afterCp;
-    plies.push({ ply: i, lines: lines.map((l) => ({ cp: l.cp, pv: l.pv })), played, afterCp, reply });
   }
   // the move-10 and move-15 positions always get an eval for the Today and Stats charts
   for (const ply of [20, 30]) {
@@ -267,22 +261,5 @@ async function analyseGame(row: GameRow, eng: Engine): Promise<number> {
       if (l) evals[ply] = whiteView(g.fens[ply], l.cp);
     }
   }
-  const found = findMistakes(plies);
-  const rows: CardRow[] = found.map((m) => mistakeCard(row, g, m));
-  if (rows.length) await addCards(rows);
-  await db.games.update(row.url, { evals, analyzed: 1, mistakes: rows.map((r) => r.id) });
-  return rows.length;
-}
-
-function mistakeCard(row: GameRow, g: ParsedGame, m: ReturnType<typeof findMistakes>[number]): CardRow {
-  const epd = epdOf(g.fens[m.ply]);
-  const path = g.moves.slice(0, m.ply);
-  const date = new Date(row.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const now = new Date();
-  return {
-    id: 'k' + hashId(row.url, String(m.ply)), type: 'mistake', side: row.colour, epd, move: m.best, answer: [m.best], line: [m.best],
-    accepted: m.accepted, played: m.played, loss: Math.round(m.loss), refute: m.refute, label: labelOf(epd, path), path,
-    source: `From your game vs ${row.opponent}, ${date}`, ref: row.url, opening: openingAt(epd, path)?.id,
-    fsrs: createEmptyCard(now), due: +now, suspended: 0, created: row.date, lapses: 0
-  };
+  await db.games.update(row.url, { evals, analyzed: 1 });
 }

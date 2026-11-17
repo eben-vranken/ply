@@ -15,7 +15,6 @@ const defaults = {
   blackD4Path: '',
   newMoves: 10,
   newTraps: 5,
-  newMistakes: 10,
   maxReviews: 150,
   hardSeconds: 10,
   retention: 90,

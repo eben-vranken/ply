@@ -92,7 +92,7 @@
 
   let faq = $state<number | null>(0);
   const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
-  const QUEUE: [string, string, string][] = [['Review', '!', 'good'], ['New move', '+', 'info'], ['Punish', '!', 'good'], ['Danger', '??', 'bad'], ['Your mistake', '?', 'bad']];
+  const QUEUE: [string, string, string][] = [['Review', '!', 'good'], ['New move', '+', 'info'], ['Punish', '!', 'good'], ['Danger', '??', 'bad']];
   const learn = demo.hero[4], before = demo.hero[3];
   const short = (s: string) => s.split(': ')[0];
   const rowA = demo.sigils.slice(0, 12), rowB = demo.sigils.slice(12, 24);
@@ -279,15 +279,15 @@
       {/snippet}
       {#snippet mistakes()}
         <div class="fc-copy">
-          <h3>Your mistakes become cards</h3>
-          <p>Link chess.com or Lichess. Ply finds where you left your lines and turns every slip into a card, analysed by Stockfish on your device.</p>
+          <h3>The slips your level makes</h3>
+          <p>Ply knows which moves lose most often at your rating and drills the safe answer before you meet it. For tactics, Arcade serves Lichess puzzles from your openings.</p>
         </div>
         <div class="fc-ill mis">
-          <div class="gm"><p class="gh">From one of your games</p><p class="mrow"><i class="slip">?</i><b>6.{T.bait.san}</b><span>−{T.loss}%</span></p></div>
+          <div class="gm"><p class="gh">Played at your level</p><p class="mrow"><i class="slip">?</i><b>6.{T.bait.san}</b><span>−{T.loss}%</span></p></div>
           <span class="flow" aria-hidden="true"><i></i><i></i><i></i></span>
           <div class="mc">
-            <div class="mini"><MiniBoard fen={T.fen} last={sq(T.setup)} arrow={sq(T.safe.uci)} label="The position from the game, with the right move {T.safe.san} shown" /></div>
-            <div><p class="tag"><Plies stage="learning" size={14} /> Your mistake</p><p class="ans">Play <b>{T.safe.san}</b></p></div>
+            <div class="mini"><MiniBoard fen={T.fen} last={sq(T.setup)} arrow={sq(T.safe.uci)} label="The position before the slip, with the safe move {T.safe.san} shown" /></div>
+            <div><p class="tag"><Plies stage="learning" size={14} /> Danger</p><p class="ans">Play <b>{T.safe.san}</b></p></div>
           </div>
         </div>
       {/snippet}

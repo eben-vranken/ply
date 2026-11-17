@@ -99,7 +99,7 @@ The switch is by window size only, never by device or pointer, so an iPad on its
 
 - **Today** is a dashboard in two columns. Left, the work: the birch hero slab (first card, counts, Start), the queue (what today's session is made of, by kind, and the next cards in order), and the openings you are mastering as a grid of cards with their chapters. Right, the state of things, side by side instead of stacked: Birch, the daily goal, the week strip, retention, Arcade and "Is it working?".
 - **Explore** is board, moves, context. The board is the hero on the left with the name, the line so far and Learn / Drill. The move table sits beside it with frequencies, W/D/L and eval; hovering a move draws it on the board as an arrow and shows the position it leads to on a small board with the name it reaches (the preview sits over the half of the board the arrow is not in). From 1600 px, search, the traps and the puzzles get a third column; below that they sit under the moves.
-- **Repertoire** shows openings as a grid of cards per section instead of a list, with search, import and export in one row; uncovered replies, mistakes and rare cards move to a column on the right. A mistake card gets a delete button on hover (the phone swipes).
+- **Repertoire** shows openings as a grid of cards per section instead of a list, with search, import and export in one row; uncovered replies and rare cards move to a column on the right.
 - **Stats** and **Settings** are the same cards in two balanced columns, three from 1600 px.
 - **The trainer** keeps the board as the hero, as large as the window allows. Beside it one panel carries, top to bottom: the opening and the move order, the prompt and the reason for the move, the line so far as a real move list, the other lines this position is in (open, not behind a tap), and the actions. Under it a row of key chips: type a move, `?` hint, `Enter` continue, `⌫` undo the grade, `Esc` leave. Play it out uses the same panel with its eval bar.
 - **Session complete** fills the window: Birch on the stack of plies on the left, the numbers on the right, and three times the confetti across the full width.
@@ -137,7 +137,7 @@ Sections, top to bottom:
 3. **Numbers** that count up when seen: openings, games behind the data, bands, traps at 1200.
 4. **How it works**, three steps (pick, learn, review), each with a small illustration that plays as it arrives; a numbered line joins them (vertical on the phone).
 5. **Spaced repetition**: the forgetting curve (`landing/Curve.svelte`, an illustration, labelled as one) drawing itself, reviews popping in order.
-6. **Features**: your level (`landing/Bands.svelte`: the Italian after 3.Bc4 at every band, climbing the bands by itself while on screen; a pick takes over. No pinned scrolling), your mistakes as cards, the skill tree, the game layer, typing a move (desktop only), offline on every device.
+6. **Features**: your level (`landing/Bands.svelte`: the Italian after 3.Bc4 at every band, climbing the bands by itself while on screen; a pick takes over. No pinned scrolling), the slips your level makes (a Danger trap, with Arcade's Lichess puzzles named), the skill tree, the game layer, typing a move (desktop only), offline on every device.
 7. **Traps, both ways** (night): TrapDemo.
 8. **Free and private**: three pillars (free to use, open data from Lichess, private by design) and what is included. The page does not call Ply open source or promise it stays free.
 9. **FAQ**: an accordion that opens one answer at a time.

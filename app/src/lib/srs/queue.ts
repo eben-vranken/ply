@@ -8,22 +8,20 @@ import { pathTo } from './lines';
 export interface Limits {
   newMoves: number;
   newTraps: number;
-  newMistakes: number;
   maxReviews: number;
 }
 
 export interface DoneToday {
   newMoves: number;
   newTraps: number;
-  newMistakes: number;
   reviews: number;
 }
 
-/** A trap or puzzle not yet introduced. */
+/** A trap not yet introduced. */
 export interface TrapSpec {
   id: string;
-  type: 'punish' | 'danger' | 'puzzle';
-  /** frequency × loss for traps, play count for puzzles */
+  type: 'punish' | 'danger';
+  /** frequency × loss */
   score: number;
 }
 
@@ -49,7 +47,7 @@ export interface QueueInput {
   retrievability: (c: CardRow) => number;
 }
 
-const isTrap = (c: CardRow) => c.type === 'punish' || c.type === 'danger' || c.type === 'puzzle';
+const isTrap = (c: CardRow) => c.type === 'punish' || c.type === 'danger';
 const isNew = (c: CardRow) => c.fsrs.state === 0;
 
 /**
@@ -90,20 +88,19 @@ function epdsAlong(path: string[]): string[] {
 }
 
 export function buildQueue(q: QueueInput): QItem[] {
-  const active = q.cards.filter((c) => !c.suspended);
+  // puzzles and mistakes are not scheduled (puzzles live in the Arcade); cards left from before are skipped
+  const active = q.cards.filter((c) => !c.suspended && (c.type === 'move' || isTrap(c)));
   // due reviews, all types, capped by the daily review limit (lowest retrievability first)
   let due = active.filter((c) => !isNew(c) && c.due <= q.now);
   const room = Math.max(0, q.limits.maxReviews - q.done.reviews);
   if (due.length > room) due = [...due].sort((a, b) => q.retrievability(a) - q.retrievability(b)).slice(0, room);
 
   const items: QItem[] = [];
-  // 1. due Mistake cards
-  for (const c of due.filter((c) => c.type === 'mistake').sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
-  // 2. due Move cards, as lines
+  // 1. due Move cards, as lines
   items.push(...groupLines(due.filter((c) => c.type === 'move'), q.lines));
-  // 3. due Punish, Danger and Puzzle cards
+  // 2. due Punish and Danger cards
   for (const c of due.filter(isTrap).sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
-  // 4. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first
+  // 3. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first
   const nm = Math.max(0, q.limits.newMoves - q.done.newMoves) + (q.extraNew ?? 0);
   const byProb = (a: MoveSpec, b: MoveSpec) => b.prob - a.prob || a.ply - b.ply;
   const open = new Set(q.newMoves.map((s) => s.id));
@@ -114,14 +111,9 @@ export function buildQueue(q: QueueInput): QItem[] {
     const L = q.lines[s.side];
     items.push({ kind: 'new', spec: s, path: L ? pathTo(L, s.epd) : [] });
   }
-  // 5. new traps: Punish and Danger by frequency × loss, then Puzzles by play count
+  // 4. new traps: Punish and Danger by frequency × loss
   const nt = Math.max(0, q.limits.newTraps - q.done.newTraps);
-  const traps = q.newTraps.filter((t) => t.type !== 'puzzle').sort((a, b) => b.score - a.score);
-  const puzzles = q.newTraps.filter((t) => t.type === 'puzzle').sort((a, b) => b.score - a.score);
-  for (const t of [...traps, ...puzzles].slice(0, nt)) items.push({ kind: 'newtrap', spec: t });
-  // 6. new Mistake cards, newest game first
-  const nk = Math.max(0, q.limits.newMistakes - q.done.newMistakes);
-  for (const c of active.filter((c) => c.type === 'mistake' && isNew(c)).sort((a, b) => b.created - a.created).slice(0, nk)) items.push({ kind: 'card', card: c });
+  for (const t of [...q.newTraps].sort((a, b) => b.score - a.score).slice(0, nt)) items.push({ kind: 'newtrap', spec: t });
   return items;
 }
 

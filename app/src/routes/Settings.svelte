@@ -13,12 +13,11 @@
   import { fitMySchedule, useDefaultWeights, MIN_REVIEWS } from '../lib/srs/personal';
   import { configured, cloud, requestSync, syncLabel, logOut, deleteAccount, resetAccount, setPassword } from '../lib/cloud/cloud.svelte';
 
-  type Num = { k: 'newMoves' | 'newTraps' | 'newMistakes' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
+  type Num = { k: 'newMoves' | 'newTraps' | 'maxReviews' | 'hardSeconds' | 'retention' | 'depth' | 'replyPct' | 'band' | 'rollover' | 'delay'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string };
   const groups: [string, Num[]][] = [
     ['Daily limits', [
       { k: 'newMoves', label: 'New moves', min: 0, max: 50, step: 1, fmt: (v) => `${v}` },
-      { k: 'newTraps', label: 'New traps', hint: 'Punish, Danger, Puzzle', min: 0, max: 30, step: 1, fmt: (v) => `${v}` },
-      { k: 'newMistakes', label: 'New mistake cards', min: 0, max: 30, step: 1, fmt: (v) => `${v}` },
+      { k: 'newTraps', label: 'New traps', hint: 'Punish, Danger', min: 0, max: 30, step: 1, fmt: (v) => `${v}` },
       { k: 'maxReviews', label: 'Maximum reviews', hint: 'All card types', min: 20, max: 999, step: 10, fmt: (v) => `${v}` }
     ]],
     ['Scheduling', [
@@ -291,7 +290,7 @@
       {#if sync.text}<p class="t-small">{sync.text}</p>{/if}
       {#if sync.analysing && sync.total}<div class="meter"><i style="width:{(sync.done / sync.total) * 100}%"></i></div>{/if}
       {#if summary}
-        <p class="t-small">{summary.imported} new game{summary.imported === 1 ? '' : 's'} · {summary.mistakes} mistake card{summary.mistakes === 1 ? '' : 's'} · {summary.uncovered} uncovered repl{summary.uncovered === 1 ? 'y' : 'ies'}</p>
+        <p class="t-small">{summary.imported} new game{summary.imported === 1 ? '' : 's'} · {summary.uncovered} uncovered repl{summary.uncovered === 1 ? 'y' : 'ies'}</p>
         {#if summary.lapsed.length}<p class="t-small">You left your repertoire here, so these cards are due again:</p><ul class="lapsed">{#each summary.lapsed as l}<li>{l}</li>{/each}</ul>{/if}
       {/if}
       {#if sync.error}

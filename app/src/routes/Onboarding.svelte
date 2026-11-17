@@ -71,7 +71,7 @@
         <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={120} hue="#c82611" /></div>
       </div>
       {#key step}
-        <div class="says"><Mascot mood={step === 0 ? 'cheer' : step === 3 ? 'think' : 'idle'} size={72} /><p>{['I am Birch. Four short steps and your first session is ready.', 'Pick what you want to play. You can change it any time, and every other opening is still there.', 'A few minutes now beats an hour on Sunday. These are easy to change later.', 'With your games I can match the lines to your level and turn your real mistakes into cards.'][step]}</p></div>
+        <div class="says"><Mascot mood={step === 0 ? 'cheer' : step === 3 ? 'think' : 'idle'} size={72} /><p>{['I am Birch. Four short steps and your first session is ready.', 'Pick what you want to play. You can change it any time, and every other opening is still there.', 'A few minutes now beats an hour on Sunday. These are easy to change later.', 'With your games I can match the lines to your level and find the replies your lines miss.'][step]}</p></div>
       {/key}
     </aside>
   {/if}
@@ -86,7 +86,7 @@
           <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={104} hue="#c82611" /></div>
         </div>
         <h1 class="t-name hl">Openings that stay learned.</h1>
-        <p class="lead">Ply drills the lines people at your rating really play, the traps inside them, and the mistakes from your own games. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
+        <p class="lead">Ply drills the lines people at your rating really play and the traps inside them. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
       {:else if step === 1}
         <h1 class="t-title">What are you mastering?</h1>
         <p class="lead">These openings feed your daily cards first. Every other line is built in too, and you can add or swap openings whenever you like.</p>
@@ -129,7 +129,7 @@
         </div>
       {:else}
         <h1 class="t-title">Your online games</h1>
-        <p class="lead">Ply reads your rapid rating to match lines to your level, and turns real mistakes from your games into cards. Your games are fetched from chess.com or Lichess and analysed on this device.{configured ? ' Your progress is kept on your Ply account, so it is there on every device you log in on.' : ' Everything stays on this device.'}</p>
+        <p class="lead">Ply reads your rapid rating to match lines to your level, and finds the replies in your games that your lines miss. Your games are fetched from chess.com or Lichess and analysed on this device.{configured ? ' Your progress is kept on your Ply account, so it is there on every device you log in on.' : ' Everything stays on this device.'}</p>
         <input class="name" placeholder="chess.com username" aria-label="chess.com username" bind:value={app.username} autocapitalize="off" autocomplete="off" spellcheck="false" />
         <input class="name two" placeholder="Lichess username" aria-label="Lichess username" bind:value={app.lichessUser} autocapitalize="off" autocomplete="off" spellcheck="false" />
         <p class="t-small" style="margin-top:12px">Either or both, or neither.</p>
