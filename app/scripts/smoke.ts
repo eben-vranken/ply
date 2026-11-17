@@ -222,6 +222,9 @@ step('backup: exported ' + bk.suggestedFilename() + (restored ? ' and imported b
 await page.goto(url + '#/welcome');
 await page.locator('.landing h1').waitFor({ timeout: 20_000 });
 const pitch = (await page.locator('.landing h1').innerText()).replace(/\s+/g, ' ');
+// the numbers count up once they are seen
+await page.locator('.landing .facts').scrollIntoViewIfNeeded();
+await page.waitForTimeout(1800);
 const facts = (await page.locator('.landing .facts').innerText()).replace(/\s+/g, ' ');
 const openings = JSON.parse(readFileSync(new URL('../public/data/openings.json', import.meta.url), 'utf8')).length as number;
 if (!/Openings that stay learned/.test(pitch)) errors.push('landing headline: ' + pitch);

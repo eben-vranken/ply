@@ -25,3 +25,14 @@ export const millions = (x: number) => `${Math.round(x / 100_000) / 10} million`
 /** move number text for ply index i (0 = White's first) */
 export const num = (i: number) => (i % 2 === 0 ? `${i / 2 + 1}.` : `${(i + 1) / 2}…`);
 export const sq = (u: string) => [u.slice(0, 2), u.slice(2, 4)] as [string, string];
+
+/** The story the band data tells, found rather than written: the reply whose share changes most across the bands. */
+export const mover = (() => {
+  const B = demo.counts.bands, F = demo.fan;
+  const share = (uci: string, b: number) => F.bands[b].moves.find((m) => m.uci === uci)?.pct ?? 0;
+  const moves = [...new Map(B.flatMap((b) => F.bands[b].moves).map((m) => [m.uci, m])).values()].slice(0, 7);
+  return moves.map((m) => { const t = B.map((b) => share(m.uci, b)); return { san: m.san, hi: Math.max(...t), lo: Math.min(...t), at: B[t.indexOf(Math.max(...t))], low: B[t.indexOf(Math.min(...t))] }; })
+    .sort((a, b) => b.hi / Math.max(b.lo, 0.5) - a.hi / Math.max(a.lo, 0.5))[0];
+})();
+/** every game behind every band */
+export const allGames = Object.values(demo.counts.games).reduce((a, b) => a + b, 0);

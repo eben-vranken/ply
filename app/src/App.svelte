@@ -46,10 +46,21 @@
   let wasTraining = false;
   $effect(() => { const t = training || base === '/play'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
   const needLogin = $derived(configured && !cloud.user);
-  // the landing page: for anyone not logged in, and at #/welcome for everyone else (builds without accounts too)
-  const landing = $derived(route.path.split('?')[0] === '/welcome' || (needLogin && !cloud.leaving && (cloud.ready || likelyGuest) && model.status !== 'error'));
+  const path = $derived(route.path.split('?')[0]);
+  const outside = $derived(needLogin && !cloud.leaving && (cloud.ready || likelyGuest) && model.status !== 'error');
+  // signing up and logging in: pages of their own, #/signup and #/login, for anyone not logged in
+  const authPath = $derived(path === '/signup' || path === '/login');
+  const auth = $derived(authPath && outside);
+  // the landing page: for anyone else not logged in, and at #/welcome for everyone (builds without accounts too)
+  const landing = $derived(!auth && (path === '/welcome' || outside));
   let Landing = $state<Component<{ onintent?: () => void }> | null>(null);
+  let Auth = $state<Component<{ onintent?: () => void }> | null>(null);
   $effect(() => { if (landing && !Landing) void import('./routes/Landing.svelte').then((m) => (Landing = m.default)); });
+  $effect(() => { if (auth && !Auth) void import('./routes/Auth.svelte').then((m) => (Auth = m.default)); });
+  // logged in (or no accounts in this build): the auth pages lead into the app
+  $effect(() => { if (authPath && cloud.ready && !needLogin) go('/today'); });
+  // a login that failed on its way back (from Lichess, or a confirmation link) is shown on the login page
+  $effect(() => { if (outside && cloud.authError && !authPath && path !== '/welcome') go('/login'); });
   // finishing onboarding sends it all to the account
   let wasOnboarded = app.onboarded;
   $effect(() => { const o = app.onboarded; if (o && !wasOnboarded) autoSyncCloud(); wasOnboarded = o; });
@@ -99,9 +110,11 @@
   });
 </script>
 
-{#if landing && Landing}
-  <div out:fade={{ duration: dur }}><Landing onintent={startBoot} /></div>
-{:else if landing || cloud.leaving || model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
+{#if auth && Auth}
+  <div in:fade={{ duration: dur }} out:fade={{ duration: dur * 0.6 }}><Auth onintent={startBoot} /></div>
+{:else if landing && Landing}
+  <div in:fade={{ duration: dur }} out:fade={{ duration: dur * 0.6 }}><Landing onintent={startBoot} /></div>
+{:else if auth || landing || cloud.leaving || model.status !== 'ready' || !cloud.ready || (cloud.restoring && !app.onboarded)}
   <div class="boot" class:err={model.status === 'error'} role="status">
     <div class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     {#if model.status === 'error'}

@@ -110,24 +110,33 @@ How it is built: desktop rules live in each screen's own file under one media qu
 
 ## The landing page
 
-One page (`routes/Landing.svelte`), shown to anyone who is not logged in, at every width. It ends in the login. Builds without accounts have no login and open straight into the app as before; there the page lives at `#/welcome` (Settings links to it) and its buttons open the app.
+`routes/Landing.svelte`, shown to anyone who is not logged in, and at `#/welcome` for everyone (Settings and the palette link to it). It is built like a product's home page: one job, turning a reader into someone training, with the way in always one tap away. Builds without accounts have no sign-up; there its buttons open the app.
 
-It walks through the two rooms: the night room first, where the board is the only bright thing, then the light one, and back into the night for the login.
+The phone and the desktop are designed separately, not one layout stretched:
 
-The page's own bar stays on top (clear over the hero, ink once you scroll) with the way in on the right. The opening data (a few MB) is not fetched until the visitor heads for the login, so the page itself loads fast.
+| | Phone (under 900 px) | Desktop |
+| --- | --- | --- |
+| Bar | Wordmark, Get started, a menu button that opens a full-screen night menu | Wordmark, section links (underline grows on hover), Log in, Get started |
+| Hero | Left-aligned, full-width buttons, the live board below in a compact frame (no reply table) | Centred headline, the live board large in an app-window frame with four floating cards around it |
+| Features | A swipe carousel of five cards with dots | A bento grid of six cards with a pointer spotlight |
+| Way in | A dock with Start and Log in slides up once the hero's buttons scroll away and hides at the closing section | The bar's buttons |
 
-1. **Hero (night).** "Openings that stay learned." beside a live board playing the line the 1200 band's data produces when White plays the default moves and Black the most played reply: it runs into the Fried Liver. On Black's turns the replies fan out as arrows, as thick as they are played, with their percentages listed beside the board; on yours a card for the move flips from New to Learned and gains its first veneer. You can pause it and step through it.
-2. **Your level.** The Italian Game after 3.Bc4 at every band the data has. The section is pinned while you scroll and the scroll climbs the bands; the arrows, the bars and a small trend line per move change with it (…h6 is played by about 19% around 1200 to 1400 and under 1% at 2400). Picking a band by hand takes over from the scroll.
-3. **Three ways to train:** Today, Learn, Drill.
-4. **Traps, both ways.** The same position one move later: 6.Qf3 is played in 22% of games at 1200 and loses. The board plays the bait and its refutation (Danger), or the punishment from Black's side (Punish).
-5. **Your own games** turned into cards, analysed on your device.
-6. **The skill tree** of the Italian, drawn from the same data, its tiles turning to birch as it scrolls in.
-7. **Sigils** of 24 well-known openings drawing themselves, out of 3,865.
-8. **Birch** and the game layer.
-9. **Every device**, then **free and open** (GPL-3.0, no ads, no tracking, what is stored where).
-10. **Log in** (night): the login as a birch slab.
+Sections, top to bottom:
 
-Rules: every number comes from `public/data` through `scripts/landing-data.ts` (which writes `lib/landing/demo.json`) or from the docs; no testimonials, counts of users or promises of rating. Motion is scroll-driven where the browser has CSS scroll timelines (`animation-timeline: view()`), an IntersectionObserver otherwise, and only `transform` and `opacity` ever animate; boards stop playing when they are off screen or the tab is hidden. With reduced motion nothing plays by itself: the boards show their positions and step when asked.
+1. **Hero (night).** "Openings that stay learned.", one sentence, Start training free + See how it works, three trust points, and the live board: the 1200 band's data playing itself (HeroDemo), as before.
+2. **Marquee** of 24 openings with their sigils, two rows drifting opposite ways (paused on hover).
+3. **Numbers** that count up when seen: openings, games behind the data, bands, traps at 1200.
+4. **How it works**, three steps (pick, learn, review), each with a small illustration that plays as it arrives; a numbered line joins them (vertical on the phone).
+5. **Spaced repetition**: the forgetting curve (`landing/Curve.svelte`, an illustration, labelled as one) drawing itself, reviews popping in order.
+6. **Features**: your level (`landing/Bands.svelte`: the Italian after 3.Bc4 at every band, climbing the bands by itself while on screen; a pick takes over. No pinned scrolling), your mistakes as cards, the skill tree, the game layer, typing a move (desktop only), offline on every device.
+7. **Traps, both ways** (night): TrapDemo.
+8. **Free and open source**: three pillars and what is free.
+9. **FAQ**: an accordion that opens one answer at a time.
+10. **The way in** (night): Birch, the closing line, Create your free account / I have an account, and the footer.
+
+**Sign up and log in are their own page** (`routes/Auth.svelte`, `#/signup` and `#/login`; the form is `routes/Login.svelte`). Desktop: the night room on the left (the headline for the mode, three points, a board laying down the hero line with your moves turning to birch), the form on the right. Phone: a short night header with Birch and the headline, the form rising over it as a sheet. Sign up / Log in is a sliding tab that keeps the address in step; the fields have floating labels, a show-what-you-typed toggle and, on sign-up, a live length check. A login that fails on its way back (Lichess, a confirmation link) opens the login page with the error. Logged in, either address leads into the app; logging out ends on the landing page.
+
+Rules: every number comes from `public/data` through `scripts/landing-data.ts` (which writes `lib/landing/demo.json`) or from the docs; no testimonials, counts of users or promises of rating. The opening data is only fetched once the visitor heads for the way in. Motion (`landing/motion.ts`): reveals and count-ups play once as things scroll in (IntersectionObserver), loops run only while on screen, and only `transform`, `translate` and `opacity` animate. Nothing that contains a chessground board is ever scaled or rotated, because chessground measures its board through the transform and would misplace the pieces. With reduced motion everything is shown at once and nothing plays by itself.
 
 ## The game layer
 

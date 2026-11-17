@@ -152,6 +152,7 @@
   .line em { font-style: normal; opacity: 0.6; margin-right: 2px; font-weight: 500; }
   .line .ghost { opacity: 0.4; }
 
+  @media (max-width: 899px) { .fan { display: none; } .demo { gap: 14px; } }
   @media (min-width: 900px) {
     .demo { grid-template-columns: minmax(0, 1fr) 290px; align-items: center; gap: 26px; justify-content: end; }
     .stage { max-width: min(100%, calc(100vh - 200px)); margin: 0 0 0 auto; }

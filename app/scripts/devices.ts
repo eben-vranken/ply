@@ -88,11 +88,14 @@ async function device(name: string) {
 type Dev = { name: string; ctx: BrowserContext; page: Page };
 
 async function logIn(d: Dev) {
-  // the landing's panel opens on a new account; this one exists
-  await d.page.getByRole('button', { name: 'Have an account? Log in' }).click({ timeout: 30_000 });
+  // logging in is a page of its own
+  await d.page.goto(url + '#/login');
+  await d.page.getByLabel('Email address').waitFor({ timeout: 30_000 });
   await d.page.getByLabel('Email address').fill(USER.email);
   await d.page.getByLabel('Password').fill(PASSWORD);
-  await d.page.getByRole('button', { name: 'Log in', exact: true }).click();
+  await d.page.getByRole('main').getByRole('button', { name: 'Log in', exact: true }).click();
+  // the login page fades out as the app comes in
+  await d.page.locator('.auth').waitFor({ state: 'detached', timeout: 30_000 });
 }
 const onToday = (d: Dev) => d.page.waitForSelector('h1:text("Today")', { timeout: 30_000 });
 
@@ -242,7 +245,8 @@ for (const [k, v] of Object.entries(aEnd.cards)) {
 // 5. B logs out (cleared), logs back in (everything returns)
 await B.page.goto(url + '#/settings');
 await B.page.getByRole('button', { name: 'Log out' }).click();
-await B.page.getByLabel('Email address').waitFor({ timeout: 20_000 });
+// logging out ends on the landing page
+await B.page.locator('.landing h1').waitFor({ timeout: 20_000 });
 const cleared = await dump(B);
 check(Object.keys(cleared.cards).length === 0 && Object.keys(cleared.reviews).length === 0, 'logging out cleared B');
 await logIn(B);
