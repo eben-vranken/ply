@@ -8,7 +8,7 @@
 // It depends only on the position, your moves and the data, so a branch reads the same
 // way every time it comes round.
 import { Chess, type PieceSymbol, type Square } from 'chess.js';
-import { fenOf, type Side } from './chess';
+import { fenOf } from './chess';
 
 const NAME: Record<PieceSymbol, string> = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
 
@@ -90,41 +90,4 @@ export function branchCues(epd: string, ucis: string[], data: CueData = {}): str
     if (new Set(out).size === out.length) return out;
   }
   return ms.map((m) => `play ${m.san}`);
-}
-
-// Look-alikes: two positions a piece or two apart where you play different moves. Nothing on
-// the board says "this is the other one", so Birch points at what is different here.
-const cells = (epd: string) => epd.split(' ')[0].replace(/\d/g, (d) => '.'.repeat(+d)).replace(/\//g, '');
-const square = (i: number) => 'abcdefgh'[i % 8] + (8 - Math.floor(i / 8));
-
-/** How many squares differ between two positions, counting no further than `max` + 1. */
-export function boardDiff(a: string, b: string, max = 4): number {
-  const A = cells(a), B = cells(b);
-  let n = 0;
-  for (let i = 0; i < 64 && n <= max; i++) if (A[i] !== B[i]) n++;
-  return n;
-}
-
-/**
- * What is different here compared with a look-alike, from your side of the board:
- * "their bishop is on c5, not e7". null when the two are not look-alikes (the same
- * board, or more than two things to point at).
- */
-export function lookalikeNote(here: string, there: string, side: Side): string | null {
-  const A = cells(here), B = cells(there);
-  const on: [string, string][] = [], off: [string, string][] = []; // [piece, square]: only here, only there
-  for (let i = 0; i < 64; i++) if (A[i] !== B[i]) {
-    if (A[i] !== '.') on.push([A[i], square(i)]);
-    if (B[i] !== '.') off.push([B[i], square(i)]);
-  }
-  if (!on.length && !off.length) return null;
-  const who = (p: string) => `${(p === p.toUpperCase()) === (side === 'w') ? 'your' : 'their'} ${NAME[p.toLowerCase() as PieceSymbol]}`;
-  const out: string[] = [];
-  for (const [p, sq] of on) {
-    const j = off.findIndex(([q]) => q === p);
-    if (j >= 0) { out.push(`${who(p)} is on ${sq}, not ${off[j][1]}`); off.splice(j, 1); }
-    else out.push(`${who(p)} is on ${sq}`);
-  }
-  for (const [p, sq] of off) out.push(`${who(p)} is gone from ${sq}`);
-  return out.length > 2 ? null : out.join(' and ');
 }

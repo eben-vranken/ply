@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { branchCues, boardDiff, lookalikeNote } from './cue';
+import { branchCues } from './cue';
 import { epdAfter } from './chess';
 
 const at = (...path: string[]) => epdAfter(path);
@@ -44,24 +44,5 @@ describe('branch cues', () => {
   it('three moves still get three different cues', () => {
     const cues = branchCues(at('e2e4', 'e7e5'), ['g1f3', 'f2f4', 'f1c4']);
     expect(new Set(cues).size).toBe(3);
-  });
-});
-
-describe('look-alikes', () => {
-  const pre = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4', 'g8f6', 'd2d3', 'h7h6', 'b1c3'];
-  const c5 = at(...pre, 'f8c5', 'e1g1', 'd7d6'), e7 = at(...pre, 'f8e7', 'e1g1', 'd7d6');
-  it('says what is different here, from your side', () => {
-    expect(boardDiff(c5, e7)).toBe(2);
-    expect(lookalikeNote(c5, e7, 'w')).toBe('their bishop is on c5, not e7');
-    expect(lookalikeNote(e7, c5, 'w')).toBe('their bishop is on e7, not c5');
-    expect(lookalikeNote(c5, e7, 'b')).toBe('your bishop is on c5, not e7');
-  });
-  it('a piece that is only on one of the boards', () => {
-    expect(lookalikeNote(at('e2e4', 'e7e5', 'g1f3'), at('e2e4', 'e7e5'), 'b')).toBe('their knight is on f3, not g1');
-    expect(lookalikeNote(at('e2e4', 'd7d5', 'e4d5'), at('e2e4', 'd7d5', 'e4e5'), 'b')).toBe('their pawn is on d5, not e5 and your pawn is gone from d5');
-  });
-  it('nothing to say about the same board or two different positions', () => {
-    expect(lookalikeNote(c5, c5, 'w')).toBeNull();
-    expect(lookalikeNote(c5, at('d2d4', 'd7d5', 'c2c4'), 'w')).toBeNull();
   });
 });

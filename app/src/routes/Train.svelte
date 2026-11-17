@@ -59,8 +59,6 @@
 
   // at a position where you have two moves, Birch says which one this line wants
   const cue = $derived(phase === 'play' && dests ? item?.asks[step]?.cue : undefined);
-  // a look-alike of a position you know, with a different answer: Birch says what is different here
-  const twin = $derived(phase === 'play' && dests ? item?.asks[step]?.twin : undefined);
   const drill = $derived(run.mode === 'drill');
   /** Arcade: endless positions with their own rating; nothing reaches the cards */
   const arcade = $derived(run.mode === 'drill' && !!run.arcade);
@@ -263,12 +261,10 @@
       msg = { tone: 'warn', text: a.cue ? `That is your other move here. This time: ${a.cue}.` : 'That is your other move here. This line wants the other one.' };
       return; // not a mistake: the attempt never happened
     }
-    // the move from the look-alike: still a miss, but say why it does not belong here
-    const mixed = a.twin?.move === u ? ` ${mv.san} is your move in the look-alike: here ${a.twin.note}.` : '';
     if ((it.kind === 'line' || it.kind === 'new' || it.kind === 'drill') && !fixing && !a.intro && isPlayable(epd, u)) {
       playable = true;
       badge = { square: mv.to, glyph: '!?', tone: 'warn' };
-      msg = { tone: 'warn', text: `Playable, but your move is ${sanOf(epd, expected)}.${mixed}` };
+      msg = { tone: 'warn', text: `Playable, but your move is ${sanOf(epd, expected)}` };
       return;
     }
     const isBait = it.bait?.uci === u;
@@ -288,7 +284,7 @@
     shapes = [{ orig: e.from as never, dest: e.to as never, brush: 'good' }];
     why = reason(epd, expected);
     tip('wrong');
-    msg = { tone: 'bad', text: isBait ? `That's the trap. The safe move is ${e.san}` : `Not that. The move is ${e.san}.${mixed}` };
+    msg = { tone: 'bad', text: isBait ? `That's the trap. The safe move is ${e.san}` : `Not that. The move is ${e.san}` };
   }
 
   /** the first miss at this move: it is graded as one, and Drill and Learn list it */
@@ -596,8 +592,6 @@
         </p>
       {:else if cue}
         <p class="branch" role="status"><Mascot size={30} still /><span>Two moves here. This time: <b>{cue}</b></span></p>
-      {:else if twin}
-        <p class="branch" role="status"><Mascot size={30} still /><span>Look closely: <b>{twin.note}</b>.</span></p>
       {:else if app.showName}
         <p class="t-name nm">{item.label}</p>
       {:else}
