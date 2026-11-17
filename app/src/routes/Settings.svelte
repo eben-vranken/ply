@@ -51,7 +51,7 @@
   type Toggle = ['sounds' | 'vibration' | 'showName' | 'autoNext', string, string?];
   // iPhones have no vibration for web pages, so the switch only shows where it does something
   const toggles = ([
-    ['autoNext', 'Move on after a clean answer', 'A wrong answer always waits for you'], ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Branch labels always show']
+    ['autoNext', 'Move on after a clean answer', 'A wrong answer always waits for you'], ['sounds', 'Sounds'], ['vibration', 'Vibration'], ['showName', 'Show opening name while answering', 'Where you have two moves, Birch still says which']
   ] as Toggle[]).filter(([k]) => k !== 'vibration' || canVibrate());
   function flip(c: string) {
     const next = app.timeClasses.includes(c) ? app.timeClasses.filter((x) => x !== c) : [...app.timeClasses, c];

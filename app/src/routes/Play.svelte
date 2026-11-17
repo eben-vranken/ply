@@ -54,7 +54,7 @@
     if (chess.isGameOver() || mine >= GOAL) return finish();
     const [l] = await engine!.analyse(chess.fen(), THINK);
     if (!alive) return;
-    if (l?.pv[0]) { const m = chess.move(toMove(l.pv[0])); chess.undo(); best = { cp: l.cp, san: m.san }; cp = l.cp; } else best = null;
+    if (l?.pv[0]) { const m = chess.move(toMove(l.pv[0])); chess.undo(); best = { cp: l.cp, san: m.san }; } else best = null; // the bar keeps the eval from after your last move: a jump here would say "there is something to find"
     dests = destsOf(chess);
     if (!mine) msg = { tone: 'info', text: `The book line ends here. Play your next ${GOAL} moves.` };
   }
@@ -155,8 +155,9 @@
     <MoveInput legal={legalNow} onmove={typed} onaction={onkey} dark />
   </div>
   <div class="side">
-  <div class="ev" role="img" aria-label="Evaluation {evalText} for you">
-    <span class="track"><i style="width:{bar}%"></i></span><b class="t-num">{evalText}</b>
+  <!-- no eval before your first move, and it only moves once you have answered -->
+  <div class="ev" role="img" aria-label={mine ? `Evaluation ${evalText} for you` : 'Evaluation shows after your move'}>
+    <span class="track"><i style="width:{mine ? bar : 0}%"></i></span><b class="t-num">{mine ? evalText : '–'}</b>
   </div>
 
   {#if over && say}

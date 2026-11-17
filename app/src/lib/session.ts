@@ -13,8 +13,10 @@ export interface Ask {
   intro?: boolean;
   /** any of these is correct (Mistake cards) */
   accepted?: string[];
-  /** your other moves at a branch position: [uci, branch name] */
-  other?: [string, string][];
+  /** your other moves at a branch position */
+  other?: string[];
+  /** at a branch position: what tells this move apart from your others (lib/cue.ts) */
+  cue?: string;
 }
 
 export type Kind = 'line' | 'new' | 'punish' | 'danger' | 'puzzle' | 'mistake' | 'drill';
@@ -36,8 +38,6 @@ export interface Item {
   others?: string[];
   source?: string;
   note?: string;
-  /** branch labels in path order, each shown while asking until move index `until` is passed */
-  branches?: { label: string; until: number }[];
   /** Danger: the tempting wrong move and how it is punished */
   bait?: { uci: string; san: string; refute: string[] };
   /** Mistake: what you played in the game and how it was punished */

@@ -5,6 +5,7 @@ import { app, save, onSave, replaceSettings, DEFAULTS, type Settings } from './s
 import { db, rawDb, removeRows, removeReview, SYNCED, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory, type BookRow } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
+import { branchCues } from './cue';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
@@ -430,15 +431,19 @@ const ask = (a: Ask): Ask => a;
 function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind'] } = {}): Item {
   const asks: Record<number, Ask> = {};
   let e = START_EPD;
-  const branches: NonNullable<Item['branches']> = [];
   path.forEach((u, i) => {
     if (turnOf(e) === side) {
       const id = moveId(side, e, u);
       const mineHere = movesAt(side, e);
-      const other = mineHere.filter((m) => m !== u).map((m) => [m, nameOf(child(e, m))[1]] as [string, string]);
+      const other = mineHere.filter((m) => m !== u);
+      const at = e, node = D?.tree[at];
+      // a branch: Birch says which of your moves this line wants
+      const cue = other.length ? branchCues(at, mineHere, {
+        share: (x) => { const row = node?.m.find((r) => r[0] === x); return node?.g && row ? row[1] / node.g : undefined; },
+        name: (x) => nameOf(child(at, x), [...path.slice(0, i), x])[1]
+      })[mineHere.indexOf(u)] : undefined;
       const isIntro = opts.intro && opts.intro.id === id;
-      asks[i] = ask({ card: cards.has(id) || isIntro ? id : undefined, graded: dueIds.has(id) || !!isIntro, intro: !!isIntro, other: other.length ? other : undefined });
-      if (mineHere.length > 1) branches.push({ label: labelOf(child(e, u), path.slice(0, i + 1)), until: i });
+      asks[i] = ask({ card: cards.has(id) || isIntro ? id : undefined, graded: dueIds.has(id) || !!isIntro, intro: !!isIntro, other: other.length ? other : undefined, cue: cue || undefined });
     }
     e = child(e, u);
   });
@@ -453,7 +458,7 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
     prompt: opts.intro ? 'New move' : 'Your move',
     label: labelOf(cardEpd, path.slice(0, last)),
     order: moveOrder(sans(path.slice(0, last)), true),
-    others, note, branches: branches.length ? branches : undefined, spec: opts.intro
+    others, note, spec: opts.intro
   };
 }
 

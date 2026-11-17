@@ -99,6 +99,13 @@ describe('model on real data', () => {
     const e = chess.epdAfter(['e2e4', 'e7e5', 'g1f3', 'b8c6']);
     await m.setMoves('w', e, ['f1c4', 'f1b5']);
     expect(m.lines().w!.branches.has(e)).toBe(true);
+    // each of the two moves is asked with its own cue, and knows the other one
+    const cueOf = (uci: string) => { const [it] = m.learnItemsFor([{ side: 'w', epd: e, uci }]); return Object.values(it.asks).find((a) => a.intro)!; };
+    const c4 = cueOf('f1c4'), b5 = cueOf('f1b5');
+    expect(c4.cue).toBeTruthy();
+    expect(b5.cue).toBeTruthy();
+    expect(c4.cue).not.toBe(b5.cue);
+    expect(c4.other).toEqual(['f1b5']);
     // learn the Bc4 move, then switch the position to Bb5 only
     const spec = [...m.lines().w!.cards.values()].find((s) => s.epd === e && s.move === 'f1c4')!;
     const [intro] = m.learnItemsFor([{ side: 'w', epd: e, uci: 'f1c4' }]);

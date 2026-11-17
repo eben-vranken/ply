@@ -57,7 +57,8 @@
   let roundMissed: Item[] = [];
   let strip: HTMLDivElement | undefined = $state();
 
-  const branch = $derived(phase === 'play' ? item?.branches?.find((b) => step <= b.until) : undefined);
+  // at a position where you have two moves, Birch says which one this line wants
+  const cue = $derived(phase === 'play' && dests ? item?.asks[step]?.cue : undefined);
   const drill = $derived(run.mode === 'drill');
   /** Arcade: endless positions with their own rating; nothing reaches the cards */
   const arcade = $derived(run.mode === 'drill' && !!run.arcade);
@@ -254,10 +255,9 @@
       return;
     }
     chess.undo(); rev++;
-    if (a.other?.some(([m]) => m === u)) {
-      const name = a.other.find(([m]) => m === u)![1];
+    if (a.other?.includes(u)) {
       badge = { square: mv.to, glyph: '!?', tone: 'warn' };
-      msg = { tone: 'warn', text: `That's your ${name} move. This line is the ${(it.branches?.find((b) => step <= b.until)?.label ?? 'other branch').replace(/ \(.*/, '')}.` };
+      msg = { tone: 'warn', text: a.cue ? `That is your other move here. This time: ${a.cue}.` : 'That is your other move here. This line wants the other one.' };
       return; // not a mistake: the attempt never happened
     }
     if ((it.kind === 'line' || it.kind === 'new' || it.kind === 'drill') && !fixing && !a.intro && isPlayable(epd, u)) {
@@ -589,8 +589,8 @@
           {item.order}
           {#if item.others?.length}<button class="also" onclick={() => (showOthers = !showOthers)}>also in {item.others.length} other line{item.others.length === 1 ? '' : 's'}</button>{/if}
         </p>
-      {:else if branch}
-        <p class="branch"><Icon name="explore" size={16} /> This line: <b class="t-name">{branch.label}</b></p>
+      {:else if cue}
+        <p class="branch" role="status"><Mascot size={30} still /><span>Two moves here. This time: <b>{cue}</b></span></p>
       {:else if app.showName}
         <p class="t-name nm">{item.label}</p>
       {:else}
@@ -722,8 +722,8 @@
   .others { position: absolute; z-index: 30; left: 12px; right: 12px; top: 116px; background: var(--night-2); border-radius: 16px; padding: 10px 14px; font-size: 14px; box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5); animation: rise 200ms var(--ease) both; }
   .others p { padding: 6px 0; }
   .others p + p { border-top: 1px solid var(--night-3); }
-  .branch { display: inline-flex; align-self: flex-start; align-items: center; gap: 7px; height: 36px; padding: 0 14px 0 10px; border-radius: 12px; background: var(--birch); color: var(--ink-fixed); font-size: 14px; font-weight: 600; animation: rise 260ms var(--ease) both; max-width: 100%; }
-  .branch b { font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .branch { display: inline-flex; align-self: flex-start; align-items: center; gap: 7px; min-height: 36px; padding: 2px 14px 2px 6px; line-height: 1.2; border-radius: 12px; background: var(--birch); color: var(--ink-fixed); font-size: 14px; font-weight: 600; animation: rise 260ms var(--ease) both; max-width: 100%; }
+  .branch b { font-weight: 800; }
 
   .boardwrap { padding: 0 8px; flex: none; position: relative; }
   .withbar { display: flex; gap: 6px; align-items: stretch; }
