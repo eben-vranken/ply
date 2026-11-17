@@ -416,9 +416,11 @@
   </div>
 
   <div class="tools">
-    <button class="zm" onclick={() => zoomBy(1 / ZOOM)} disabled={view.k <= KMIN + 0.001} aria-label="Zoom out" title="Zoom out (−)">−</button>
-    <button class="zm" onclick={() => zoomBy(ZOOM)} disabled={view.k >= KMAX - 0.001} aria-label="Zoom in" title="Zoom in (+)">+</button>
-    {#if canUnfold}<button class="all" class:on={allOpen} onclick={expandAll} aria-pressed={allOpen}>{allOpen ? 'Collapse' : 'Expand all'}</button>{/if}
+    <button onclick={() => zoomBy(ZOOM)} disabled={view.k >= KMAX - 0.001} aria-label="Zoom in" title="Zoom in (+)"><Icon name="plus" size={22} /></button>
+    <button onclick={() => zoomBy(1 / ZOOM)} disabled={view.k <= KMIN + 0.001} aria-label="Zoom out" title="Zoom out (−)"><Icon name="minus" size={22} /></button>
+    {#if canUnfold}
+      <button class:on={allOpen} onclick={expandAll} aria-pressed={allOpen} aria-label={allOpen ? 'Collapse to the main lines' : 'Expand all lines'} title={allOpen ? 'Collapse' : 'Expand all'}><Icon name={allOpen ? 'fold' : 'unfold'} size={22} /></button>
+    {/if}
   </div>
 
   <p class="how2" aria-hidden="true"><kbd>scroll</kbd> zoom <kbd>drag</kbd> move <kbd>← ↑ ↓ →</kbd> pan <kbd>0</kbd> fit</p>
@@ -508,10 +510,8 @@
   .pill.has text { fill: var(--c); }
   .pill:focus-visible .body { stroke: #fff; stroke-width: 2.5; }
 
-  .tools { position: absolute; z-index: 4; top: 10px; right: 12px; display: flex; gap: 8px; }
-  .tools button { min-width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.94); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13.5px; font-weight: 700; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
-  .tools .zm { font-size: 24px; font-weight: 600; line-height: 1; }
-  .tools .all { padding: 0 14px; }
+  .tools { position: absolute; z-index: 4; top: 10px; right: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .tools button { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: rgba(29, 34, 71, 0.94); border: 1px solid #2c3366; color: #d6d9ee; font-size: 13.5px; font-weight: 700; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35); }
   .tools button:disabled { opacity: 0.4; }
   .tools button:active:not(:disabled) { background: #2c3366; }
   .tools button.on { background: var(--birch); color: var(--ink-fixed); border-color: var(--birch); }

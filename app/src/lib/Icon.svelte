@@ -19,6 +19,8 @@
     check: 'M5 12.500l4.500 4.500L19 7',
     play: 'M8 5l11 7-11 7z',
     plus: 'M12 5v14M5 12h14',
+    minus: 'M5 12h14',
+    unfold: 'M8 9l4-4 4 4M8 15l4 4 4-4',
     trash: 'M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13',
     share: 'M12 15V4M8 8l4-4 4 4M5 13v6h14v-6',
     fit: 'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',

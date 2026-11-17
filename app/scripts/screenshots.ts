@@ -108,7 +108,7 @@ await page.goto(url + '#/explore?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4%20g8f
 await page.goto(url + '#/repertoire'); await shot('18-repertoire'); await shot('18-repertoire-2', 900);
 await page.goto(url + '#/tree?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4'); await shot('18-tree');
 await page.locator('.canvas g.pill[aria-expanded=false]').first().click(); await shot('18-tree-2');
-await page.getByText('Expand all').click(); await shot('18-tree-3');
+await page.getByLabel('Expand all lines').click(); await shot('18-tree-3');
 await page.getByLabel('Zoom in').click(); await shot('18-tree-4');
 await page.goto(url + '#/tree?side=b&p=e2e4'); await shot('18-tree-black');
 await page.goto(url + '#/play?side=w&p=e2e4%20e7e5%20g1f3%20b8c6%20f1c4%20f8c5'); await page.waitForTimeout(2500); await playSan('c3'); await page.waitForTimeout(2500); await shot('18-play');
