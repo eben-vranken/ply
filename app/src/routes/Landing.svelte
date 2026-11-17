@@ -87,6 +87,15 @@
     return () => clearInterval(t);
   });
 
+  // offline, then back online, then synced: the review trained on the phone arrives on the laptop
+  let syncing = $state(false), sync = $state(2);
+  $effect(() => {
+    if (!syncing || desk.still || !configured) { sync = 2; return; }
+    sync = 0;
+    const t = setInterval(() => (sync = (sync + 1) % 3), 1900);
+    return () => clearInterval(t);
+  });
+
   // the game layer: XP fills to the daily goal, then the flame lights
   let xpOn = $state(false);
 
@@ -284,7 +293,7 @@
           <p>Link chess.com or Lichess. Ply finds where you left your lines and turns every slip into a card, analysed by Stockfish on your device.</p>
         </div>
         <div class="fc-ill mis">
-          <div class="gm"><p class="gh">From one of your games</p><p class="mrow"><i class="q">?</i><b>6.{T.bait.san}</b><span>−{T.loss}%</span></p></div>
+          <div class="gm"><p class="gh">From one of your games</p><p class="mrow"><i class="slip">?</i><b>6.{T.bait.san}</b><span>−{T.loss}%</span></p></div>
           <span class="flow" aria-hidden="true"><i></i><i></i><i></i></span>
           <div class="mc">
             <div class="mini"><MiniBoard fen={T.fen} last={sq(T.setup)} arrow={sq(T.safe.uci)} label="The position from the game, with the right move {T.safe.san} shown" /></div>
@@ -329,10 +338,17 @@
           <h3>Offline, on every device</h3>
           <p>{configured ? 'Train on the train. It all syncs to your account when you are back online.' : 'Install it from the browser and it works like an app, with or without a connection.'}</p>
         </div>
-        <div class="fc-ill devs" aria-hidden="true">
-          <div class="ph1"><span class="pb"></span><span class="pb s"></span><span class="pb s"></span></div>
-          <span class="beam"><i></i><i></i><i></i></span>
-          <div class="lap"><div class="ls"><span class="pb"></span><span class="pb s"></span></div><span class="base"></span></div>
+        <div class="fc-ill sync s{sync}" aria-hidden="true" use:seen={(v) => (syncing = v)}>
+          <div class="devs">
+            <div class="ph1"><span class="pb"></span><span class="pb"></span><span class="pb s"></span><i class="dot"></i></div>
+            <span class="beam"><i></i><i></i><i></i></span>
+            <div class="lap"><div class="ls"><span class="pb"></span><span class="pb new"></span><span class="pb s"></span></div><span class="base"></span></div>
+          </div>
+          {#if configured}
+            <p class="state">{#key sync}<span class="st">{#if sync === 0}<i class="sd off"></i>Offline · 2 reviews saved{:else if sync === 1}<i class="sd on"></i>Back online · syncing{:else}<i class="sd ok"><Icon name="check" size={11} /></i>Synced to every device{/if}</span>{/key}</p>
+          {:else}
+            <p class="state"><span class="st"><i class="sd ok"><Icon name="wifi" size={11} /></i>Works without a connection</span></p>
+          {/if}
         </div>
       {/snippet}
 
@@ -347,12 +363,12 @@
         </div>
       {:else}
         <div class="bento">
-          <article class="fc a" use:reveal={0} use:spotlight>{@render level()}</article>
-          <article class="fc b" use:reveal={80} use:spotlight>{@render mistakes()}</article>
-          <article class="fc c" use:reveal={160} use:spotlight>{@render game()}</article>
-          <article class="fc d" use:reveal={240} use:spotlight>{@render keys()}</article>
-          <article class="fc e dark" use:reveal={0} use:spotlight>{@render tree()}</article>
-          <article class="fc f" use:reveal={120} use:spotlight>{@render offline()}</article>
+          <article class="fc b-level" use:reveal={0} use:spotlight>{@render level()}</article>
+          <article class="fc b-mis" use:reveal={80} use:spotlight>{@render mistakes()}</article>
+          <article class="fc b-game" use:reveal={160} use:spotlight>{@render game()}</article>
+          <article class="fc b-tree dark" use:reveal={0} use:spotlight>{@render tree()}</article>
+          <article class="fc b-keys" use:reveal={120} use:spotlight>{@render keys()}</article>
+          <article class="fc b-off" use:reveal={200} use:spotlight>{@render offline()}</article>
         </div>
       {/if}
     </div>
@@ -597,8 +613,8 @@
   .say span { font-family: var(--serif); font-style: italic; font-size: 15px; }
   .queue { flex-direction: column; align-items: stretch; gap: 6px; background: var(--ground); box-shadow: inset 0 0 0 1px var(--line); }
   .qi { display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 10px 0 4px; border-radius: 10px; background: var(--card); font-size: 14px; font-weight: 650; box-shadow: var(--shadow); width: calc(100% - var(--i) * 7%); }
-  .qi i, .say i, .mrow .q, .g { flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 7px; font-style: normal; font-weight: 800; font-size: 12px; letter-spacing: -0.05em; color: #fff; }
-  i.good, .g.good { background: var(--good); border-radius: 50%; } i.bad, .g.bad, .mrow .q { background: var(--bad); } i.info { background: var(--cobalt); font-family: var(--serif); font-style: italic !important; }
+  .qi i, .say i, .mrow .slip, .g { flex: none; display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 7px; font-style: normal; font-weight: 800; font-size: 12px; letter-spacing: -0.05em; color: #fff; }
+  i.good, .g.good { background: var(--good); border-radius: 50%; } i.bad, .g.bad, .mrow .slip { background: var(--bad); } i.info { background: var(--cobalt); font-family: var(--serif); font-style: italic !important; }
   /* the illustrations play when their step is revealed */
   .step :global(.pt) { opacity: 0; transform: translateY(16px) rotate(-4deg); transition: opacity 500ms var(--ease), transform 640ms var(--spring); transition-delay: calc(300ms + var(--i) * 110ms); }
   .step:global(.in) :global(.pt) { opacity: 1; transform: none; }
@@ -623,6 +639,7 @@
   .fc { position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: 26px; background: var(--card); box-shadow: var(--shadow); padding: 24px; isolation: isolate; }
   .fc::after { content: ''; position: absolute; inset: 0; z-index: -1; background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), color-mix(in srgb, var(--cobalt) 9%, transparent), transparent 60%); opacity: 0; transition: opacity 300ms; pointer-events: none; }
   .fc:hover::after { opacity: 1; }
+  .fc-copy { flex: none; }
   .fc-copy h3 { font-size: 21px; }
   .fc-copy p { margin-top: 8px; font-size: 15px; line-height: 1.5; color: var(--ink-2); max-width: 48ch; }
   .fc-copy b { color: var(--ink); }
@@ -674,15 +691,32 @@
   .typed .g { animation: pop 380ms var(--spring) both; }
   @keyframes blink { 50% { opacity: 0; } }
 
-  .devs { flex-direction: row; align-items: flex-end; justify-content: center; gap: 12px; padding-top: 10px; }
-  .ph1 { width: 58px; height: 108px; border-radius: 13px; border: 4px solid var(--ink); background: var(--ground); padding: 12px 6px; display: flex; flex-direction: column; gap: 6px; }
-  .lap { width: 150px; }
-  .ls { height: 92px; border-radius: 9px 9px 0 0; border: 5px solid var(--ink); border-bottom-width: 6px; background: var(--ground); padding: 10px; display: flex; flex-direction: column; gap: 7px; }
-  .base { display: block; height: 7px; margin: 0 -10px; border-radius: 0 0 8px 8px; background: var(--ink); }
-  .pb { display: block; height: 20px; border-radius: 5px; background: var(--birch); box-shadow: 0 2px 0 var(--birch-3); }
-  .pb.s { height: 10px; background: var(--card); box-shadow: none; }
-  .beam { display: flex; gap: 5px; align-self: flex-end; margin-bottom: 50px; }
-  .beam i { width: 7px; height: 7px; border-radius: 50%; background: var(--cobalt); opacity: 0.25; animation: beam 1.6s ease-in-out infinite; }
+  /* offline, on every device: the devices sit in the middle of whatever room the card has */
+  .sync { justify-content: center; align-items: center; gap: 22px; }
+  .devs { display: flex; align-items: flex-end; justify-content: center; gap: 8px; width: 100%; max-width: 300px; }
+  .ph1 { position: relative; flex: none; width: 27%; aspect-ratio: 9 / 17; border-radius: 15px; border: 4px solid var(--ink); background: var(--ground); padding: 14px 7px; display: flex; flex-direction: column; gap: 7px; }
+  .lap { flex: 1; min-width: 0; }
+  .ls { aspect-ratio: 16 / 10.5; border-radius: 10px 10px 0 0; border: 5px solid var(--ink); border-bottom-width: 6px; background: var(--ground); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .base { display: block; height: 8px; margin: 0 -8px; border-radius: 0 0 9px 9px; background: var(--ink); }
+  .pb { display: block; flex: none; height: 18px; border-radius: 5px; background: var(--birch); box-shadow: 0 2px 0 var(--birch-3); }
+  .pb.s { height: 9px; background: var(--card); box-shadow: none; }
+  /* the review made offline lands on the laptop once it syncs */
+  .pb.new { transform-origin: left; transform: scaleX(0); opacity: 0; transition: transform 520ms var(--spring), opacity 200ms; }
+  .s2 .pb.new { transform: none; opacity: 1; }
+  .dot { position: absolute; top: -7px; right: -7px; width: 16px; height: 16px; border-radius: 50%; background: var(--sun); box-shadow: 0 0 0 3px var(--card); transition: background 300ms, transform 400ms var(--spring); }
+  .s2 .dot { background: var(--good); transform: scale(1.1); }
+  .beam { flex: none; display: flex; gap: 4px; align-self: center; margin-bottom: 18px; }
+  .beam i { width: 6px; height: 6px; border-radius: 50%; background: var(--cobalt); opacity: 0.18; }
+  .s1 .beam i { animation: beam 900ms ease-in-out infinite; }
+  .beam i:nth-child(2) { animation-delay: 150ms; } .beam i:nth-child(3) { animation-delay: 300ms; }
+  .state { display: flex; justify-content: center; min-height: 34px; }
+  .st { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 10px; border-radius: 99px; background: var(--ground); font-size: 13px; font-weight: 650; white-space: nowrap; animation: swapin 360ms var(--ease) both; }
+  @keyframes swapin { from { opacity: 0; transform: translateY(6px); } }
+  .sd { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; }
+  .sd.off { background: var(--sun); }
+  .sd.on { background: var(--cobalt); animation: pulse 900ms ease-in-out infinite; }
+  .sd.ok { background: var(--good); color: #fff; }
+  @keyframes pulse { 50% { transform: scale(0.7); opacity: 0.6; } }
   .beam i:nth-child(2) { animation-delay: 180ms; } .beam i:nth-child(3) { animation-delay: 360ms; }
   @keyframes beam { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.3); } }
 
@@ -841,13 +875,17 @@
     .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(260px, auto); gap: 18px; }
     .fc { padding: 30px; }
     .fc:hover { translate: 0 -4px; box-shadow: 0 1px 0 rgba(21, 25, 54, 0.04), 0 36px 60px -32px rgba(21, 25, 54, 0.4); }
-    .fc.a { grid-column: span 2; grid-row: span 2; }
-    .fc.b { grid-column: span 2; }
-    .fc.e { grid-column: span 3; display: grid; grid-template-columns: minmax(220px, 0.7fr) 1.3fr; gap: 30px; align-items: center; }
-    .fc.e .fc-ill { margin-top: 0; }
-    .fc.a .fc-copy h3, .fc.e .fc-copy h3 { font-size: 26px; }
-    .fc.b { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
-    .fc.b .fc-ill { margin-top: 0; }
+    .fc.b-level { grid-column: span 2; grid-row: span 2; }
+    .fc.b-mis { grid-column: span 2; }
+    /* the game card takes the row beside the level card; the tree spans two rows with keys and offline stacked beside it */
+    .fc.b-game { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .fc.b-game .fc-ill { margin-top: 0; }
+    .fc.b-keys .fc-ill, .fc.b-off .fc-ill { justify-content: center; }
+    .fc.b-tree { grid-column: span 3; grid-row: span 2; display: grid; grid-template-columns: minmax(220px, 0.7fr) 1.3fr; gap: 30px; align-items: center; }
+    .fc.b-tree .fc-ill { margin-top: 0; }
+    .fc.b-level .fc-copy h3, .fc.b-tree .fc-copy h3 { font-size: 26px; }
+    .fc.b-mis { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; }
+    .fc.b-mis .fc-ill { margin-top: 0; }
 
     .trap-box { padding: 40px; }
     .traps .head { display: grid; grid-template-columns: 1fr 1fr; column-gap: 72px; align-items: end; }
@@ -857,10 +895,6 @@
     .faq .head { position: sticky; top: 120px; }
     .foot::before { left: 40px; right: 40px; }
     .os:nth-child(n + 3) { display: grid; }
-    .fc.f .fc-ill { justify-content: center; }
-    .fc.f .ph1 { width: 74px; height: 140px; }
-    .fc.f .lap { width: 190px; }
-    .fc.f .ls { height: 118px; }
     .enter { padding-top: 160px; }
     .foot { margin-top: 160px; padding-top: 72px; padding-bottom: calc(env(safe-area-inset-bottom) + 56px); }
   }
