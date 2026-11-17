@@ -11,7 +11,7 @@
 
   const sections: Section[] = ['White', 'Black vs 1.e4', 'Black vs 1.d4', 'Black vs others'];
   const STAGES = ['new', 'learning', 'young', 'mature'];
-  const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
+  const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
   const all = $derived(summaries());
   const isFocus = (o: OpeningSummary) => { void model.rev; return mastered(o.side, o.path); };
   let q = $state('');

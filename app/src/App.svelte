@@ -105,7 +105,7 @@
   $effect(() => {
     const dark = app.theme === 'dark' || (app.theme === 'auto' && systemDark);
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.querySelector('meta[name=theme-color]')?.setAttribute('content', training ? '#131734' : dark ? '#0d1024' : '#eceef3');
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', training ? '#0f1337' : dark ? '#090b2d' : '#eff1fc');
     navigator.storage?.persist?.();
   });
 </script>

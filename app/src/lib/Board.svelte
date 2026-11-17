@@ -45,12 +45,12 @@
       // your own arrows, as on Lichess: plain right-drag is green, Shift red, Alt blue, Shift+Alt yellow
       disableContextMenu: draw,
       drawable: { enabled: draw, visible: true, brushes: {
-        good: { key: 'good', color: '#0f7a55', opacity: 0.9, lineWidth: 11 },
-        bad: { key: 'bad', color: '#cf331c', opacity: 0.85, lineWidth: 11 },
-        hint: { key: 'hint', color: '#f4b740', opacity: 1, lineWidth: 9 },
+        good: { key: 'good', color: '#018359', opacity: 0.9, lineWidth: 11 },
+        bad: { key: 'bad', color: '#c82611', opacity: 0.85, lineWidth: 11 },
+        hint: { key: 'hint', color: '#ffbe45', opacity: 1, lineWidth: 9 },
         // what the other side plays (the landing page's fans, Explore's hover): ink, quieter than an answer
-        fan: { key: 'fan', color: '#151936', opacity: 0.5, lineWidth: 8 },
-        lead: { key: 'lead', color: '#2b4bee', opacity: 0.85, lineWidth: 10 }
+        fan: { key: 'fan', color: '#0f1337', opacity: 0.5, lineWidth: 8 },
+        lead: { key: 'lead', color: '#254bd2', opacity: 0.85, lineWidth: 10 }
       } as never },
       premovable: { enabled: false }
     });
@@ -123,25 +123,25 @@
   /* the plywood edge: five veneers, alternating grain */
   .edge {
     height: 12px; border-radius: 0 0 10px 10px;
-    background: linear-gradient(#d8bb8a 0 2px, #b08a57 2px 4px, #e0c797 4px 7px, #a67f4d 7px 9px, #d2b382 9px 12px);
+    background: linear-gradient(#d0b386 0 2px, #ad8c59 2px 4px, #e1c69e 4px 7px, #9b7a45 7px 9px, #d0b386 9px 12px);
   }
   .badge {
     position: absolute; z-index: 5; width: 30px; height: 30px; margin: -9px 0 0 -21px;
     display: grid; place-items: center; border-radius: 50%;
-    font-weight: 800; font-size: 17px; letter-spacing: -0.06em; color: #fff;
-    border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(21, 25, 54, 0.35);
+    font-weight: 800; font-size: 17px; letter-spacing: -0.06em; color: var(--ivory);
+    border: 2.5px solid var(--ivory); box-shadow: 0 3px 8px rgba(21, 25, 54, 0.35);
     animation: pop 260ms var(--spring) both; pointer-events: none;
   }
-  .badge.good { background: var(--good); }
+  .badge.good { background: var(--good-mark); }
   .flash { position: absolute; z-index: 3; width: 12.5%; aspect-ratio: 1; pointer-events: none; opacity: 0; animation: flash 520ms ease-out both; }
-  .flash.good { background: #34e08f; }
-  .flash.bad { background: #ff5a3d; }
+  .flash.good { background: #52db9c; }
+  .flash.bad { background: #ee5b45; }
   .flash.warn { background: var(--sun); }
   @keyframes flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
   .burst { position: absolute; z-index: 4; width: 0; height: 0; margin: 6px 0 0 -6px; pointer-events: none; }
   .burst i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--sun); animation: spark 560ms cubic-bezier(0.1, 0.7, 0.3, 1) both; }
-  .burst i:nth-child(odd) { background: #34e08f; }
+  .burst i:nth-child(odd) { background: #52db9c; }
   @keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-10px) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-42px) scale(0.3); } }
   .badge.bad { background: var(--bad); border-radius: 9px; }
-  .badge.warn { background: var(--sun); color: #3d2800; border-radius: 9px; }
+  .badge.warn { background: var(--sun); color: #3c2a0b; border-radius: 9px; }
 </style>

@@ -7,8 +7,8 @@
   // and the one that gets to become anything. Round, soft and on your side; the face and
   // the little arms react to how you are doing, and it breathes while it waits.
   let { mood = 'idle', size = 56, still = false }: { mood?: Mood; size?: number; still?: boolean } = $props();
-  const W = '#5a3d22'; // warm outline
-  const INK = '#2b1c10';
+  const W = '#4f3911'; // warm outline
+  const INK = '#2d1f07';
   const up = $derived(mood === 'cheer' || mood === 'wow');
   // eyes drift up and aside while thinking
   const ex = $derived(mood === 'think' ? 1.2 : 0);
@@ -17,17 +17,17 @@
 </script>
 
 <svg class="m {mood}" class:still width={size} height={size} viewBox="0 0 64 64" role="img" aria-label="Birch, the Ply pawn">
-  <ellipse class="shade" cx="32" cy="60.500" rx="16" ry="2.400" fill="#0b0e24" opacity="0.2" />
+  <ellipse class="shade" cx="32" cy="60.500" rx="16" ry="2.400" fill="#090b2d" opacity="0.2" />
   <g class="body">
     {#if mood === 'cheer'}
-      <g class="sparks" fill="#f4b740">
+      <g class="sparks" fill="#ffbe45">
         <path d="M8 9l1.300 3 3 1.300-3 1.300-1.300 3-1.300-3-3-1.300 3-1.300z" />
         <path d="M57 4l1 2.300 2.300 1-2.300 1-1 2.300-1-2.300-2.300-1 2.300-1z" />
         <circle cx="55" cy="21" r="1.500" />
       </g>
     {/if}
     <!-- arms: down at rest, thrown up when something good happens -->
-    <g fill="#e9d2a8" stroke={W} stroke-width="2">
+    <g fill="#efd7b3" stroke={W} stroke-width="2">
       {#if up}
         <ellipse class="arm l" cx="15.500" cy="33.500" rx="3.300" ry="5" transform="rotate(-38 15.500 33.500)" />
         <ellipse class="arm r" cx="48.500" cy="33.500" rx="3.300" ry="5" transform="rotate(38 48.500 33.500)" />
@@ -37,27 +37,27 @@
       {/if}
     </g>
     <!-- foot and belly -->
-    <rect x="14.500" y="50" width="35" height="9" rx="4.500" fill="#c9a873" stroke={W} stroke-width="2.200" />
-    <path d="M20 52c0-9 4-12 4.500-18.500h15c.5 6.500 4.500 9.500 4.500 18.500z" fill="#e9d2a8" stroke={W} stroke-width="2.200" stroke-linejoin="round" />
-    <path d="M24 46.500q8 3 16 0" fill="none" stroke="#d2b382" stroke-width="1.500" stroke-linecap="round" />
+    <rect x="14.500" y="50" width="35" height="9" rx="4.500" fill="#be9f6f" stroke={W} stroke-width="2.200" />
+    <path d="M20 52c0-9 4-12 4.500-18.500h15c.5 6.500 4.500 9.500 4.500 18.500z" fill="#efd7b3" stroke={W} stroke-width="2.200" stroke-linejoin="round" />
+    <path d="M24 46.500q8 3 16 0" fill="none" stroke="#d0b386" stroke-width="1.500" stroke-linecap="round" />
     <!-- the scarf: one stained veneer -->
-    <path d="M34.500 35l1.700 8.200 4.300-.9-1.500-7.600z" fill="#4c69cf" stroke={W} stroke-width="2" stroke-linejoin="round" />
-    <rect x="19" y="29.500" width="26" height="7.500" rx="3.750" fill="#6584e2" stroke={W} stroke-width="2.200" />
-    <path d="M24 33.200h6" stroke="#9db0ff" stroke-width="1.600" stroke-linecap="round" opacity="0.8" />
+    <path d="M34.500 35l1.700 8.200 4.300-.9-1.500-7.600z" fill="#335ee9" stroke={W} stroke-width="2" stroke-linejoin="round" />
+    <rect x="19" y="29.500" width="26" height="7.500" rx="3.750" fill="#6889d8" stroke={W} stroke-width="2.200" />
+    <path d="M24 33.200h6" stroke="#96b6fe" stroke-width="1.600" stroke-linecap="round" opacity="0.8" />
 
     <g class="head">
-      <circle cx="32" cy="18" r="15" fill="#f6e7c8" stroke={W} stroke-width="2.200" />
+      <circle cx="32" cy="18" r="15" fill="#fbe5c3" stroke={W} stroke-width="2.200" />
       <path d="M21.500 12q4.200-6.200 10.500-6.800" fill="none" stroke="#fff" stroke-width="2.400" stroke-linecap="round" opacity="0.75" />
-      <ellipse cx="21.800" cy="24" rx="3" ry="2.200" fill="#f29b8a" opacity="0.55" />
-      <ellipse cx="42.200" cy="24" rx="3" ry="2.200" fill="#f29b8a" opacity="0.55" />
+      <ellipse cx="21.800" cy="24" rx="3" ry="2.200" fill="#ff9784" opacity="0.55" />
+      <ellipse cx="42.200" cy="24" rx="3" ry="2.200" fill="#ff9784" opacity="0.55" />
       <g fill="none" stroke={INK} stroke-width="2.200" stroke-linecap="round" stroke-linejoin="round">
         {#if mood === 'cheer'}
           <path d="M23.300 20.500q2.700-3.800 5.400 0M35.300 20.500q2.700-3.800 5.400 0" />
-          <path d="M28.300 23.800q3.700 5.800 7.400 0z" fill="#d9634c" />
+          <path d="M28.300 23.800q3.700 5.800 7.400 0z" fill="#ee5b45" />
         {:else if mood === 'sleep'}
           <path d="M23.300 19.800q2.700 2.200 5.400 0M35.300 19.800q2.700 2.200 5.400 0" />
           <path d="M30.500 25q1.500 1 3 0" />
-          <path class="zz" d="M47 6h4l-4 4.500h4" stroke-width="2" stroke="#b08a57" />
+          <path class="zz" d="M47 6h4l-4 4.500h4" stroke-width="2" stroke="#ad8c59" />
         {:else}
           <g class="open" stroke="none">
             <ellipse cx={26 + ex} cy={19.800 + ey} rx={er[0]} ry={er[1]} fill={INK} />
@@ -70,7 +70,7 @@
             <path d="M29.600 26.200q2.400-2 4.800 0" />
           {:else if mood === 'think'}
             <path d="M30.800 25.200h3.400" />
-            <g class="dots" fill="#b08a57" stroke="none"><circle cx="50" cy="8" r="1.300" /><circle cx="54.500" cy="5" r="1.700" /><circle cx="59.500" cy="1.500" r="2.100" /></g>
+            <g class="dots" fill="#ad8c59" stroke="none"><circle cx="50" cy="8" r="1.300" /><circle cx="54.500" cy="5" r="1.700" /><circle cx="59.500" cy="1.500" r="2.100" /></g>
           {:else if mood === 'wow'}
             <ellipse cx="32" cy="25.600" rx="1.900" ry="2.300" fill={INK} stroke="none" />
           {:else}

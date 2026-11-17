@@ -134,8 +134,8 @@
   .fr { display: grid; grid-template-columns: 52px 1fr 40px; align-items: center; gap: 10px; height: 26px; font-size: 15px; }
   .fr b { font-weight: 700; }
   .bar { height: 8px; border-radius: 4px; background: var(--night-3); overflow: hidden; }
-  .bar i { display: block; height: 100%; border-radius: 4px; background: #8088b3; transform-origin: left; transition: transform 500ms var(--ease); }
-  .fr.top .bar i { background: #7f9bff; }
+  .bar i { display: block; height: 100%; border-radius: 4px; background: #8890b2; transform-origin: left; transition: transform 500ms var(--ease); }
+  .fr.top .bar i { background: #a0bdff; }
   .pc { text-align: right; font-size: 14px; color: var(--night-ink-2); }
   .fr.top .pc { color: var(--night-ink); font-weight: 700; }
 
@@ -144,7 +144,7 @@
   .ctl button:hover { background: var(--night-3); }
   .ctl button:disabled { opacity: 0.4; }
   .ctl .pp { background: var(--birch); color: var(--ink-fixed); }
-  .ctl .pp:hover { background: #fff0d2; }
+  .ctl .pp:hover { background: #fff0d9; }
   .pause { width: 12px; height: 14px; border-left: 4px solid currentColor; border-right: 4px solid currentColor; }
   .line { flex: 1; min-width: 0; display: flex; gap: 2px; overflow: hidden; justify-content: flex-end; margin-left: 6px; font-size: 14px; font-weight: 600; color: var(--night-ink-2); white-space: nowrap; }
   .line span { padding: 3px 5px; border-radius: 7px; }

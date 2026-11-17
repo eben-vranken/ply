@@ -1,35 +1,38 @@
 /* Ply design tokens. Source of truth: docs/DESIGN.md */
 :root {
-  --ground: #eceef3;
+  --ground: #eff1fc;
   --card: #ffffff;
-  --ink: #151936;
-  --ink-2: #4b5170;
-  --ink-3: #686e8e;
-  --line: #dde0ea;
-  --cobalt: #2b4bee;
-  --cobalt-deep: #1b33b8;
-  --cobalt-tint: #e4e9ff;
-  --birch: #f1e0bf;
-  --birch-2: #e2c99c;
-  --birch-3: #c9a873;
-  --walnut: #6f4c2c;
-  --stain: #6584e2;
-  --good: #0f7a55;
-  --good-tint: #d9f2e6;
-  --bad: #cf331c;
-  --bad-tint: #fde4de;
-  --sun: #f4b740;
-  --sun-ink: #6b4700;
-  --night: #131734;
-  --night-2: #1d2247;
-  --night-3: #2c3366;
-  --night-ink: #eef0fa;
-  --night-ink-2: #aab0d2;
+  --ink: #0f1337;
+  --ink-2: #414a74;
+  --ink-3: #636c94;
+  --line: #d5daed;
+  --cobalt: #254bd2;
+  --cobalt-deep: #1b3ab6;
+  --cobalt-tint: #e5e7f2;
+  --birch: #fbe5c3;
+  --birch-2: #e1c69e;
+  --birch-3: #be9f6f;
+  --walnut: #634819;
+  --stain: #6889d8;
+  --good: #018359;
+  --good-mark: #039868; /* the right-answer mark on the board: one step lighter than --good, which also sets text */
+  --ivory: #fff9f1;     /* the light pieces, and the rim of the marks on the board */
+  --piece-line: #050524;
+  --good-tint: #bef7da;
+  --bad: #c82611;
+  --bad-tint: #fee0da;
+  --sun: #ffbe45;
+  --sun-ink: #634819;
+  --night: #0f1337;
+  --night-2: #181d43;
+  --night-3: #313964;
+  --night-ink: #eff1fc;
+  --night-ink-2: #b0b6d0;
 
-  --st-new: #b9becf;
-  --st-learning: #f08a24;
-  --st-young: #7ccb9a;
-  --st-mature: #0f7a55;
+  --st-new: #b0b6d0;
+  --st-learning: #f87e1a;
+  --st-young: #65d09f;
+  --st-mature: #018359;
 
   --sans: 'Bricolage Grotesque Variable', system-ui, sans-serif;
   --serif: 'Newsreader Variable', Georgia, serif;
@@ -43,45 +46,45 @@
   --shadow: 0 1px 0 rgba(21, 25, 54, 0.04), 0 8px 24px -12px rgba(21, 25, 54, 0.18);
 
   /* theme-dependent helpers */
-  --ink-fixed: #151936;      /* ink that stays dark: text on birch, Black's sigil strokes */
+  --ink-fixed: #0f1337;      /* ink that stays dark: text on birch, Black's sigil strokes */
   --on-ink: #ffffff;         /* text on an ink-filled control */
-  --bar: #151936;            /* tab bar */
+  --bar: #0f1337;            /* tab bar */
   --wash: rgba(21, 25, 54, 0.08);
-  --accent-text: #2b4bee;
-  --good-text: #0f7a55;
-  --bad-text: #cf331c;
-  --warn-text: #a85a00;
+  --accent-text: #254bd2;
+  --good-text: #018359;
+  --bad-text: #c82611;
+  --warn-text: #ab5204;
   --quiet-face: #ffffff;
-  --quiet-edge: #cfd4e3;
-  --sun-tint: #fff4d6;
-  --h1: #c8d2fb; --h2: #8fa3f6; --h3: #2b4bee; --h4: #151936;
+  --quiet-edge: #d5daed;
+  --sun-tint: #fff0d9;
+  --h1: #d5daed; --h2: #7aa1fe; --h3: #254bd2; --h4: #0f1337;
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --ground: #0d1024;
-  --card: #191e40;
-  --ink: #eef0fa;
-  --ink-2: #b3b9d8;
-  --ink-3: #9299be;
-  --line: #2c3366;
-  --cobalt-tint: #232a5c;
-  --good-tint: #12382b;
-  --bad-tint: #4a1c14;
-  --sun-ink: #ffd98a;
-  --st-new: #8f96bb;
+  --ground: #090b2d;
+  --card: #181d43;
+  --ink: #eff1fc;
+  --ink-2: #b0b6d0;
+  --ink-3: #9ca3c1;
+  --line: #313964;
+  --cobalt-tint: #232a52;
+  --good-tint: #023724;
+  --bad-tint: #590b03;
+  --sun-ink: #ffd38d;
+  --st-new: #8890b2;
   --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 10px 24px -12px rgba(0, 0, 0, 0.6);
-  --on-ink: #131734;
-  --bar: #262c5a;
+  --on-ink: #0f1337;
+  --bar: #232a52;
   --wash: rgba(255, 255, 255, 0.1);
-  --accent-text: #9db0ff;
-  --good-text: #6fd9ae;
-  --bad-text: #ff9a8a;
-  --warn-text: #ffb86b;
-  --quiet-face: #2a3063;
-  --quiet-edge: #070917;
-  --sun-tint: #3a2e10;
-  --h1: #263070; --h2: #3a4cc0; --h3: #6584e2; --h4: #c8d2fb;
+  --accent-text: #96b6fe;
+  --good-text: #8be0b6;
+  --bad-text: #ff9784;
+  --warn-text: #ffbe45;
+  --quiet-face: #313964;
+  --quiet-edge: #050524;
+  --sun-tint: #3c2a0b;
+  --h1: #132d95; --h2: #254bd2; --h3: #6889d8; --h4: #d5daed;
   color-scheme: dark;
 }
 
@@ -136,8 +139,8 @@ h1, h2, h3, p { margin: 0; }
 .btn.wide { width: 100%; }
 .btn.big { min-height: 64px; font-size: 20px; border-radius: 20px; }
 .btn.quiet { --face: var(--quiet-face); --edge: var(--quiet-edge); --txt: var(--ink); }
-.btn.night { --face: var(--night-3); --edge: #0b0e24; --txt: var(--night-ink); }
-.btn.sun { --face: var(--sun); --edge: #c98a12; --txt: #3d2800; }
+.btn.night { --face: var(--night-3); --edge: #090b2d; --txt: var(--night-ink); }
+.btn.sun { --face: var(--sun); --edge: #be8709; --txt: #3c2a0b; }
 .btn:disabled { opacity: 0.45; }
 .link { color: var(--accent-text); font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
 
@@ -148,7 +151,7 @@ h1, h2, h3, p { margin: 0; }
 .wdl { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--line); box-shadow: 0 0 0 1px var(--line); }
 .wdl i { display: block; height: 100%; }
 .wdl .w { background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
-.wdl .d { background: #a9aec4; }
+.wdl .d { background: #b0b6d0; }
 .wdl .b { background: var(--ink-fixed); }
 
 /* board: birch plywood with a blue stain, sitting on its own layered edge */

@@ -428,7 +428,7 @@ export const studyDay = () => today0();
 const ask = (a: Ask): Ask => a;
 
 /** One colour per main branch of an opening: the skill tree paints its lines with these, and the trainer echoes them. */
-export const LINE_COLOURS = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff', '#3fd3e2', '#ff8ad0', '#a5e25a'];
+export const LINE_COLOURS = ['#52db9c', '#edb333', '#fea387', '#a0bdff', '#d1a9ff', '#0fd4f1', '#fe99c7', '#a2d060'];
 const tintTrees = { rev: -1, by: new Map<string, TreeMove[]>() };
 /**
  * The colour a line has in its opening's skill tree: the tree starts where the opening's name

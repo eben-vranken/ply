@@ -91,7 +91,7 @@
   let xpOn = $state(false);
 
   let faq = $state<number | null>(0);
-  const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
+  const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
   const QUEUE: [string, string, string][] = [['Review', '!', 'good'], ['New move', '+', 'info'], ['Punish', '!', 'good'], ['Danger', '??', 'bad'], ['Your mistake', '?', 'bad']];
   const learn = demo.hero[4], before = demo.hero[3];
   const short = (s: string) => s.split(': ')[0];
@@ -489,11 +489,11 @@
   .acts-top { margin-left: auto; display: flex; align-items: center; gap: 6px; }
   .ghost { display: none; height: 40px; padding: 0 14px; border-radius: 12px; font-weight: 650; font-size: 14.5px; color: var(--night-ink); transition: background 200ms; }
   .ghost:hover { background: rgba(255, 255, 255, 0.08); }
-  .pill { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 16px; border-radius: 99px; background: var(--sun); color: #3d2800; font-weight: 750; font-size: 14.5px; box-shadow: 0 3px 0 #c98a12; transition: transform 160ms var(--ease), box-shadow 160ms var(--ease); }
+  .pill { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 16px; border-radius: 99px; background: var(--sun); color: #3c2a0b; font-weight: 750; font-size: 14.5px; box-shadow: 0 3px 0 #be8709; transition: transform 160ms var(--ease), box-shadow 160ms var(--ease); }
   .pill :global(svg) { transition: transform 260ms var(--spring); }
   .pill:hover :global(svg) { transform: translateX(3px); }
-  .pill:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #c98a12; }
-  .pill:active { transform: translateY(2px); box-shadow: 0 1px 0 #c98a12; }
+  .pill:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #be8709; }
+  .pill:active { transform: translateY(2px); box-shadow: 0 1px 0 #be8709; }
   .burger { width: 44px; height: 44px; display: grid; place-content: center; gap: 6px; border-radius: 12px; }
   .burger i { display: block; width: 20px; height: 2px; border-radius: 2px; background: var(--night-ink); transition: transform 320ms var(--spring); }
   .burger.open i:first-child { transform: translateY(4px) rotate(45deg); }
@@ -511,9 +511,9 @@
   .hero { padding: calc(env(safe-area-inset-top) + 112px) 0 72px; background: var(--night); color: var(--night-ink); overflow: hidden; isolation: isolate; }
   .sky { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
   .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.55; }
-  .b1 { width: 620px; height: 620px; left: -160px; top: -220px; background: #2b4bee; animation: drift1 18s ease-in-out infinite alternate; }
-  .b2 { width: 520px; height: 520px; right: -180px; top: 120px; background: #6a3fc4; opacity: 0.35; animation: drift2 22s ease-in-out infinite alternate; }
-  .b3 { width: 460px; height: 460px; left: 40%; bottom: -240px; background: #f4b740; opacity: 0.16; animation: drift1 26s ease-in-out infinite alternate-reverse; }
+  .b1 { width: 620px; height: 620px; left: -160px; top: -220px; background: #254bd2; animation: drift1 18s ease-in-out infinite alternate; }
+  .b2 { width: 520px; height: 520px; right: -180px; top: 120px; background: #7238b1; opacity: 0.35; animation: drift2 22s ease-in-out infinite alternate; }
+  .b3 { width: 460px; height: 460px; left: 40%; bottom: -240px; background: #ffbe45; opacity: 0.16; animation: drift1 26s ease-in-out infinite alternate-reverse; }
   @keyframes drift1 { to { transform: translate(120px, 80px) scale(1.15); } }
   @keyframes drift2 { to { transform: translate(-140px, -60px) scale(0.9); } }
   .checks { position: absolute; inset: 0; background-image: conic-gradient(rgba(255, 255, 255, 0.045) 90deg, transparent 0 180deg, rgba(255, 255, 255, 0.045) 0 270deg, transparent 0); background-size: 96px 96px; -webkit-mask-image: radial-gradient(70% 55% at 50% 30%, #000 0%, transparent 75%); mask-image: radial-gradient(70% 55% at 50% 30%, #000 0%, transparent 75%); animation: fadein 1600ms ease both 200ms; }
@@ -535,7 +535,7 @@
   .cta .arr { display: inline-grid; transition: transform 280ms var(--spring); }
   .cta:hover .arr { transform: translateX(4px); }
   .btn.big:hover { filter: brightness(1.05); }
-  .more { box-shadow: 0 5px 0 #0b0e24, inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
+  .more { box-shadow: 0 5px 0 #090b2d, inset 0 0 0 1px rgba(255, 255, 255, 0.08); }
   .trust { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13.5px; font-weight: 600; color: var(--night-ink-2); animation: up 800ms var(--ease) both 760ms; }
   .trust li { display: flex; align-items: center; gap: 7px; }
   .trust :global(svg) { color: var(--sun); }
@@ -627,7 +627,7 @@
   .fc-copy p { margin-top: 8px; font-size: 15px; line-height: 1.5; color: var(--ink-2); max-width: 48ch; }
   .fc-copy b { color: var(--ink); }
   .fc-ill { margin-top: 22px; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; }
-  .fc.dark { background: radial-gradient(120% 90% at 0% 0%, #1d2350 0%, #0d1024 70%); color: var(--night-ink); box-shadow: inset 0 0 0 1px var(--night-3); }
+  .fc.dark { background: radial-gradient(120% 90% at 0% 0%, #232a52 0%, #090b2d 70%); color: var(--night-ink); box-shadow: inset 0 0 0 1px var(--night-3); }
   .fc.dark .fc-copy p { color: var(--night-ink-2); }
   .fc.dark::after { background: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgba(127, 155, 255, 0.14), transparent 60%); }
   .key { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0; margin: 14px 0 0; font-size: 13.5px; font-weight: 600; color: var(--night-ink-2); }
@@ -646,7 +646,7 @@
   .mc .mini { flex: none; width: 92px; }
   .mc .tag { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--night-ink-2); }
   .mc .ans { margin-top: 4px; font-size: 19px; font-weight: 650; }
-  .mc .ans b { color: #8fe3bd; }
+  .mc .ans b { color: #8be0b6; }
 
   .xp { flex-direction: row; align-items: center; gap: 14px; justify-content: flex-start; }
   .birch { flex: none; animation: bob 3.4s ease-in-out infinite; }
@@ -654,12 +654,12 @@
   .xph { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; font-size: 13px; }
   .xph span { color: var(--ink-3); font-weight: 700; }
   .xpb { display: block; height: 10px; margin: 8px 0 10px; border-radius: 5px; background: var(--line); overflow: hidden; }
-  .xpb i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--sun), #f08a24); transform: scaleX(0.08); transform-origin: left; transition: transform 1600ms var(--ease) 300ms; }
+  .xpb i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--sun), #f87e1a); transform: scaleX(0.08); transform-origin: left; transition: transform 1600ms var(--ease) 300ms; }
   .xp.on .xpb i { transform: scaleX(1); }
   .xpf { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--ink-3); transition: color 300ms 1800ms; }
   .flame { display: inline-grid; color: var(--st-new); transition: color 300ms 1800ms, transform 500ms var(--spring) 1800ms; }
   .xp.on .xpf { color: var(--ink); }
-  .xp.on .flame { color: #f08a24; transform: scale(1.25); animation: flicker 1.6s ease-in-out infinite 2.3s; }
+  .xp.on .flame { color: #f87e1a; transform: scale(1.25); animation: flicker 1.6s ease-in-out infinite 2.3s; }
   @keyframes flicker { 0%, 100% { transform: scale(1.25) rotate(-3deg); } 50% { transform: scale(1.12) rotate(4deg); } }
 
   .kb { align-items: center; justify-content: center; gap: 16px; }
@@ -828,7 +828,7 @@
     .screen-in { padding: 28px 32px; }
     .float { display: flex; position: absolute; align-items: center; gap: 10px; height: 46px; padding: 0 16px 0 10px; border-radius: 14px; background: rgba(29, 34, 71, 0.82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 20px 40px -16px rgba(0, 0, 0, 0.7); font-size: 14px; color: var(--night-ink-2); white-space: nowrap; animation: pop-in 700ms var(--spring) both, hover 6s ease-in-out infinite; }
     .float b { color: var(--night-ink); }
-    .float :global(svg) { color: #f08a24; }
+    .float :global(svg) { color: #f87e1a; }
     .f1 { left: -28px; top: 18%; animation-delay: 1.6s, 2.3s; }
     .f2 { left: -40px; top: 62%; animation-delay: 1.9s, 3.1s; }
     .f3 { right: -32px; top: 12%; animation-delay: 2.2s, 2.7s; }

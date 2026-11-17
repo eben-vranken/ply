@@ -6,7 +6,7 @@
   import { demo, type TreeTile } from './demo';
 
   let { deep = true }: { deep?: boolean } = $props();
-  const PALETTE = ['#34e08f', '#f6c445', '#ff7a6b', '#7f9bff', '#c58bff'];
+  const PALETTE = ['#52db9c', '#edb333', '#fea387', '#a0bdff', '#d1a9ff'];
   const W = 112, H = 44, COL = 158, ROW = 66;
   interface N extends TreeTile { x: number; y: number; colour: string; lit: number; folded: number }
   const layout = $derived.by(() => {
@@ -47,7 +47,7 @@
       <path d={elbow(p.x + W / 2, p.y, n.x - W / 2, n.y)} fill="none" stroke={n.colour} stroke-width="2" stroke-opacity={n.lit >= 0 ? 0.9 : 0.35} stroke-linecap="round" />
     {/each}
     <g transform="translate({layout.root.x} {layout.root.y})">
-      <rect x={-W / 2} y={-H / 2} width={W} height={H} rx="12" fill="#0d1024" stroke="#e8d3a8" stroke-width="2" />
+      <rect x={-W / 2} y={-H / 2} width={W} height={H} rx="12" fill="#090b2d" stroke="#efd7b3" stroke-width="2" />
       <text class="rootm" y="5.5" text-anchor="middle">3.Bc4</text>
     </g>
     {#each layout.nodes as n (n.id)}
@@ -58,16 +58,16 @@
         <text class="san" x={-W / 2 + 14} y="13.5">{n.san}</text>
         {#if n.lit >= 0}
           <g class="lit">
-            <rect x={-W / 2} y={-H / 2 + 5} width={W} height={H} rx="11" fill="#dcc08f" />
-            <rect x={-W / 2} y={-H / 2 + 2.5} width={W} height={H} rx="11" fill="#a67f4d" />
-            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx="11" fill="#f1e0bf" />
+            <rect x={-W / 2} y={-H / 2 + 5} width={W} height={H} rx="11" fill="#e1c69e" />
+            <rect x={-W / 2} y={-H / 2 + 2.5} width={W} height={H} rx="11" fill="#9b7a45" />
+            <rect x={-W / 2} y={-H / 2} width={W} height={H} rx="11" fill="#fbe5c3" />
             <rect x={-W / 2 + 5} y="-11" width="4" height="22" rx="2" fill={n.colour} />
             <text class="rep on" x={-W / 2 + 14} y="-6">{n.reply}<tspan dx="5">{Math.round(n.replyPct)}%</tspan></text>
             <text class="san on" x={-W / 2 + 14} y="13.5">{n.san}</text>
           </g>
         {/if}
         {#if n.folded}
-          <g transform="translate({W / 2 - 6} 0)"><rect y="-11" width="30" height="22" rx="11" fill="#0d1024" stroke="#3d4577" stroke-width="1.5" /><text class="pill" x="15" y="3.8" text-anchor="middle">+{n.folded}</text></g>
+          <g transform="translate({W / 2 - 6} 0)"><rect y="-11" width="30" height="22" rx="11" fill="#090b2d" stroke="#414a74" stroke-width="1.5" /><text class="pill" x="15" y="3.8" text-anchor="middle">+{n.folded}</text></g>
         {/if}
       </g>
     {/each}
@@ -78,14 +78,14 @@
   .mt { width: 100%; }
   svg { display: block; width: 100%; height: auto; overflow: visible; }
   text { font-family: var(--sans); }
-  .rootm { font-weight: 750; font-size: 16px; fill: #e8d3a8; }
+  .rootm { font-weight: 750; font-size: 16px; fill: #efd7b3; }
   .lab { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 13px; }
-  .face { fill: #141936; stroke: color-mix(in srgb, var(--c) 40%, #1c2248); stroke-width: 1.5; }
-  .rep { font-weight: 600; font-size: 10.5px; fill: #8088b3; }
-  .rep.on { fill: #6f4c2c; }
-  .san { font-weight: 750; font-size: 15.5px; letter-spacing: -0.02em; fill: #aab0d2; }
-  .san.on { fill: #151936; }
-  .pill { font-weight: 750; font-size: 11px; fill: #aab0d2; }
+  .face { fill: #0f1337; stroke: color-mix(in srgb, var(--c) 40%, #181d43); stroke-width: 1.5; }
+  .rep { font-weight: 600; font-size: 10.5px; fill: #8890b2; }
+  .rep.on { fill: #634819; }
+  .san { font-weight: 750; font-size: 15.5px; letter-spacing: -0.02em; fill: #b0b6d0; }
+  .san.on { fill: #0f1337; }
+  .pill { font-weight: 750; font-size: 11px; fill: #b0b6d0; }
   /* learned tiles lay themselves down one after another; only opacity and transform move */
   .lit { opacity: 0; transform: translateY(-8px); transition: opacity 380ms var(--ease), transform 480ms var(--spring); transition-delay: calc(var(--i) * 170ms + 250ms); }
   .seen .lit { opacity: 1; transform: none; }

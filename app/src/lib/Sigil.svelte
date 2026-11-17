@@ -3,7 +3,7 @@
   // Your moves are drawn in the opening's colour and your opponent's in ink, whichever side you play.
   // path is UCI from the start position
   interface Props { path: string[]; hue?: string; size?: number; flip?: boolean; bare?: boolean; draw?: boolean; you?: 'w' | 'b' }
-  let { path, hue = '#2b4bee', size = 56, flip = false, bare = false, draw = false, you = 'w' }: Props = $props();
+  let { path, hue = '#254bd2', size = 56, flip = false, bare = false, draw = false, you = 'w' }: Props = $props();
 
   const segs = $derived(
     path.map((u) => [u.slice(0, 2), u.slice(2, 4)] as const).map(([a, b], i) => {

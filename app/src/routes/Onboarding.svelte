@@ -15,16 +15,16 @@
   const S = (s: string) => s.split(' '); // UCI
   const picks = [
     { key: 'white' as const, pathKey: 'whitePath' as const, slot: 'white' as const, title: 'As White', opts: [
-      { v: 'Italian Game', sub: '1.e4, Giuoco Piano', path: S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5'), hue: '#2b4bee', flip: false },
-      { v: "Queen's Gambit", sub: '1.d4 and 2.c4', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#7a3fc4', flip: false }
+      { v: 'Italian Game', sub: '1.e4, Giuoco Piano', path: S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5'), hue: '#254bd2', flip: false },
+      { v: "Queen's Gambit", sub: '1.d4 and 2.c4', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#844bc6', flip: false }
     ] },
     { key: 'blackE4' as const, pathKey: 'blackE4Path' as const, slot: 'e4' as const, title: 'As Black against 1.e4', opts: [
-      { v: '1...e5', sub: 'Open games', path: S('e2e4 e7e5 g1f3 b8c6 f1b5 a7a6'), hue: '#cf331c', flip: true },
-      { v: 'Sicilian Defense', sub: '1...c5', path: S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4'), hue: '#0b7f93', flip: true }
+      { v: '1...e5', sub: 'Open games', path: S('e2e4 e7e5 g1f3 b8c6 f1b5 a7a6'), hue: '#c82611', flip: true },
+      { v: 'Sicilian Defense', sub: '1...c5', path: S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4'), hue: '#067c8e', flip: true }
     ] },
     { key: 'blackD4' as const, pathKey: 'blackD4Path' as const, slot: 'd4' as const, title: 'As Black against 1.d4', opts: [
-      { v: "Queen's Gambit Declined", sub: '1...d5 and 2...e6', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#0f7a55', flip: true },
-      { v: "King's Indian", sub: '1...Nf6 and 2...g6', path: S('d2d4 g8f6 c2c4 g7g6 b1c3 f8g7'), hue: '#b9770a', flip: true }
+      { v: "Queen's Gambit Declined", sub: '1...d5 and 2...e6', path: S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6'), hue: '#018359', flip: true },
+      { v: "King's Indian", sub: '1...Nf6 and 2...g6', path: S('d2d4 g8f6 c2c4 g7g6 b1c3 f8g7'), hue: '#a77602', flip: true }
     ] }
   ];
   const limits = [
@@ -67,8 +67,8 @@
     <aside class="art" aria-hidden="true">
       <div class="tiles">
         <div class="tile t1"><Sigil path={S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6')} size={230} draw /></div>
-        <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={150} hue="#0f7a55" flip you="b" /></div>
-        <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={120} hue="#cf331c" /></div>
+        <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={150} hue="#018359" flip you="b" /></div>
+        <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={120} hue="#c82611" /></div>
       </div>
       {#key step}
         <div class="says"><Mascot mood={step === 0 ? 'cheer' : step === 3 ? 'think' : 'idle'} size={72} /><p>{['I am Birch. Four short steps and your first session is ready.', 'Pick what you want to play. You can change it any time, and every other opening is still there.', 'A few minutes now beats an hour on Sunday. These are easy to change later.', 'With your games I can match the lines to your level and turn your real mistakes into cards.'][step]}</p></div>
@@ -82,8 +82,8 @@
       {#if step === 0}
         <div class="hero" aria-hidden="true">
           <div class="tile t1"><Sigil path={S('e2e4 e7e5 g1f3 b8c6 f1c4 f8c5 c2c3 g8f6')} size={200} draw /></div>
-          <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={128} hue="#0f7a55" flip you="b" /></div>
-          <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={104} hue="#cf331c" /></div>
+          <div class="tile t2"><Sigil path={S('d2d4 d7d5 c2c4 e7e6 b1c3 g8f6 c1g5 f8e7')} size={128} hue="#018359" flip you="b" /></div>
+          <div class="tile t3"><Sigil path={S('e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6')} size={104} hue="#c82611" /></div>
         </div>
         <h1 class="t-name hl">Openings that stay learned.</h1>
         <p class="lead">Ply drills the lines people at your rating really play, the traps inside them, and the mistakes from your own games. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
@@ -209,7 +209,7 @@
     .ob.wide .dots { padding-top: 40px; }
     .ob.wide footer { padding-bottom: 40px; }
     .ob.wide .body { padding-top: 32px; justify-content: safe center; }
-    .art { grid-column: 1 !important; grid-row: 1 / -1; max-width: none !important; margin: 0 !important; padding: 40px !important; position: relative; display: flex; flex-direction: column; justify-content: flex-end; background: radial-gradient(90% 70% at 30% 30%, #1d2350 0%, var(--night) 70%); color: var(--night-ink); overflow: hidden; }
+    .art { grid-column: 1 !important; grid-row: 1 / -1; max-width: none !important; margin: 0 !important; padding: 40px !important; position: relative; display: flex; flex-direction: column; justify-content: flex-end; background: radial-gradient(90% 70% at 30% 30%, #232a52 0%, var(--night) 70%); color: var(--night-ink); overflow: hidden; }
     .tiles { position: absolute; inset: 8% 10% 30% 10%; }
     .says { position: relative; display: flex; align-items: center; gap: 14px; animation: rise 360ms var(--ease) both; }
     .says p { flex: 1; padding: 14px 18px; border-radius: 20px; background: var(--birch); color: var(--ink-fixed); font-size: 15.5px; line-height: 1.4; font-weight: 550; box-shadow: 0 4px 0 var(--birch-3); max-width: 420px; }

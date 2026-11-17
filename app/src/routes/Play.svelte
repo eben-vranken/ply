@@ -197,15 +197,15 @@
   .ord { font-size: 13px; color: var(--night-ink-2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .boardwrap { padding: 0 8px; flex: none; position: relative; }
   .ev { display: flex; align-items: center; gap: 10px; padding: 12px 16px 0; }
-  .track { flex: 1; height: 10px; border-radius: 5px; background: #0b0e24; overflow: hidden; box-shadow: inset 0 0 0 1px var(--night-3); }
+  .track { flex: 1; height: 10px; border-radius: 5px; background: #090b2d; overflow: hidden; box-shadow: inset 0 0 0 1px var(--night-3); }
   .track i { display: block; height: 100%; background: var(--birch); border-radius: 5px; transition: width 500ms var(--ease); }
   .ev b { font-size: 15px; min-width: 44px; text-align: right; }
   .msg { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px 0; font-size: 17px; font-weight: 600; line-height: 1.25; animation: rise 200ms var(--ease) both; }
   .g { flex: none; min-width: 28px; height: 28px; padding: 0 5px; display: grid; place-items: center; border-radius: 9px; font-weight: 800; font-size: 15px; margin-top: -3px; background: var(--night-3); }
   .msg.good .g { background: var(--good); color: #fff; border-radius: 50%; }
   .msg.bad .g { background: var(--bad); color: #fff; }
-  .msg.warn .g { background: var(--sun); color: #3d2800; }
-  .msg.good { color: #8fe3bd; } .msg.bad { color: #ffb4a6; } .msg.warn { color: #ffd98a; }
+  .msg.warn .g { background: var(--sun); color: #3c2a0b; }
+  .msg.good { color: #8be0b6; } .msg.bad { color: #feb6a8; } .msg.warn { color: #ffd38d; }
   .strip { display: flex; gap: 4px; padding: 10px 16px; min-height: 46px; overflow: hidden; }
   .strip span { white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--night-ink-2); padding: 4px 7px; border-radius: 8px; }
   .strip .last { background: var(--night-3); color: var(--night-ink); }

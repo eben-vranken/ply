@@ -32,8 +32,8 @@
     {#each pieces as p (p.k)}<piece class={p.cls} style="left:{p.x * 12.5}%;top:{p.y * 12.5}%"></piece>{/each}
     {#if line}
       <svg viewBox="0 0 8 8" aria-hidden="true">
-        <defs><marker id="mb-head" orient="auto" markerWidth="4" markerHeight="4" refX="2.05" refY="2"><path d="M0,0 V4 L3,2 Z" fill="#0f7a55" /></marker></defs>
-        <line {...line} stroke="#0f7a55" stroke-width="0.17" stroke-linecap="round" marker-end="url(#mb-head)" opacity="0.9" />
+        <defs><marker id="mb-head" orient="auto" markerWidth="4" markerHeight="4" refX="2.05" refY="2"><path d="M0,0 V4 L3,2 Z" fill="#018359" /></marker></defs>
+        <line {...line} stroke="#018359" stroke-width="0.17" stroke-linecap="round" marker-end="url(#mb-head)" opacity="0.9" />
       </svg>
     {/if}
   </div>
@@ -41,7 +41,7 @@
 
 <style>
   .mb { border-radius: 6px 6px 8px 8px; overflow: hidden; }
-  .mb.edge { padding-bottom: 6px; background: linear-gradient(to top, #d2b382 0 2px, #a67f4d 2px 4px, #e0c797 4px 6px, transparent 6px); }
+  .mb.edge { padding-bottom: 6px; background: linear-gradient(to top, #d0b386 0 2px, #9b7a45 2px 4px, #e1c69e 4px 6px, transparent 6px); }
   .sq {
     background-color: var(--birch);
     background-image: conic-gradient(var(--stain) 90deg, var(--birch) 0 180deg, var(--stain) 0 270deg, var(--birch) 0);

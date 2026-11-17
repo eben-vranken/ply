@@ -18,23 +18,32 @@ Two rooms: the app is light and calm (cool grey ground, white cards); a training
 
 | Token | Hex | Use |
 | --- | --- | --- |
-| `--ground` | `#eceef3` | App background |
+| `--ground` | `#eff1fc` | App background |
 | `--card` | `#ffffff` | Cards |
-| `--ink` | `#151936` | Text, tab bar, Black's sigil strokes |
-| `--ink-2` / `--ink-3` | `#4b5170` / `#686e8e` | Secondary / tertiary text (both AA on white and ground) |
-| `--cobalt` / `--cobalt-deep` | `#2b4bee` / `#1b33b8` | Primary action face / edge |
-| `--birch` / `--birch-2` / `--birch-3` | `#f1e0bf` / `#e2c99c` / `#c9a873` | Light squares, slab, active tab, veneers |
-| `--stain` | `#6584e2` | Dark squares |
-| `--walnut` | `#6f4c2c` | Text on birch |
-| `--good` / `--bad` / `--sun` | `#0f7a55` / `#cf331c` / `#f4b740` | Correct, wrong, hint and "next" |
-| `--night` / `--night-2` / `--night-3` | `#131734` / `#1d2247` / `#2c3366` | Session room |
-| Stages | new `#b9becf`, learning `#f08a24`, young `#7ccb9a`, mature `#0f7a55` | As the brief's stage table |
+| `--ink` | `#0f1337` | Text, tab bar, Black's sigil strokes |
+| `--ink-2` / `--ink-3` | `#414a74` / `#636c94` | Secondary / tertiary text (both AA on white and ground) |
+| `--cobalt` / `--cobalt-deep` | `#254bd2` / `#1b3ab6` | Primary action face / edge |
+| `--birch` / `--birch-2` / `--birch-3` | `#fbe5c3` / `#e1c69e` / `#be9f6f` | Light squares, slab, active tab, veneers |
+| `--stain` | `#6889d8` | Dark squares |
+| `--walnut` | `#634819` | Text on birch |
+| `--good` / `--bad` / `--sun` | `#018359` / `#c82611` / `#ffbe45` | Correct, wrong, hint and "next" |
+| `--night` / `--night-2` / `--night-3` | `#0f1337` / `#181d43` / `#313964` | Session room |
+| Stages | new `#b0b6d0`, learning `#f87e1a`, young `#65d09f`, mature `#018359` | As the brief's stage table |
 
 Stages also have a shape: an empty outline, then 1, 2 and 4 stacked plies.
 
+### Calibration
+
+Every colour in the app comes from one calibrated palette (OKLCH). Each family has one hue, and its chroma follows its lightness along one curve; every family uses the same lightness steps. The families: navy (ink, night, ground, lines: a blue-grey that keeps a lavender tint through the middle and goes near-neutral at the light end), wood (birch to walnut), cobalt, green, red, sun, orange, ice, violet and teal. A new colour is a step of a family, not a fresh hex. The text pairs keep AA or better.
+
+- **Pieces** wear the palette too: the light set is ivory (`--ivory` #fff9f1) with navy outlines (`--piece-line` #050524); the dark set is navy (#181d43) with cream details (#efd7b3). The board's stain is cobalt's hue, softer than the cobalt ramp (#6889d8).
+- **Marks on the board**: the right-answer `!` is `--good-mark` (#039868, one step lighter than `--good`, which also sets text) and every mark has an ivory rim, not white.
+- **Line colours** (the skill tree's branches, and the trainer): eight hues at one lightness and one chroma (OKLCH 0.80 / 0.15), so no branch is louder than another: #52db9c, #edb333, #fea387, #a0bdff, #d1a9ff, #0fd4f1, #fe99c7, #a2d060.
+- **In the trainer** a line in a coloured branch lights the room from above in its colour (brighter once the line is done), puts its name on a rail in the colour, shows its own moves as tinted chips, and ends on a solid chip with a glow. Moves on the trunk have no colour.
+
 ### Dark theme
 
-Follows the phone's setting by default; Settings → Appearance switches between Auto, Light and Dark. The dark theme re-points the neutral tokens only (`--ground` `#0d1024`, `--card` `#191e40`, `--ink` `#eef0fa`, `--line` `#2c3366`) plus a few helpers (`--accent-text`, `--good-text`, `--bad-text`, `--on-ink`, `--bar`, `--wash`) so text keeps AA contrast. Birch, the board, sigils and the session room are identical in both themes: the wood stays wood. `--ink-fixed` is the ink that never flips, for text on birch.
+Follows the phone's setting by default; Settings → Appearance switches between Auto, Light and Dark. The dark theme re-points the neutral tokens only (`--ground` `#090b2d`, `--card` `#181d43`, `--ink` `#eff1fc`, `--line` `#313964`) plus a few helpers (`--accent-text`, `--good-text`, `--bad-text`, `--on-ink`, `--bar`, `--wash`) so text keeps AA contrast. Birch, the board, sigils and the session room are identical in both themes: the wood stays wood. `--ink-fixed` is the ink that never flips, for text on birch.
 
 ## Type
 
@@ -152,7 +161,7 @@ Ply is the Duolingo of chess openings on top of an honest schedule. The schedule
 
 ### Streak freezes
 
-A freeze is ice blue (#7cc4ef on its tiles, #2a8fcf as text) with a six-armed snowflake icon: beside the flame on Today's streak pill, in the week strip and the Stats calendar for a day it covered, and as a chip on the session-complete screen when one is earned. Every 7 days in a row earns one, 2 at most; they are never sold.
+A freeze is ice blue (#68c4f1 on its tiles, #3e8aae as text) with a six-armed snowflake icon: beside the flame on Today's streak pill, in the week strip and the Stats calendar for a day it covered, and as a chip on the session-complete screen when one is earned. Every 7 days in a row earns one, 2 at most; they are never sold.
 
 ## Icons
 

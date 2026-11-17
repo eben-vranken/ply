@@ -84,8 +84,8 @@
   .night { position: relative; isolation: isolate; color: var(--night-ink); padding: env(safe-area-inset-top) 16px 0; overflow: hidden; flex: none; }
   .sky { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
   .blob { position: absolute; border-radius: 50%; filter: blur(70px); }
-  .b1 { width: 420px; height: 420px; left: -140px; top: -200px; background: #2b4bee; opacity: 0.55; animation: drift 18s ease-in-out infinite alternate; }
-  .b2 { width: 360px; height: 360px; right: -160px; top: 40px; background: #6a3fc4; opacity: 0.3; animation: drift 22s ease-in-out infinite alternate-reverse; }
+  .b1 { width: 420px; height: 420px; left: -140px; top: -200px; background: #254bd2; opacity: 0.55; animation: drift 18s ease-in-out infinite alternate; }
+  .b2 { width: 360px; height: 360px; right: -160px; top: 40px; background: #7238b1; opacity: 0.3; animation: drift 22s ease-in-out infinite alternate-reverse; }
   @keyframes drift { to { transform: translate(90px, 60px) scale(1.12); } }
   .checks { position: absolute; inset: 0; background-image: conic-gradient(rgba(255, 255, 255, 0.04) 90deg, transparent 0 180deg, rgba(255, 255, 255, 0.04) 0 270deg, transparent 0); background-size: 72px 72px; -webkit-mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 75%); mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 75%); }
   .bar { display: flex; align-items: center; height: 60px; }
@@ -123,7 +123,7 @@
     .pts { display: flex; flex-direction: column; gap: 12px; list-style: none; padding: 0; margin: 8px 0 0; }
     .pts li { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 600; color: var(--night-ink-2); animation: slide 640ms var(--ease) both; animation-delay: calc(450ms + var(--k) * 110ms); }
     @keyframes slide { from { opacity: 0; transform: translateX(-16px); } }
-    .ck { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgba(52, 224, 143, 0.16); color: #34e08f; }
+    .ck { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: rgba(52, 224, 143, 0.16); color: #52db9c; }
     .show { display: flex; flex-direction: column; gap: 18px; margin-top: auto; padding-top: 40px; animation: rise 900ms var(--ease) both 500ms; }
     @keyframes rise { from { opacity: 0; transform: translateY(30px); } }
     .slab { display: flex; gap: 22px; align-items: stretch; padding: 18px; border-radius: 24px; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); max-width: 520px; }

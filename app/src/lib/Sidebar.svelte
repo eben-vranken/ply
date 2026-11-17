@@ -50,8 +50,8 @@
     <button class="goal" onclick={() => go('/today')} aria-label="Daily goal: {xp} of {app.goal} XP. Level {lvl.level}, {lvl.rank}" title="Daily goal: {xp} of {app.goal} XP">
       <svg viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
         <circle cx="22" cy="22" r="17" fill="none" stroke="var(--night-3)" stroke-width="6" />
-        <circle cx="22" cy="22" r="17" fill="none" stroke={pct >= 1 ? '#34e08f' : 'var(--sun)'} stroke-width="6" stroke-linecap="round" stroke-dasharray="106.8" stroke-dashoffset={106.8 * (1 - pct)} transform="rotate(-90 22 22)" />
-        {#if pct >= 1}<path d="M15 22.500l5 5 9.500-10" fill="none" stroke="#34e08f" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round" />{/if}
+        <circle cx="22" cy="22" r="17" fill="none" stroke={pct >= 1 ? '#52db9c' : 'var(--sun)'} stroke-width="6" stroke-linecap="round" stroke-dasharray="106.8" stroke-dashoffset={106.8 * (1 - pct)} transform="rotate(-90 22 22)" />
+        {#if pct >= 1}<path d="M15 22.500l5 5 9.500-10" fill="none" stroke="#52db9c" stroke-width="3.500" stroke-linecap="round" stroke-linejoin="round" />{/if}
       </svg>
       <span class="lbl gt"><b class="t-num">{xp}<small> / {app.goal} XP</small></b><span>{pct >= 1 ? 'Daily goal reached' : 'Daily goal'}</span></span>
     </button>
@@ -100,17 +100,17 @@
   .pair { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .pill { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 10px 0 8px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); font-size: 13px; font-weight: 650; color: var(--night-ink-2); }
   .pill b { font-size: 15px; color: var(--night-ink); }
-  .pill.lit :global(svg) { color: #ff8a2a; }
-  .pill.lv i { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 7px; background: var(--sun); color: #3d2800; font-style: normal; font-weight: 800; font-size: 12.5px; }
-  .frz { display: inline-flex; align-items: center; gap: 2px; margin-left: 3px; padding-left: 6px; border-left: 1.5px solid var(--night-3); color: #7cc4ef; }
-  .frz b { color: #7cc4ef; font-size: 13px; }
+  .pill.lit :global(svg) { color: #f87e1a; }
+  .pill.lv i { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 7px; background: var(--sun); color: #3c2a0b; font-style: normal; font-weight: 800; font-size: 12.5px; }
+  .frz { display: inline-flex; align-items: center; gap: 2px; margin-left: 3px; padding-left: 6px; border-left: 1.5px solid var(--night-3); color: #68c4f1; }
+  .frz b { color: #68c4f1; font-size: 13px; }
   .sync { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 40px; padding: 0 10px; font-size: 13px; font-weight: 600; text-align: left; }
   .sync:hover { background: rgba(255, 255, 255, 0.08); color: var(--night-ink); }
   /* the status is a shape as well as a colour: a full dot, a ring, a square */
-  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #34e08f; }
+  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #52db9c; }
   .off .dot { background: none; box-shadow: inset 0 0 0 2px var(--night-ink-2); }
   .wait .dot { background: none; box-shadow: inset 0 0 0 2px var(--sun); }
-  .bad .dot { background: #ff7a6b; border-radius: 2px; }
+  .bad .dot { background: #fea387; border-radius: 2px; }
   .busy .dot { background: var(--sun); animation: pulse 900ms ease-in-out infinite alternate; }
   @keyframes pulse { to { opacity: 0.3; transform: scale(0.7); } }
   .who { margin-left: auto; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; opacity: 0.8; }

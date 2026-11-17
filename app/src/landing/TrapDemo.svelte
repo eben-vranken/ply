@@ -87,9 +87,9 @@
   .msg { display: flex; align-items: flex-start; gap: 10px; min-height: 76px; margin-top: 18px; font-size: 18px; font-weight: 600; line-height: 1.3; animation: rise 240ms var(--ease) both; }
   .g { flex: none; min-width: 30px; height: 30px; padding: 0 6px; display: grid; place-items: center; border-radius: 9px; font-weight: 800; font-size: 15px; letter-spacing: -0.05em; background: var(--night-3); margin-top: -3px; }
   .msg.info .g { font-family: var(--serif); font-style: italic; }
-  .msg.good { color: #8fe3bd; } .msg.good .g { background: var(--good); color: #fff; border-radius: 50%; }
-  .msg.bad { color: #ffb4a6; } .msg.bad .g { background: var(--bad); color: #fff; }
-  .msg.warn { color: #ffd98a; } .msg.warn .g { background: var(--sun); color: #3d2800; }
+  .msg.good { color: #8be0b6; } .msg.good .g { background: var(--good); color: #fff; border-radius: 50%; }
+  .msg.bad { color: #feb6a8; } .msg.bad .g { background: var(--bad); color: #fff; }
+  .msg.warn { color: #ffd38d; } .msg.warn .g { background: var(--sun); color: #3c2a0b; }
   .ctl { display: flex; gap: 10px; margin-top: 14px; }
   .ctl .sq { width: 52px; padding: 0; }
   @media (min-width: 900px) { .trap { grid-template-columns: minmax(0, 480px) minmax(280px, 1fr); gap: 44px; } .board { max-width: none; } }

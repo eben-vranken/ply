@@ -89,7 +89,7 @@
     if (delta !== null && delta <= -0.15) return `You leave the opening at ${now}, down from ${fmt(rep.before!.eval10)}. The mistake cards from these games are already in your queue.`;
     return `You leave the opening at ${now} on average. ${rep.recent.covered >= 70 ? 'Your lines covered most of what you met.' : 'Opponents left your lines often: see Uncovered in Repertoire.'}`;
   });
-  const HUES = ['#2b4bee', '#cf331c', '#0f7a55', '#b9770a', '#7a3fc4', '#0b7f93'];
+  const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
   const ms = $derived(mastering());
   const openTree = (m: Mastery) => go(`/tree?side=${m.side}&p=${encodeURIComponent(m.path.join(' '))}`);
   /** five new moves of an opening you are mastering, or a drill through it once all are learned */
@@ -402,9 +402,9 @@
   @keyframes ringin { from { stroke-dashoffset: 163.4; } }
   .pillb { display: flex; gap: 5px; height: 44px; padding: 0 14px 0 10px; background: var(--card); border-radius: 99px; box-shadow: var(--shadow); align-items: center; color: var(--ink-3); }
   .pillb b { font-size: 18px; color: var(--ink); }
-  .pillb.lit :global(svg) { color: #f0762a; }
+  .pillb.lit :global(svg) { color: #f87e1a; }
   .pillb.lv b { font-size: 14.5px; font-weight: 650; }
-  .pillb .pc { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 9px; background: var(--sun); color: #3d2800; font-weight: 800; font-size: 14px; box-shadow: 0 2px 0 #c98a12; }
+  .pillb .pc { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 9px; background: var(--sun); color: #3c2a0b; font-weight: 800; font-size: 14px; box-shadow: 0 2px 0 #be8709; }
 
   .goal { display: flex; align-items: center; gap: 14px; padding: 12px 16px 12px 12px; margin-bottom: 12px; }
   .goal svg { flex: none; }
@@ -434,7 +434,7 @@
   .pickone .star { flex: none; width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--sun-tint); color: var(--warn-text); }
 
   .slab { position: relative; color: var(--ink-fixed); background: var(--birch); border-radius: var(--r-xl); padding: 22px 20px 34px; overflow: hidden; box-shadow: 0 18px 28px -16px rgba(111, 76, 44, 0.55); }
-  .slab .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(#d8bb8a 0 2px, #b08a57 2px 5px, #e0c797 5px 8px, #a67f4d 8px 11px, #d2b382 11px 14px); }
+  .slab .edge { position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(#d0b386 0 2px, #ad8c59 2px 5px, #e1c69e 5px 8px, #9b7a45 8px 11px, #d0b386 11px 14px); }
   .art { position: absolute; right: -22px; top: -18px; color: var(--walnut); transform: rotate(8deg); }
   .art.done { right: 14px; top: 18px; transform: none; }
   .tick { display: grid; place-items: center; width: 92px; height: 92px; border-radius: 50%; background: var(--good); color: #fff; animation: pop 420ms var(--spring) both; }
@@ -445,7 +445,7 @@
   .arc .btn { flex: none; width: 60px; min-height: 60px; padding: 0; border-radius: 20px; }
   .arcnum { margin-top: 10px; font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
   .arcnum .fl { display: inline-flex; align-items: baseline; gap: 2px; }
-  .arcnum .fl :global(svg) { color: #f0762a; align-self: center; }
+  .arcnum .fl :global(svg) { color: #f87e1a; align-self: center; }
   .arcnum b { font-size: 20px; color: var(--ink); margin-right: 2px; }
   .counts { display: flex; gap: 8px; margin: 22px 0 18px; }
   .counts div { flex: 1; background: rgba(255, 255, 255, 0.55); border-radius: 16px; padding: 10px 12px 9px; }
@@ -473,9 +473,9 @@
   .week div { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; font-weight: 650; color: var(--ink-3); }
   .week span { width: 17px; height: 26px; border-radius: 6px; border: 1.6px solid var(--line); display: grid; place-items: center; color: #fff; }
   .week .hit span { background: var(--cobalt); border-color: var(--cobalt); }
-  .week .ice span { background: #7cc4ef; border-color: #7cc4ef; color: #0b3a57; }
-  .frz { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1.5px solid var(--line); color: #2a8fcf; }
-  .frz b { font-size: 15px !important; color: #2a8fcf !important; }
+  .week .ice span { background: #68c4f1; border-color: #68c4f1; color: #03435c; }
+  .frz { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding-left: 8px; border-left: 1.5px solid var(--line); color: #3e8aae; }
+  .frz b { font-size: 15px !important; color: #3e8aae !important; }
   .week .now { color: var(--ink); }
   .week .now span { border-color: var(--ink); }
   .week .now.hit span { border-color: var(--cobalt); }
@@ -527,14 +527,14 @@
     .qleg span { display: inline-flex; align-items: center; gap: 6px; }
     .qleg i { width: 10px; height: 10px; border-radius: 3px; }
     .qleg b { color: var(--ink); }
-    .k-line { background: var(--cobalt); } .k-new { background: var(--st-learning); } .k-punish { background: var(--good); } .k-danger { background: var(--bad); } .k-puzzle { background: var(--sun); } .k-mistake { background: #7a3fc4; } .k-drill { background: var(--ink-3); }
+    .k-line { background: var(--cobalt); } .k-new { background: var(--st-learning); } .k-punish { background: var(--good); } .k-danger { background: var(--bad); } .k-puzzle { background: var(--sun); } .k-mistake { background: #844bc6; } .k-drill { background: var(--ink-3); }
     .qlist { list-style: none; margin: 6px 0 0; padding: 0; }
     .qlist li { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 0; border-top: 1px solid var(--ground); }
     .qn { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--ground); font-size: 13px; color: var(--ink-2); }
     .qname { display: block; font-size: 17px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .qord { display: block; font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .qk { flex: none; height: 24px; padding: 0 9px; border-radius: 8px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
-    .qk.k-puzzle { color: #3d2800; } .qk.k-new { color: #3d1a00; }
+    .qk.k-puzzle { color: #3c2a0b; } .qk.k-new { color: #2f1d11; }
     .qmore { margin-top: 6px; }
   }
   @media (min-width: 1280px) and (min-height: 600px) {

@@ -43,7 +43,7 @@
   <ul class="list card">
     {#each hits as o (o.id)}
       <li><button onclick={() => onpick({ name: o.name, path: o.uci })}>
-        <Sigil path={o.uci.slice(0, 8)} hue="#2b4bee" flip={slot !== 'white'} you={slot === 'white' ? 'w' : 'b'} size={40} />
+        <Sigil path={o.uci.slice(0, 8)} hue="#254bd2" flip={slot !== 'white'} you={slot === 'white' ? 'w' : 'b'} size={40} />
         <span class="grow"><span class="t-name nm">{o.name}</span><span class="t-small">{o.eco} · {o.san}</span></span>
       </button></li>
     {:else}

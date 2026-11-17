@@ -232,7 +232,7 @@
   @media (min-width: 1600px) and (min-height: 600px) { .stats .cols { columns: 3; } .stats .troph { grid-template-columns: repeat(3, 1fr); } }
 
   .prof { display: flex; align-items: center; gap: 16px; }
-  .badge { flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--sun); color: #3d2800; font-size: 30px; box-shadow: 0 5px 0 #c98a12; margin-bottom: 5px; }
+  .badge { flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; background: var(--sun); color: #3c2a0b; font-size: 30px; box-shadow: 0 5px 0 #be8709; margin-bottom: 5px; }
   .lbar { height: 10px; border-radius: 5px; background: var(--line); overflow: hidden; margin: 8px 0 7px; }
   .lbar i { display: block; height: 100%; border-radius: 5px; background: var(--sun); }
   .troph { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -242,7 +242,7 @@
   .ti { width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center; background: var(--ground); }
   .tr.won { background: var(--birch); color: var(--walnut); box-shadow: 0 5px 0 var(--birch-3); margin-bottom: 5px; }
   .tr.won b { color: var(--ink-fixed); }
-  .tr.won .ti { background: var(--sun); color: #3d2800; box-shadow: 0 3px 0 #c98a12; }
+  .tr.won .ti { background: var(--sun); color: #3c2a0b; box-shadow: 0 3px 0 #be8709; }
   .tp { width: 70%; height: 5px; border-radius: 3px; background: var(--ground); overflow: hidden; margin-top: 6px; }
   .tp i { display: block; height: 100%; background: var(--st-learning); border-radius: 3px; }
   .xsec { display: flex; flex-direction: column; gap: 3px; height: 236px; margin: 14px 0 16px; border-radius: 14px; overflow: hidden; }
@@ -268,7 +268,7 @@
   .heat { display: flex; gap: 2px; }
   .heat div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
   .heat i { aspect-ratio: 1; border-radius: 1.5px; background: var(--ground); }
-  .heat .ice { background: #7cc4ef; }
+  .heat .ice { background: #68c4f1; }
   .heat .h1 { background: var(--h1); } .heat .h2 { background: var(--h2); } .heat .h3 { background: var(--h3); } .heat .h4 { background: var(--h4); }
   .mins { display: flex; align-items: flex-end; gap: 3px; height: 48px; }
   .mins i { width: 6px; border-radius: 2px; background: var(--birch-3); }

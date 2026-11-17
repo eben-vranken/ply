@@ -372,7 +372,7 @@
   .pick button.on { background: var(--ink); color: var(--on-ink); }
   .link.danger { color: var(--bad-text); }
   .btn.sm { min-height: 44px; }
-  .btn.bad { --face: var(--bad); --edge: #8f1f0e; }
+  .btn.bad { --face: var(--bad); --edge: #911101; }
   .status { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--ink); color: var(--on-ink); font-size: 14px; animation: rise 200ms var(--ease) both; }
   .meter { height: 8px; border-radius: 4px; background: var(--ground); overflow: hidden; }
   .meter i { display: block; height: 100%; background: var(--good); }
