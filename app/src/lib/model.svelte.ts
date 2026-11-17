@@ -5,7 +5,7 @@ import { app, save, onSave, replaceSettings, DEFAULTS, type Settings } from './s
 import { db, rawDb, removeRows, removeReview, SYNCED, type CardRow, type RepRow, type ReviewRow, type Mode, type CardType, type ArcadeMemory, type BookRow } from './db';
 import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, type Puzzle, type Opening } from './data';
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, epdOf, hashId, type Side } from './chess';
-import { branchCues } from './cue';
+import { branchCues, boardDiff, lookalikeNote } from './cue';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
@@ -427,6 +427,24 @@ export const studyDay = () => today0();
 // ---------------------------------------------------------------- items
 const ask = (a: Ask): Ask => a;
 
+/**
+ * A position you have already learned that looks almost like this one (a piece or two apart)
+ * and where you play a different move, one that is legal here too. The closest one wins.
+ */
+function twinOf(side: Side, epd: string, expected: string): Ask['twin'] {
+  const here = movesAt(side, epd);
+  let best: { d: number; epd: string; move: string } | undefined;
+  for (const c of cards.values()) {
+    if (c.type !== 'move' || c.side !== side || c.suspended || c.epd === epd || c.move === expected || here.includes(c.move)) continue;
+    const d = boardDiff(epd, c.epd);
+    if (!d || d > 4 || (best && d >= best.d)) continue;
+    if (movesAt(side, c.epd).includes(expected) || san(epd, c.move) === c.move) continue; // the same answer there, or its move cannot be played here
+    best = { d, epd: c.epd, move: c.move };
+  }
+  const note = best && lookalikeNote(epd, best.epd, side);
+  return note ? { note, move: best!.move } : undefined;
+}
+
 /** Ask every one of your moves along a path; due cards change schedule. */
 function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind'] } = {}): Item {
   const asks: Record<number, Ask> = {};
@@ -443,7 +461,7 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
         name: (x) => nameOf(child(at, x), [...path.slice(0, i), x])[1]
       })[mineHere.indexOf(u)] : undefined;
       const isIntro = opts.intro && opts.intro.id === id;
-      asks[i] = ask({ card: cards.has(id) || isIntro ? id : undefined, graded: dueIds.has(id) || !!isIntro, intro: !!isIntro, other: other.length ? other : undefined, cue: cue || undefined });
+      asks[i] = ask({ card: cards.has(id) || isIntro ? id : undefined, graded: dueIds.has(id) || !!isIntro, intro: !!isIntro, other: other.length ? other : undefined, cue: cue || undefined, twin: twinOf(side, at, u) });
     }
     e = child(e, u);
   });

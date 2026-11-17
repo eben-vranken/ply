@@ -17,6 +17,8 @@ export interface Ask {
   other?: string[];
   /** at a branch position: what tells this move apart from your others (lib/cue.ts) */
   cue?: string;
+  /** a look-alike you have learned, where you play another move: what is different here, and that move */
+  twin?: { note: string; move: string };
 }
 
 export type Kind = 'line' | 'new' | 'punish' | 'danger' | 'puzzle' | 'mistake' | 'drill';
