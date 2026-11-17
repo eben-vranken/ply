@@ -157,7 +157,6 @@
   <section class="hero">
     <div class="sky" aria-hidden="true" style="--p:{tilt}"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i><i class="checks"></i></div>
     <div class="wrap hero-in" style="--p:{tilt}">
-      <p class="badge"><span class="dot"></span>Free to use <span class="sep">·</span> No ads</p>
       <h1 aria-label="Openings that stay learned.">
         <span class="w" style="--w:0">Openings</span>{' '}<span class="w" style="--w:1">that</span>{' '}<span class="w" style="--w:2"><em>stay</em></span>{' '}<span class="w" style="--w:3">learned.</span>
       </h1>
@@ -531,11 +530,6 @@
   .checks { position: absolute; inset: 0; background-image: conic-gradient(rgba(255, 255, 255, 0.045) 90deg, transparent 0 180deg, rgba(255, 255, 255, 0.045) 0 270deg, transparent 0); background-size: 96px 96px; -webkit-mask-image: radial-gradient(70% 55% at 50% 30%, #000 0%, transparent 75%); mask-image: radial-gradient(70% 55% at 50% 30%, #000 0%, transparent 75%); animation: fadein 1600ms ease both 200ms; }
   .hero-in { display: flex; flex-direction: column; align-items: flex-start; translate: 0 calc(var(--p, 0) * -60px); opacity: calc(1 - var(--p, 0) * 0.6); }
   .sky { translate: 0 calc(var(--p, 0) * 120px); }
-  .badge { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px 0 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); font-size: 13.5px; font-weight: 650; color: var(--night-ink); position: relative; overflow: hidden; animation: up 700ms var(--ease) both 100ms; }
-  .badge::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.22) 50%, transparent 70%); transform: translateX(-100%); animation: shine 4.5s ease-in-out infinite 1.4s; }
-  .badge .sep { color: var(--night-ink-2); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #34e08f; box-shadow: 0 0 0 0 rgba(52, 224, 143, 0.6); animation: ping 2.2s ease-out infinite; }
-  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(52, 224, 143, 0.55); } 80%, 100% { box-shadow: 0 0 0 9px rgba(52, 224, 143, 0); } }
   @keyframes shine { 0% { transform: translateX(-100%); } 40%, 100% { transform: translateX(100%); } }
   h1 { font-size: clamp(54px, 15vw, 128px); line-height: 0.92; margin: 22px 0 22px; letter-spacing: -0.035em; }
   h1 .w { display: inline-block; animation: word 900ms var(--ease) both; animation-delay: calc(180ms + var(--w) * 90ms); }
