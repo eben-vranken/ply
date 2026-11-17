@@ -21,7 +21,8 @@ const SIZES: Record<string, Size> = {
   'desktop-1280': { width: 1280, height: 800, mobile: false, desk: true },
   'desktop-1280-dark': { width: 1280, height: 800, mobile: false, desk: true, dark: true },
   'desktop-1920': { width: 1920, height: 1080, mobile: false, desk: true },
-  'desktop-1920-dark': { width: 1920, height: 1080, mobile: false, desk: true, dark: true }
+  'desktop-1920-dark': { width: 1920, height: 1080, mobile: false, desk: true, dark: true },
+  'desktop-1440p-dark': { width: 2560, height: 1440, mobile: false, desk: true, dark: true }
 };
 const only = process.env.ONLY?.split(',');
 const server = await preview({ preview: { port: 4182 } });

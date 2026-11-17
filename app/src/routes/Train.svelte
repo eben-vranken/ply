@@ -876,7 +876,8 @@
   /* ---------- desktop: the board as the hero, one panel beside it (DESIGN.md, "Desktop") ---------- */
   @media (min-width: 1024px) and (min-height: 600px) {
     .room.board {
-      --bw: min(calc(100dvh - 124px), calc(100vw - 560px), 820px);
+      /* as tall as the screen allows; the width cap only keeps it square-ish beside the panel on very wide screens */
+      --bw: min(calc(100dvh - 124px), calc(100vw - 560px), 1400px);
       display: grid; grid-template-columns: var(--bw) minmax(360px, 460px); grid-template-rows: 56px auto minmax(0, 1fr);
       grid-template-areas: 'head head' 'board lab' 'board side'; justify-content: center; column-gap: 32px; padding: 6px 32px 44px;
     }

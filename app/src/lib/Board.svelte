@@ -58,8 +58,18 @@
     const fresh = () => api?.state.dom.bounds.clear();
     el.addEventListener('touchstart', fresh, { capture: true, passive: true });
     el.addEventListener('mousedown', fresh, { capture: true });
-    const settle = setTimeout(() => api?.redrawAll(), 400);
-    return () => { clearTimeout(settle); api?.destroy(); };
+    // The page flies in with a transform, which chessground's ResizeObserver cannot see, so it can size
+    // the board mid-flight and keep that size. Watch the real size for a moment and redraw when it moves.
+    let last = 0, frame = 0;
+    const until = performance.now() + 1500;
+    const watch = () => {
+      const w = Math.round(el.getBoundingClientRect().width);
+      if (w !== last) { last = w; api?.redrawAll(); }
+      if (performance.now() < until) frame = requestAnimationFrame(watch);
+    };
+    frame = requestAnimationFrame(watch);
+    const settle = setTimeout(() => api?.redrawAll(), 1600);
+    return () => { cancelAnimationFrame(frame); clearTimeout(settle); api?.destroy(); };
   });
 
   $effect(() => {
