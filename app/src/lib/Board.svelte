@@ -1,6 +1,5 @@
 <script lang="ts" module>
-  /** `line`: the colour of the line this move belongs to in the skill tree, worn lightly by a right answer */
-  export interface Badge { square: string; glyph: string; tone: 'good' | 'bad' | 'warn'; line?: string }
+  export interface Badge { square: string; glyph: string; tone: 'good' | 'bad' | 'warn' }
 </script>
 
 <script lang="ts">
@@ -109,10 +108,8 @@
     {#if badge && pos}
       {#key badge.square + badge.glyph + rev}
         <span class="flash {badge.tone}" style={sq} aria-hidden="true"></span>
-        {@const tint = badge.tone === 'good' && badge.line ? `;--line:${badge.line}` : ''}
-        {#if tint}<span class="trace" style={sq + tint} aria-hidden="true"></span>{/if}
-        {#if badge.tone === 'good'}<span class="burst" style={pos + tint} aria-hidden="true">{#each Array(8) as _, i}<i style="--a:{i * 45 + 12}deg"></i>{/each}</span>{/if}
-        <span class="badge {badge.tone}" class:lined={!!tint} style={pos + tint} aria-hidden="true">{badge.glyph}</span>
+        {#if badge.tone === 'good'}<span class="burst" style={pos} aria-hidden="true">{#each Array(8) as _, i}<i style="--a:{i * 45 + 12}deg"></i>{/each}</span>{/if}
+        <span class="badge {badge.tone}" style={pos} aria-hidden="true">{badge.glyph}</span>
       {/key}
     {/if}
   </div>
@@ -136,17 +133,13 @@
     animation: pop 260ms var(--spring) both; pointer-events: none;
   }
   .badge.good { background: var(--good); }
-  /* the line's colour from the skill tree: a ring round the mark, half the sparks, and an outline on the square that fades */
-  .badge.lined { box-shadow: 0 0 0 2.5px var(--line), 0 3px 8px rgba(21, 25, 54, 0.35); }
-  .trace { position: absolute; z-index: 3; width: 12.5%; aspect-ratio: 1; pointer-events: none; box-shadow: inset 0 0 0 3px var(--line); opacity: 0; animation: trace 1400ms ease-out both; }
-  @keyframes trace { 0% { opacity: 0; } 15% { opacity: 0.9; } 100% { opacity: 0; } }
   .flash { position: absolute; z-index: 3; width: 12.5%; aspect-ratio: 1; pointer-events: none; opacity: 0; animation: flash 520ms ease-out both; }
   .flash.good { background: #34e08f; }
   .flash.bad { background: #ff5a3d; }
   .flash.warn { background: var(--sun); }
   @keyframes flash { 0% { opacity: 0.75; } 100% { opacity: 0; } }
   .burst { position: absolute; z-index: 4; width: 0; height: 0; margin: 6px 0 0 -6px; pointer-events: none; }
-  .burst i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--line, var(--sun)); animation: spark 560ms cubic-bezier(0.1, 0.7, 0.3, 1) both; }
+  .burst i { position: absolute; left: -3.5px; top: -3.5px; width: 7px; height: 7px; border-radius: 50%; background: var(--sun); animation: spark 560ms cubic-bezier(0.1, 0.7, 0.3, 1) both; }
   .burst i:nth-child(odd) { background: #34e08f; }
   @keyframes spark { 0% { opacity: 1; transform: rotate(var(--a)) translateY(-10px) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-42px) scale(0.3); } }
   .badge.bad { background: var(--bad); border-radius: 9px; }

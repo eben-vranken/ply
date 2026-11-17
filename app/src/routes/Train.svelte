@@ -249,7 +249,7 @@
         for (let i = 0; i <= step; i++) if (it.asks[i]) asks[i] = it.asks[i];
         items[idx] = { ...it, moves, asks: fillDrillAsks(it.side, it.start, it.setup, moves, asks, step) };
       }
-      badge = fixing ? null : { square: mv.to, glyph: mv.san.includes('#') ? '#' : '!', tone: 'good', line: it.tint && step >= it.tint.from ? it.tint.colour : undefined };
+      badge = fixing ? null : { square: mv.to, glyph: mv.san.includes('#') ? '#' : '!', tone: 'good' };
       msg = fixing ? null : { tone: 'good', text: mv.san.includes('#') ? 'Checkmate' : wrong ? 'Now you have it' : 'Correct' };
       fixing = false; shapes = []; step++; dests = null;
       sync(mv); advance();
@@ -485,14 +485,19 @@
     location.replace(`${location.pathname}${location.search}#/play?side=${lastLine.side}&p=${encodeURIComponent([...lastLine.setup, ...lastLine.moves].join(' '))}`);
   }
   const histSans = $derived(hist);
+  // the line's colour in its opening's skill tree: its name wears it, and so do its moves from where it
+  // branches off, ending in a solid chip once the line is done. The trunk before the first split has none.
+  const tint = $derived(item?.tint && !pre.length ? item.tint : undefined);
+  const branchAt = $derived(tint ? item.setup.length + tint.from : Infinity);
+  const lineDone = $derived(!!tint && phase !== 'play');
   const playedSan = $derived(item?.played ? sanOf(epdAfter(item.setup, item.start.split(' ').slice(0, 4).join(' ')), item.played.uci) : '');
 </script>
 
 {#snippet moves()}
-  <div class="strip" bind:this={strip}>
+  <div class="strip" bind:this={strip} style={tint ? `--line:${tint.colour}` : undefined}>
     {#each line.slice(1) as m, i}
       {@const ply = lineStart + i}
-      <button class:last={i + 1 === cur} disabled={phase !== 'answered'} onclick={() => goTo(i + 1)}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m.san}</button>
+      <button class:last={i + 1 === cur} class:br={i >= branchAt} class:end={lineDone && i === line.length - 2} disabled={phase !== 'answered'} onclick={() => goTo(i + 1)}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m.san}</button>
     {/each}
     {#if line.length <= 1}<span class="ghost">1.</span>{/if}
   </div>
@@ -585,7 +590,7 @@
     <div class="lab">
     <div class="label">
       {#if phase !== 'play'}
-        <p class="t-name nm">{item.label}</p>
+        <p class="t-name nm" class:lined={!!tint} style={tint ? `--line:${tint.colour}` : undefined}>{item.label}</p>
         <p class="ord">
           {item.order}
           {#if item.others?.length}<button class="also" onclick={() => (showOthers = !showOthers)}>also in {item.others.length} other line{item.others.length === 1 ? '' : 's'}</button>{/if}
@@ -593,7 +598,7 @@
       {:else if cue}
         <p class="branch" role="status"><Mascot size={30} still /><span>Two moves here. This time: <b>{cue}</b></span></p>
       {:else if app.showName}
-        <p class="t-name nm">{item.label}</p>
+        <p class="t-name nm" class:lined={!!tint} style={tint ? `--line:${tint.colour}` : undefined}>{item.label}</p>
       {:else}
         <p class="ord quiet">{item.side === 'w' ? 'You play White' : 'You play Black'}</p>
       {/if}
@@ -751,6 +756,14 @@
   .strip em { font-style: normal; font-weight: 500; opacity: 0.6; margin-right: 3px; }
   .strip .last { background: var(--night-3); color: var(--night-ink); }
   .strip .ghost { opacity: 0.4; }
+  /* the line's own moves, from where it branches off: a bar in its colour under each, like the skill tree's connector */
+  .strip .br { color: var(--night-ink); box-shadow: inset 0 -3px 0 var(--line); border-radius: 8px 8px 4px 4px; }
+  /* the end of the line: its last move becomes a solid chip in the line's colour */
+  .strip .end { background: var(--line); color: #0d1024; font-weight: 800; box-shadow: 0 0 0 3px color-mix(in srgb, var(--line) 28%, transparent), 0 0 22px color-mix(in srgb, var(--line) 55%, transparent); border-radius: 9px; animation: endcap 620ms var(--spring) both; }
+  .strip .end em { opacity: 0.7; }
+  .strip button.end:disabled { opacity: 1; }
+  @keyframes endcap { 0% { transform: scale(0.6); box-shadow: 0 0 0 0 var(--line); } 60% { transform: scale(1.12); } 100% { transform: none; } }
+  .nm.lined { color: var(--line); }
   .strip button:disabled { opacity: 1; cursor: default; }
   .strip button:not(:disabled):hover { color: var(--night-ink); background: var(--night-2); }
   .browse { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
