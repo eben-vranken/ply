@@ -274,6 +274,8 @@
   // ---------------------------------------------------------------- selecting and folding
   let selId = $state<string | null>(null);
   const sel = $derived(selId ? tree.all.get(selId) ?? null : null);
+  /** the opening's totals and chapters over Learn and Drill: put away until you ask for them */
+  let showBook = $state(false);
 
   /** bring a tile into the part of the canvas that is free, moving as little as possible */
   function reveal(p: P, sheet: number, room = 0) {
@@ -421,6 +423,7 @@
     {#if canUnfold}
       <button class:on={allOpen} onclick={expandAll} aria-pressed={allOpen} aria-label={allOpen ? 'Collapse to the main lines' : 'Expand all lines'} title={allOpen ? 'Collapse' : 'Expand all'}><Icon name={allOpen ? 'fold' : 'unfold'} size={22} /></button>
     {/if}
+    <button class:on={showBook} onclick={() => { showBook = !showBook; if (showBook) selId = null; }} aria-pressed={showBook} aria-label={showBook ? 'Hide progress and chapters' : 'Show progress and chapters'} title="Progress and chapters"><Icon name="book" size={22} /></button>
   </div>
 
   <p class="how2" aria-hidden="true"><kbd>scroll</kbd> zoom <kbd>drag</kbd> move <kbd>← ↑ ↓ →</kbd> pan <kbd>0</kbd> fit</p>
@@ -450,17 +453,21 @@
       </div>
     {:else}
       {@const fresh = newCount(null)}
-      <p class="tot"><b class="t-num">{sum.total - sum.stages[0]}</b> of {sum.total} moves learned{#if sum.stages[3]}, {sum.stages[3]} mature{/if}{#if sum.lapses}, <span class="bad">{sum.lapses} forgotten</span>{/if}</p>
-      <span class="bar" role="img" aria-label="{sum.stages[3]} mature, {sum.stages[2]} young, {sum.stages[1]} learning, {sum.stages[0]} new">
-        {#each ['mature', 'young', 'learning', 'new'] as s, i}<i style="flex:{sum.stages[3 - i]};background:var(--st-{s})"></i>{/each}
-      </span>
-      {#if tree.top.length > 1}
-        <div class="chs" aria-label="Chapters">
-          {#each tree.top as n, i (n.id)}
-            <button style="--c:{n.colour}" class:done={learned(n.m) === n.m.sum.total} onclick={(e) => { e.stopPropagation(); moved = false; pick(n); }}>
-              <small>Chapter {i + 1}</small><span>{tail(n.name)}</span><b class="t-num">{learned(n.m)}/{n.m.sum.total}</b>
-            </button>
-          {/each}
+      {#if showBook}
+        <div class="book">
+          <p class="tot"><b class="t-num">{sum.total - sum.stages[0]}</b> of {sum.total} moves learned{#if sum.stages[3]}, {sum.stages[3]} mature{/if}{#if sum.lapses}, <span class="bad">{sum.lapses} forgotten</span>{/if}</p>
+          <span class="bar" role="img" aria-label="{sum.stages[3]} mature, {sum.stages[2]} young, {sum.stages[1]} learning, {sum.stages[0]} new">
+            {#each ['mature', 'young', 'learning', 'new'] as s, i}<i style="flex:{sum.stages[3 - i]};background:var(--st-{s})"></i>{/each}
+          </span>
+          {#if tree.top.length > 1}
+            <div class="chs" aria-label="Chapters">
+              {#each tree.top as n, i (n.id)}
+                <button style="--c:{n.colour}" class:done={learned(n.m) === n.m.sum.total} onclick={(e) => { e.stopPropagation(); moved = false; pick(n); }}>
+                  <small>Chapter {i + 1}</small><span>{tail(n.name)}</span><b class="t-num">{learned(n.m)}/{n.m.sum.total}</b>
+                </button>
+              {/each}
+            </div>
+          {/if}
         </div>
       {/if}
       <div class="acts">
@@ -538,7 +545,10 @@
   .chs b { font-size: 12.5px; color: var(--night-ink-2); }
   .chs .done { background: var(--birch); border-color: var(--birch); color: var(--ink-fixed); }
   .chs .done small, .chs .done b { color: var(--walnut); }
+  .book { animation: rise 220ms var(--ease) both; }
+  .book + .acts { margin-top: 14px; }
   .acts { display: flex; gap: 8px; margin: 14px 0 5px; }
+  .sheet > .acts:first-child { margin-top: 0; }
   .acts .btn { min-height: 46px; font-size: 15px; padding: 0 10px; border-radius: 14px; }
   .how2 { display: none; }
   /* ---------- desktop: a full-window canvas, the sheet as a panel on the right (DESIGN.md, "Desktop") ---------- */
