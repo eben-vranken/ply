@@ -15,14 +15,14 @@ From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: le
 
 **Why.** Every line plays from move 1 and stops wherever the deepest due card is, so a line has no stable shape, and the player is tested on a path they did not choose. Music research and Chess Tempo agree on starting at landmarks and stopping at boundaries.
 
-- ☐ **2a. Landmarks** from the band data: the first position after an opponent reply that is not the most played one, a branch of yours, a transposition merge.
-- ☐ **2b. Scrubbed trunk:** moves before the landmark play fast (about 150 ms a ply); a trunk move that is nearly due or weak is asked instead of scrubbed.
-- ☐ **2c. Deviation callout:** a pause on the reply that defines the line: "Rare …Nf6, 7% at your level".
-- ☐ **2d. Progress pips** for the moves you still have to make, the due ones marked; the line ends at a predictable boundary (the next branch or the end of the variation) after its last due card.
-- ☐ **2e. Why this line:** a chip, "3 moves due here".
-- ☐ **2f. Reintegration:** every few days, or when a whole line is nearly due, play it once from move 1.
-- ☐ **2g. Line colour per subtree or role,** not per line (colour does not scale past about 10 categories), always with a second signal.
-- ☐ **2h. A/B on the device,** randomised per session: time per session, first-try accuracy within card, hint and slow-move rates, retention at the next due review after a mid-line start versus from move 1, lapses on deep moves, day-7 return.
+- ☑ **2a. Landmarks** from the band data: the first position after an opponent reply that is not the most played one, a branch of yours, a transposition merge.
+- ☑ **2b. Scrubbed trunk:** moves before the landmark play fast (about 150 ms a ply); a trunk move that is nearly due or weak is asked instead of scrubbed.
+- ☑ **2c. Deviation callout:** a pause on the reply that defines the line: "Rare …Nf6, 7% at your level".
+- ◐ **2d. Progress pips** for the moves you still have to make, the due ones marked, so you can see where the line ends. Built. Not built: extending a line past its last due card to the next boundary, because lines almost never have a single reply to extend through.
+- ☑ **2e. Why this line:** a chip, "3 moves due here".
+- ☑ **2f. Reintegration:** every few days, or when a whole line is nearly due, play it once from move 1.
+- ☑ **2g. Line colour per subtree or role,** not per line. Already the case: a colour belongs to a main branch of the opening's first split, not to a line, and the deviation callout is the second signal.
+- ◐ **2h. A/B on the device** (the arm is drawn per session and logged as `seg` on every review; the analysis is in 1c's script), randomised per session: time per session, first-try accuracy within card, hint and slow-move rates, retention at the next due review after a mid-line start versus from move 1, lapses on deep moves, day-7 return.
 
 ## Phase 3. Branch siblings as one unit
 

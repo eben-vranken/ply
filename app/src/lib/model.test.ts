@@ -173,6 +173,57 @@ describe('model on real data', () => {
     expect(m.movesAt('w', e)).toEqual(['f1c4']);
   });
 
+  it('a review line from its landmark: the trunk plays fast, the reply that sets it apart is named', async () => {
+    const { moveId, pathTo } = await import('./srs/lines');
+    const { app } = await import('./state.svelte');
+    const W = m.lines().w!, D = m.data()!;
+    const topOf = (e: string) => D.tree[e]?.m.reduce((b, r) => (r[1] > b[1] ? r : b))[0];
+    // a White line at least four of your moves long whose last reply is not the main one
+    const spec = [...W.cards.values()].find((s) => {
+      if (s.ply < 6 || W.branches.has(s.epd)) return false;
+      const p = pathTo(W, s.epd);
+      const before = chess.epdAfter(p.slice(0, -1));
+      return !!topOf(before) && topOf(before) !== p[p.length - 1] && !m.allCards().has(s.id);
+    })!;
+    expect(spec).toBeTruthy();
+    const path = [...pathTo(W, spec.epd), spec.move];
+    const now = Date.now(), DAY = 864e5;
+    const rows: Parameters<typeof m.addCards>[0] = [];
+    let e = chess.START_EPD;
+    path.forEach((u, i) => {
+      if (i % 2 === 0) {
+        const id = moveId('w', e, u), last = i === path.length - 1;
+        if (!m.allCards().has(id)) rows.push({ id, type: 'move', side: 'w', epd: e, move: u, answer: [], line: [], label: '', path: [],
+          fsrs: { due: new Date(last ? now - 1000 : now + 60 * DAY), stability: last ? 20 : 400, difficulty: 4, elapsed_days: 0, scheduled_days: 20, learning_steps: 0, reps: 5, lapses: 0, state: 2, last_review: new Date(now - DAY) } as never,
+          due: last ? now - 1000 : now + 60 * DAY, suspended: 0, created: now - 90 * DAY, lapses: 0 });
+      }
+      e = chess.child(e, u);
+    });
+    await m.addCards(rows);
+    const id = moveId('w', spec.epd, spec.move);
+    const q = m.todayCounts().queue.find((x) => x.kind === 'line' && x.due.includes(id))!;
+    app.segments = 'on';
+    const [seg] = m.itemsFor([q]);
+    app.segments = 'off';
+    const [plain] = m.itemsFor([q]);
+    app.segments = 'auto';
+    expect(plain.scrub).toBeUndefined();
+    expect(plain.seg).toBe(0);
+    expect(seg.seg).toBe(1);
+    expect(seg.why).toBe('1 move due on this line');
+    expect(seg.callout!.text).toMatch(/at your level/);
+    expect(seg.callout!.at).toBe(path.length - 2);
+    // a whole-line day plays from move 1; otherwise nothing before the landmark is asked
+    const mine = new Set(rows.map((r) => r.id));
+    if (seg.scrub) for (const [k, a] of Object.entries(seg.asks)) if (+k < seg.scrub) expect(mine.has(a.card!)).toBe(false);
+    expect(Object.keys(seg.asks).length).toBeLessThanOrEqual(Object.keys(plain.asks).length);
+    // the review is logged with its arm
+    const at = path.length - 1;
+    await m.applyOutcome({ item: seg, results: { [at]: { wrong: false, hinted: false, playable: false, ms: 900, uci: spec.move, epd: spec.epd } } }, 'today');
+    const logged = (await dbm.db.reviews.toArray()).filter((r) => r.cardId === id);
+    expect(logged.map((r) => r.seg)).toEqual([1]);
+  });
+
   it('the first chess.com rating sets the band and depth at once', async () => {
     const { app } = await import('./state.svelte');
     expect(app.bandSet).toBe(false);

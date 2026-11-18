@@ -56,6 +56,14 @@ export interface Item {
   puzzle?: string;
   /** Arcade: what the position is, how hard it is, and whether it came back after a miss */
   arcade?: { key: string; level: number; back?: boolean };
+  /** a review line from its landmark (srs/segment.ts): moves before this index without an ask play fast */
+  scrub?: number;
+  /** the opponent reply that sets the line apart: paused on and named */
+  callout?: { at: number; text: string };
+  /** why this line: "3 moves due on this line" */
+  why?: string;
+  /** the session's A/B arm for review lines (1: from the landmark), logged with each review */
+  seg?: 0 | 1;
   /** Today item came from the daily queue (counts toward Done today) */
   today?: boolean;
 }

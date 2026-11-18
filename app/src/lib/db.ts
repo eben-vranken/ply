@@ -76,6 +76,8 @@ export interface ReviewRow extends Tracked {
   prev?: FsrsCard | null;
   /** 1 when the card was not due: a move played on the way along a line (docs/ROADMAP.md, phase 1a) */
   implicit?: 1;
+  /** review lines: the session's A/B arm (1: played from the landmark, 0: from move 1) */
+  seg?: 0 | 1;
 }
 
 export interface RepRow extends Tracked {

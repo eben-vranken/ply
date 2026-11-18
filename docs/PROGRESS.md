@@ -166,3 +166,15 @@ Phase 1 of `docs/ROADMAP.md`, from `reports/Chess line SRS.md`.
 - **Move order of a line** (`groupLines`): where the deepest due card's position has other move orders, the line takes the one through the most due cards, then the most nearly due (R < 0.95), then the most probable.
 - **Tests:** a model test (credit once a day, not against the limit, nothing for a hard card unless it is missed, Undo removes it) and a queue test on a transposition. Vitest 151 passed; `npm run smoke` passes on a build without account keys.
 - **Not done yet:** 1c, checking on real logs how often a card credited on the way lapses at its next due review.
+
+## Review lines from their landmark (Nov 18)
+
+Phase 2 of `docs/ROADMAP.md`.
+
+- **Landmark** (`lib/srs/segment.ts`): the opponent's last reply before a line's first due move that is not the most played one; without one, your last branch or transposition before it.
+- **Fast trunk:** moves before the landmark play by themselves at 140 ms a move, yours included. A trunk move that is nearly due (R < 0.95), still in a learning step or hard (difficulty ≥ 8) is still asked. A landmark under two moves in is not worth it, and the line plays as before.
+- **The reply that sets the line apart** comes at a slower beat and is named: "Rare …Nf6: 7% at your level", or "…Nf6: 31% at your level, not the main reply", or "a reply from your own book".
+- **Pips and why:** a row of dots for the moves you will play (due ones ringed, played ones filled) and "2 moves due on this line".
+- **Whole lines:** a fifth of lines each day play from move 1 with nothing skipped, the same lines all day.
+- **A/B:** Settings → Board and appearance → Review lines start: Mixed (default: half the sessions at random), Landmark, Move 1. Every review from a review line logs its arm (`seg`).
+- **Tests:** unit tests for the landmark, the callout text and the whole-line share; a model test on real data (asks before the landmark dropped, the callout, the arm logged). Vitest 157 passed; `npm run smoke` passes. A landmark line was not seen in a browser: the smoke session starts from a fresh install with nothing due.

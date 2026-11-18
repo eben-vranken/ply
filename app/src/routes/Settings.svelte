@@ -239,6 +239,10 @@
           <p class="lb grow">Appearance</p>
           <div class="pick">{#each ['auto', 'light', 'dark'] as const as t}<button class:on={app.theme === t} aria-pressed={app.theme === t} onclick={() => { app.theme = t; save(); }}>{t === 'auto' ? 'Auto' : t === 'light' ? 'Light' : 'Dark'}</button>{/each}</div>
         </div>
+        <div class="r">
+          <div class="grow"><p class="lb">Review lines start</p><p class="t-small">At the landmark: the moves you know play fast, and the reply that sets the line apart is named. Mixed tries both, half the sessions each, to see which you remember better.</p></div>
+          <div class="pick">{#each ['auto', 'on', 'off'] as const as t}<button class:on={app.segments === t} aria-pressed={app.segments === t} onclick={() => { app.segments = t; save(); }}>{t === 'auto' ? 'Mixed' : t === 'on' ? 'Landmark' : 'Move 1'}</button>{/each}</div>
+        </div>
         {#each toggles as [k, label, hint]}
           <label class="r">
             <div class="grow"><p class="lb">{label}</p>{#if hint}<p class="t-small">{hint}</p>{/if}</div>

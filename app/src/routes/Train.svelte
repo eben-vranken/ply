@@ -177,13 +177,19 @@
   function advance() {
     const it = items[idx];
     if (step >= it.moves.length) return void finish();
-    if (chess.turn() !== it.side) {
+    // a review line from its landmark: the trunk before it plays fast, your known moves included
+    const fast = step < (it.scrub ?? 0);
+    if (chess.turn() !== it.side || (fast && !it.asks[step])) {
       dests = null;
+      // the reply that sets this line apart comes at a slower beat and is named
+      const call = it.callout?.at === step ? it.callout : undefined;
       timer = setTimeout(() => {
         const mv = chess.move(toMove(it.moves[step]));
         mv.captured ? sfx.capture() : sfx.move();
-        step++; badge = null; sync(mv); advance();
-      }, Math.max(app.delay, step === 0 && it.kind === 'puzzle' ? 700 : 120));
+        step++; badge = null; sync(mv);
+        if (call) msg = { tone: 'info', text: call.text };
+        advance();
+      }, fast ? 140 : call ? Math.max(app.delay, 700) : Math.max(app.delay, step === 0 && it.kind === 'puzzle' ? 700 : 120));
       return;
     }
     dests = destsOf(chess);
@@ -485,6 +491,8 @@
     location.replace(`${location.pathname}${location.search}#/play?side=${lastLine.side}&p=${encodeURIComponent([...lastLine.setup, ...lastLine.moves].join(' '))}`);
   }
   const histSans = $derived(hist);
+  /** the moves you are asked on this line, for the progress pips */
+  const asked = $derived(item ? Object.keys(item.asks).map(Number).sort((a, b) => a - b) : []);
   // the line's colour in its opening's skill tree: its name wears it, and so do its moves from where it
   // branches off, ending in a solid chip once the line is done. The trunk before the first split has none.
   const tint = $derived(item?.tint && !pre.length ? item.tint : undefined);
@@ -605,6 +613,11 @@
         <p class="ord quiet">{item.side === 'w' ? 'You play White' : 'You play Black'}</p>
       {/if}
     </div>
+    {#if phase === 'play' && item.why}
+      <p class="pips" aria-label="{item.why}. {asked.filter((k) => k < step).length} of {asked.length} of your moves played">
+        {#each asked as k}<i class:done={k < step} class:due={item.asks[k]?.graded}></i>{/each}<span>{item.why}</span>
+      </p>
+    {/if}
     {#if (showOthers || (desk.on && phase !== 'play')) && item.others?.length}
       <div class="others" role="dialog" aria-label="Other move orders">
         {#each item.others as o}<p>{o}</p>{/each}
@@ -690,6 +703,11 @@
 </div>
 
 <style>
+  .pips { display: flex; align-items: center; gap: 5px; margin: 4px 0 0; font-size: 13px; color: var(--night-ink-2); flex-wrap: wrap; }
+  .pips i { width: 9px; height: 9px; border-radius: 50%; background: var(--night-3); transition: background 200ms; }
+  .pips i.due { box-shadow: inset 0 0 0 2px var(--sun); }
+  .pips i.done { background: var(--birch); box-shadow: none; }
+  .pips span { margin-left: 6px; }
   .room { position: absolute; inset: 0; background: var(--night); color: var(--night-ink); display: flex; flex-direction: column; padding: calc(env(safe-area-inset-top) + 6px) 0 calc(env(safe-area-inset-bottom) + 16px); }
   header { display: flex; align-items: center; gap: 10px; padding: 0 12px 0 4px; height: 48px; flex: none; }
   .x { width: 44px; height: 44px; display: grid; place-items: center; color: var(--night-ink-2); }

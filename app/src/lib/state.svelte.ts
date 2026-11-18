@@ -36,6 +36,8 @@ const defaults = {
   showName: false,
   theme: 'auto' as 'auto' | 'light' | 'dark',
   autoNext: true, // a clean answer moves on by itself
+  // review lines from their landmark (docs/ROADMAP.md, phase 2): 'auto' = half the sessions, at random
+  segments: 'auto' as 'auto' | 'on' | 'off',
   storageNoteSeen: false, // Safari's 7-day storage rule was explained (lib/platform.ts)
   // the game layer: experience points and the daily goal (lib/game.ts)
   xp: 0,

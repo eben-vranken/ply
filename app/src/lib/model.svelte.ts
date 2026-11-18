@@ -7,9 +7,10 @@ import { ensureFiles, loadBand, newerVersion, BANDS, type Loaded, type Trap, typ
 import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, hashId, type Side } from './chess';
 import { branchCues } from './cue';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
-import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
+import { buildQueue, dayStart, NEAR_R, type QItem, type TrapSpec } from './srs/queue';
 import { grade, retrievability, stageOf, createEmptyCard, revive, Rating, type Stage, type Card } from './srs/fsrs';
-import { earnsCredit } from './srs/credit';
+import { earnsCredit, HARD_DIFFICULTY } from './srs/credit';
+import { segment, deviationText, wholeLineToday } from './srs/segment';
 import { rate } from './srs/grade';
 import { limitsFor, planCatchUp, dayOf } from './srs/catchup';
 import { setWeights } from './srs/fsrs';
@@ -457,7 +458,7 @@ function lineTint(side: Side, path: string[]): Item['tint'] {
 }
 
 /** Ask every one of your moves along a path; due cards change schedule. */
-function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind'] } = {}): Item {
+function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind']; segment?: boolean } = {}): Item {
   const asks: Record<number, Ask> = {};
   let e = START_EPD;
   path.forEach((u, i) => {
@@ -476,6 +477,7 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
     }
     e = child(e, u);
   });
+  const seg = opts.segment ? segmentOf(side, path, asks) : undefined;
   const last = path.length - 1;
   const cardEpd = epdAfter(path.slice(0, last));
   const Ls = L[side];
@@ -487,8 +489,41 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
     prompt: opts.intro ? 'New move' : 'Your move',
     label: labelOf(cardEpd, path.slice(0, last)),
     order: moveOrder(sans(path.slice(0, last)), true),
-    others, note, tint: lineTint(side, path), spec: opts.intro
+    others, note, tint: lineTint(side, path), spec: opts.intro, ...seg
   };
+}
+
+/**
+ * A review line from its landmark (srs/segment.ts): the trunk before it plays fast unless a move there
+ * is nearly due or weak, the reply that sets the line apart is named, and the line says how many
+ * moves are due on it. Changes `asks` in place.
+ */
+function segmentOf(side: Side, path: string[], asks: Record<number, Ask>): Pick<Item, 'scrub' | 'callout' | 'why' | 'seg'> {
+  const epds = [START_EPD];
+  for (const u of path.slice(0, -1)) epds.push(child(epds[epds.length - 1], u));
+  const Ls = L[side];
+  const due = Object.entries(asks).filter(([, a]) => a.graded).map(([k]) => +k);
+  const node = (e: string) => D?.tree[e];
+  const top = (e: string) => node(e)?.m.reduce<[string, number] | null>((b, r) => (!b || r[1] > b[1] ? [r[0], r[1]] : b), null)?.[0];
+  const { scrub, deviation } = segment({
+    side, path, epds, due, top,
+    landmark: (e) => !!Ls && (Ls.branches.has(e) || !!Ls.pos.get(e)?.others?.length),
+    full: wholeLineToday(path, today0())
+  });
+  const now = new Date();
+  // a trunk move is still asked when it is nearly due, still in a learning step, or hard
+  const weak = (id?: string) => {
+    const c = id ? cards.get(id) : undefined;
+    return !!c && (c.fsrs.state !== 2 || c.fsrs.difficulty >= HARD_DIFFICULTY || retrievability(c.fsrs, now, app.retention / 100) < NEAR_R);
+  };
+  for (let i = 0; i < scrub; i++) if (asks[i] && !asks[i].graded && !weak(asks[i].card)) delete asks[i];
+  let callout: Item['callout'];
+  if (deviation !== undefined) {
+    const e = epds[deviation], u = path[deviation], n = node(e), row = n?.m.find((r) => r[0] === u);
+    callout = { at: deviation, text: deviationText(san(e, u), n?.g && row ? row[1] / n.g : undefined, turnOf(e) === 'b') };
+  }
+  const why = due.length ? `${due.length} move${due.length === 1 ? '' : 's'} due on this line` : undefined;
+  return { scrub, callout, why, seg: 1 };
 }
 
 function newMoveItem(spec: MoveSpec): Item {
@@ -544,11 +579,23 @@ function storedTrapItem(c: CardRow): Item {
   return it;
 }
 
-export function itemsFor(q: QItem[]): Item[] {
+/**
+ * Phase 2's A/B (docs/ROADMAP.md): each session plays its review lines from their landmark (1) or
+ * from move 1 as before (0), chosen at random unless Settings fixes it. Every review logs which.
+ */
+let lastArm: 0 | 1 = 0;
+function sessionArm(fresh: boolean): 0 | 1 {
+  if (fresh) lastArm = app.segments === 'on' ? 1 : app.segments === 'off' ? 0 : Math.random() < 0.5 ? 1 : 0;
+  return lastArm;
+}
+
+/** @param fresh a new session (the A/B arm is drawn again); false for cards coming back in the same one */
+export function itemsFor(q: QItem[], fresh = true): Item[] {
+  const arm = sessionArm(fresh);
   const out: Item[] = [];
   for (const i of q) {
     let it: Item | null = null;
-    if (i.kind === 'line') it = lineItem(i.side, i.path, new Set(i.due));
+    if (i.kind === 'line') { it = lineItem(i.side, i.path, new Set(i.due), { segment: arm === 1 }); it.seg = arm; }
     else if (i.kind === 'new') it = newMoveItem(i.spec);
     else if (i.kind === 'card') it = cardItem(i.card);
     else { const t = trapById.get(i.spec.id.slice(1)); if (t) it = trapItem(t, i.spec.id, true); }
@@ -575,7 +622,7 @@ export function requeue(): Item[] {
     for (const c of moves) q.push({ kind: 'line', side: c.side, path: [...(L[c.side]?.pos.has(c.epd) ? pathTo(L[c.side]!, c.epd) : c.path ?? []), c.move], due: [c.id] });
   }
   for (const c of due.filter((c) => c.type !== 'move')) q.push({ kind: 'card', card: c });
-  return itemsFor(q);
+  return itemsFor(q, false);
 }
 
 // ---------------------------------------------------------------- Learn and Drill
@@ -852,7 +899,7 @@ function newCardRow(item: Item, id: string, type: CardType, epd: string, move: s
   };
 }
 
-async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[], implicit = false) {
+async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[], tags: { implicit?: boolean; seg?: 0 | 1 } = {}) {
   const prev = cards.has(c.id) ? (structuredClone($state.snapshot(c)) as CardRow) : null;
   const stage = stageOf(c.fsrs);
   const next: Card = grade(c.fsrs, rating, now, app.retention / 100);
@@ -862,7 +909,7 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
   c.suspended = 0;
   cards.set(c.id, c);
   await db.cards.put($state.snapshot(c) as CardRow);
-  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null, ...(implicit ? { implicit: 1 as const } : {}) };
+  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null, ...(tags.implicit ? { implicit: 1 as const } : {}), ...(tags.seg !== undefined ? { seg: tags.seg } : {}) };
   const rid = await db.reviews.add(r);
   r.id = rid;
   reviewsToday.push(r);
@@ -1005,15 +1052,16 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
         continue;
       }
       if (!c) continue;
-      if (res.wrong) { await review(c, Rating.Again, res.ms, mode, now, log, !a.graded); worst = Math.max(worst, 3); due = c.due; continue; }
+      const tags = { implicit: !a.graded, seg: it.seg };
+      if (res.wrong) { await review(c, Rating.Again, res.ms, mode, now, log, tags); worst = Math.max(worst, 3); due = c.due; continue; }
       const r = rate({ wrong: false, hinted: res.hinted, playable: res.playable, times: [res.ms] }, app.hardSeconds);
       if (!a.graded) {
         // a move that was not due, played right on the way: it counts too (srs/credit.ts)
         const t0 = today0();
-        if (earnsCredit(revive(c.fsrs), reviewsToday.some((x) => x.cardId === c!.id && x.at >= t0))) await review(c, r, res.ms, mode, now, log, true);
+        if (earnsCredit(revive(c.fsrs), reviewsToday.some((x) => x.cardId === c!.id && x.at >= t0))) await review(c, r, res.ms, mode, now, log, tags);
         continue;
       }
-      await review(c, r, res.ms, mode, now, log);
+      await review(c, r, res.ms, mode, now, log, tags);
       const sev = r === Rating.Hard ? 2 : 1;
       if (sev > worst || due === null) due = c.due;
       worst = Math.max(worst, sev);
