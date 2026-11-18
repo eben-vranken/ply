@@ -244,7 +244,8 @@ const blunders = (await page.locator('.room .sum tr', { hasText: 'Blunder' }).in
 for (let i = 0; i < 10; i++) { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(60); }
 const said = (await page.locator('.room .say .h').innerText().catch(() => '')).replace(/\s+/g, ' ');
 if (!/^Qxg2/.test(said) && !said.includes('Qxg2')) errors.push('review: after 10 plies expected a verdict on 5...Qxg2, got ' + said);
-if (!(await page.locator('.room .mark').isVisible())) errors.push('review: no verdict mark on the board');
+// the badge pops in from scale(0): wait for it rather than catching it mid-animation
+if (!(await page.locator('.room .mark').waitFor({ state: 'visible', timeout: 3000 }).then(() => true, () => false))) errors.push('review: no verdict mark on the board');
 await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowUp'); await page.waitForTimeout(100);
 if (await page.locator('.room .say').isVisible()) errors.push('review: ↑ should go back to the start');
 await page.keyboard.press('ArrowDown'); await page.waitForTimeout(200);
