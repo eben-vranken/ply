@@ -8,7 +8,7 @@ From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: le
 
 - ☑ **1a. Credit rule (the bug fix).** Every move you produce on a line gets a real FSRS review at its real elapsed time, with the automatic grade (Again / Hard / Good). Exempt from *success* credit (a miss still gives Again): cards in a learning or relearning step, cards with FSRS difficulty ≥ 8, and cards already reviewed today, so the moves shared by every line (1.e4) are credited once a day, not in every line. These reviews are marked `implicit: 1`. They do not use up the day's review limit and are left out of the retention figures, so those stay comparable with before. They do go into the weight fit: that is the point.
 - ☑ **1b. Path choice.** The deepest due card still ends the line, but when its position can be reached by more than one move order, the line takes the order that passes through the most due cards, then the most cards nearly due (R < 0.95), then the most probable.
-- ☐ **1c. Check on real logs** (`npm run credit-check -- backup.json`): the share of Again rows that were not due when missed (the size of the old bias); after a few weeks with 1a, how often an implicitly credited card lapses at its next due review, compared with cards credited on time; reviews per day before and after. Keep 1a if the lapse rate after implicit credit is not clearly higher; otherwise fall back to logging nothing for moves that are not due (neither successes nor failures).
+- ◐ **1c. Check on real logs** (`npm run log-check -- backup.json`, built; the verdict needs a few weeks of reviews): the share of Again rows that were not due when missed (the size of the old bias); after a few weeks with 1a, how often an implicitly credited card lapses at its next due review, compared with cards credited on time; reviews per day before and after. Keep 1a if the lapse rate after implicit credit is not clearly higher; otherwise fall back to logging nothing for moves that are not due (neither successes nor failures).
 - ☐ **1d. Line-aligned fuzz** (optional): moves reviewed together on one line get the same fuzz offset, so they come due together again (Chessdriller does this).
 
 ## Phase 2. Landmark segments with context that needs no names
@@ -28,10 +28,10 @@ From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: le
 
 **Why.** At a position where you have two moves, the board alone does not say which is wanted. That is where "which line?" actually causes wrong answers, and where interference between the two moves is expected.
 
-- ☐ **3a. Log check first:** lapse rate at branch, transposition and single-move positions (at equal stability); how often a wrong answer at a branch is exactly your other move; whether a sibling lapses more after its twin was reviewed. If branches do not lapse more, this phase shrinks to 3c.
-- ☐ **3b. Both moves in one session:** accept either move first, then ask for the other ("Bc4 is right. Now your other move here"), or route the line through the branch twice.
-- ☐ **3c. Fixed cue per branch,** framed as two plans, the same every time.
-- ☐ **3d. Interference flag:** a sibling that lapses within a few days of its twin's review is logged as such.
+- ◐ **3a. Log check** (in `npm run log-check`; misses now log the move played first, and playing your other move first is logged too): lapse rate at branch, transposition and single-move positions (at equal stability); how often a wrong answer at a branch is exactly your other move; whether a sibling lapses more after its twin was reviewed. If branches do not lapse more, this phase shrinks to 3c.
+- ☑ **3b. Both moves in one session** (built as the second form: your other move's line comes right after a due move at a branch, when you have learned it): accept either move first, then ask for the other ("Bc4 is right. Now your other move here"), or route the line through the branch twice.
+- ☑ **3c. Fixed cue per branch,** the same every time. Already so: `lib/cue.ts` depends only on the position, your moves and the data.
+- ☑ **3d. Interference flag** (`sib` on the review): a sibling that lapses within a few days of its twin's review is logged as such.
 
 ## Phase 4. Learn one opening at a time
 

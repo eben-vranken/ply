@@ -3,7 +3,7 @@
 import type { CardRow } from '../db';
 import { START_EPD, child, type Side } from '../chess';
 import type { Lines, MoveSpec } from './lines';
-import { pathTo, otherOrders } from './lines';
+import { pathTo, otherOrders, moveId } from './lines';
 
 export interface Limits {
   newMoves: number;
@@ -26,7 +26,7 @@ export interface TrapSpec {
 }
 
 export type QItem =
-  | { kind: 'line'; side: Side; path: string[]; /** due cards on this line, ply-ordered */ due: string[] }
+  | { kind: 'line'; side: Side; path: string[]; /** due cards on this line, ply-ordered */ due: string[]; /** a branch twin: your other move there, asked right after its twin */ target?: string }
   | { kind: 'new'; spec: MoveSpec; path: string[] }
   | { kind: 'card'; card: CardRow }
   | { kind: 'newtrap'; spec: TrapSpec };
@@ -95,6 +95,33 @@ export function groupLines(due: CardRow[], lines: Partial<Record<Side, Lines>>, 
   return out;
 }
 
+/**
+ * Where a due move sits at a branch (two moves of yours in one position), your other move there comes
+ * right after it, so the two are told apart side by side rather than days apart (docs/ROADMAP.md, 3b).
+ * Only moves you have learned, and only once a session each.
+ */
+export function withTwins(lines: QItem[], L: Partial<Record<Side, Lines>>, known: Set<string>): QItem[] {
+  const queued = new Set(lines.flatMap((i) => (i.kind === 'line' ? i.due : [])));
+  const out: QItem[] = [];
+  for (const it of lines) {
+    out.push(it);
+    const Ls = it.kind === 'line' ? L[it.side] : undefined;
+    if (it.kind !== 'line' || !Ls) continue;
+    const epds = epdsAlong(it.path);
+    it.path.forEach((u, i) => {
+      const e = epds[i];
+      if (!Ls.branches.has(e) || !it.due.includes(moveId(it.side, e, u))) return;
+      for (const o of Ls.pos.get(e)?.moves ?? []) {
+        const id = moveId(it.side, e, o);
+        if (o === u || queued.has(id) || !known.has(id)) continue;
+        queued.add(id);
+        out.push({ kind: 'line', side: it.side, path: [...pathTo(Ls, e), o], due: [], target: id });
+      }
+    });
+  }
+  return out;
+}
+
 function epdsAlong(path: string[]): string[] {
   const out = [START_EPD];
   for (let i = 0; i < path.length - 1; i++) out.push(child(out[i], path[i]));
@@ -113,7 +140,8 @@ export function buildQueue(q: QueueInput): QItem[] {
   // 1. due Move cards, as lines
   // cards not due yet but slipping (R < 0.95): a line through them credits them on the way
   const near = active.filter((c) => c.type === 'move' && !isNew(c) && c.due > q.now && q.retrievability(c) < NEAR_R);
-  items.push(...groupLines(due.filter((c) => c.type === 'move'), q.lines, near));
+  const known = new Set(active.filter((c) => c.type === 'move' && !isNew(c)).map((c) => c.id));
+  items.push(...withTwins(groupLines(due.filter((c) => c.type === 'move'), q.lines, near), q.lines, known));
   // 2. due Punish and Danger cards
   for (const c of due.filter(isTrap).sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
   // 3. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first

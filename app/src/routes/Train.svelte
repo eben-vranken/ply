@@ -50,6 +50,8 @@
   let showOthers = $state(false);
 
   let wrong = false, hinted = false, playable = false, t0 = 0;
+  /** the first wrong move at this ask, and whether your other branch move came first (both logged) */
+  let tried: string | undefined, sibling = false;
   let results: Record<number, AskResult> = {};
   let timer: ReturnType<typeof setTimeout> | undefined;
   const total = { asked: 0, clean: 0, started: Date.now(), cards: 0 };
@@ -194,7 +196,7 @@
     }
     dests = destsOf(chess);
     t0 = performance.now();
-    wrong = false; hinted = false; playable = false;
+    wrong = false; hinted = false; playable = false; tried = undefined; sibling = false;
     const a = it.asks[step];
     if (a?.intro) {
       const e = peek(it.moves[step]);
@@ -243,7 +245,7 @@
     if (ok) {
       mv.captured ? sfx.capture() : sfx.move();
       // the answer is recorded even after a wrong try, so a miss is graded as one
-      results[step] = { wrong, hinted, playable, ms: performance.now() - t0, uci: u, epd };
+      results[step] = { wrong, hinted, playable, ms: performance.now() - t0, uci: u, epd, ...(tried ? { tried } : {}), ...(sibling ? { sibling } : {}) };
       if (!wrong && !hinted) { sfx.good(); total.clean++; }
       total.asked++;
       if (it.drill && u !== expected) {
@@ -263,6 +265,7 @@
     }
     chess.undo(); rev++;
     if (a.other?.includes(u)) {
+      if (!wrong) sibling = true;
       badge = { square: mv.to, glyph: '!?', tone: 'warn' };
       msg = { tone: 'warn', text: a.cue ? `That is your other move here. This time: ${a.cue}.` : 'That is your other move here. This line wants the other one.' };
       return; // not a mistake: the attempt never happened
@@ -274,6 +277,7 @@
       return;
     }
     const isBait = it.bait?.uci === u;
+    if (!wrong) tried = u;
     missOnce(epd, expected);
     if (retry) {
       // no answer given away: try again, or use Hint or Show me

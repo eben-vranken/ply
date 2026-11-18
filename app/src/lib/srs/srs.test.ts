@@ -5,7 +5,7 @@ import { child, epdOf, epdAfter, START_EPD, sans, moveOrder } from '../chess';
 import type { Tree } from '../data';
 import type { CardRow } from '../db';
 import { makeCtx, generate, pathTo, coverage, moveId, otherOrders, type Mine } from './lines';
-import { buildQueue, groupLines, dayStart, type QueueInput } from './queue';
+import { buildQueue, groupLines, withTwins, dayStart, type QueueInput } from './queue';
 import { rate } from './grade';
 import { grade, stageOf } from './fsrs';
 
@@ -196,6 +196,24 @@ describe('queue', () => {
     // nothing else due: a nearly due move decides
     expect(sans(line(groupLines([as(deep)], { b: B }, [as(viaG3)])).path).join(' ')).toBe('g3 Nf6 Nf3 g6');
     expect(sans(line(groupLines([as(deep)], { b: B }, [as(viaNf3)])).path).join(' ')).toBe('Nf3 Nf6 g3 g6');
+  });
+
+  it('asks your other move at a branch right after its twin, once, and only when you know it', () => {
+    const at = epdAfter(['e2e4', 'e7e5', 'g1f3', 'b8c6']);
+    const two: Mine = (_s, e) => (e === at ? ['f1c4', 'f1b5'] : undefined);
+    const T = generate(ctx, two, { side: 'w', depth: 3, replyPct: 0.03 });
+    const c4 = moveId('w', at, 'f1c4'), b5 = moveId('w', at, 'f1b5');
+    const due = card({ id: c4, epd: at, move: 'f1c4' });
+    const lines = groupLines([due], { w: T });
+    const out = withTwins(lines, { w: T }, new Set([c4, b5]));
+    expect(out.length).toBe(2);
+    const twin = out[1] as Extract<(typeof out)[0], { kind: 'line' }>;
+    expect(sans(twin.path).join(' ')).toBe('e4 e5 Nf3 Nc6 Bb5');
+    expect(twin).toMatchObject({ due: [], target: b5 });
+    // not learned yet, or due anyway in its own line: nothing extra
+    expect(withTwins(lines, { w: T }, new Set([c4])).length).toBe(1);
+    const both = groupLines([due, card({ id: b5, epd: at, move: 'f1b5' })], { w: T });
+    expect(withTwins(both, { w: T }, new Set([c4, b5])).length).toBe(both.length);
   });
 
   it('orders lines, traps, then new moves and new traps; puzzles and mistakes are never scheduled', () => {

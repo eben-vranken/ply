@@ -458,7 +458,7 @@ function lineTint(side: Side, path: string[]): Item['tint'] {
 }
 
 /** Ask every one of your moves along a path; due cards change schedule. */
-function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind']; segment?: boolean } = {}): Item {
+function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro?: MoveSpec; kind?: Item['kind']; segment?: boolean; target?: string } = {}): Item {
   const asks: Record<number, Ask> = {};
   let e = START_EPD;
   path.forEach((u, i) => {
@@ -477,7 +477,7 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
     }
     e = child(e, u);
   });
-  const seg = opts.segment ? segmentOf(side, path, asks) : undefined;
+  const seg = opts.segment ? segmentOf(side, path, asks, opts.target) : undefined;
   const last = path.length - 1;
   const cardEpd = epdAfter(path.slice(0, last));
   const Ls = L[side];
@@ -498,11 +498,12 @@ function lineItem(side: Side, path: string[], dueIds: Set<string>, opts: { intro
  * is nearly due or weak, the reply that sets the line apart is named, and the line says how many
  * moves are due on it. Changes `asks` in place.
  */
-function segmentOf(side: Side, path: string[], asks: Record<number, Ask>): Pick<Item, 'scrub' | 'callout' | 'why' | 'seg'> {
+function segmentOf(side: Side, path: string[], asks: Record<number, Ask>, target?: string): Pick<Item, 'scrub' | 'callout' | 'why' | 'seg'> {
   const epds = [START_EPD];
   for (const u of path.slice(0, -1)) epds.push(child(epds[epds.length - 1], u));
   const Ls = L[side];
-  const due = Object.entries(asks).filter(([, a]) => a.graded).map(([k]) => +k);
+  // a branch twin's line is about its target move, which is not due itself
+  const due = Object.entries(asks).filter(([, a]) => a.graded || (target && a.card === target)).map(([k]) => +k);
   const node = (e: string) => D?.tree[e];
   const top = (e: string) => node(e)?.m.reduce<[string, number] | null>((b, r) => (!b || r[1] > b[1] ? [r[0], r[1]] : b), null)?.[0];
   const { scrub, deviation } = segment({
@@ -522,7 +523,7 @@ function segmentOf(side: Side, path: string[], asks: Record<number, Ask>): Pick<
     const e = epds[deviation], u = path[deviation], n = node(e), row = n?.m.find((r) => r[0] === u);
     callout = { at: deviation, text: deviationText(san(e, u), n?.g && row ? row[1] / n.g : undefined, turnOf(e) === 'b') };
   }
-  const why = due.length ? `${due.length} move${due.length === 1 ? '' : 's'} due on this line` : undefined;
+  const why = target ? 'Now your other move here' : due.length ? `${due.length} move${due.length === 1 ? '' : 's'} due on this line` : undefined;
   return { scrub, callout, why, seg: 1 };
 }
 
@@ -595,7 +596,7 @@ export function itemsFor(q: QItem[], fresh = true): Item[] {
   const out: Item[] = [];
   for (const i of q) {
     let it: Item | null = null;
-    if (i.kind === 'line') { it = lineItem(i.side, i.path, new Set(i.due), { segment: arm === 1 }); it.seg = arm; }
+    if (i.kind === 'line') { it = lineItem(i.side, i.path, new Set(i.due), { segment: arm === 1, target: i.target }); it.seg = arm; }
     else if (i.kind === 'new') it = newMoveItem(i.spec);
     else if (i.kind === 'card') it = cardItem(i.card);
     else { const t = trapById.get(i.spec.id.slice(1)); if (t) it = trapItem(t, i.spec.id, true); }
@@ -899,7 +900,7 @@ function newCardRow(item: Item, id: string, type: CardType, epd: string, move: s
   };
 }
 
-async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[], tags: { implicit?: boolean; seg?: 0 | 1 } = {}) {
+async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[], tags: { implicit?: boolean; seg?: 0 | 1; played?: string; sibling?: boolean; sib?: boolean } = {}) {
   const prev = cards.has(c.id) ? (structuredClone($state.snapshot(c)) as CardRow) : null;
   const stage = stageOf(c.fsrs);
   const next: Card = grade(c.fsrs, rating, now, app.retention / 100);
@@ -909,7 +910,7 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
   c.suspended = 0;
   cards.set(c.id, c);
   await db.cards.put($state.snapshot(c) as CardRow);
-  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null, ...(tags.implicit ? { implicit: 1 as const } : {}), ...(tags.seg !== undefined ? { seg: tags.seg } : {}) };
+  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null, ...(tags.implicit ? { implicit: 1 as const } : {}), ...(tags.seg !== undefined ? { seg: tags.seg } : {}), ...(tags.played ? { played: tags.played } : {}), ...(tags.sibling ? { sibling: 1 as const } : {}), ...(tags.sib ? { sib: 1 as const } : {}) };
   const rid = await db.reviews.add(r);
   r.id = rid;
   reviewsToday.push(r);
@@ -1052,7 +1053,7 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
         continue;
       }
       if (!c) continue;
-      const tags = { implicit: !a.graded, seg: it.seg };
+      const tags = { implicit: !a.graded, seg: it.seg, played: res.wrong ? res.tried : undefined, sibling: res.sibling, sib: res.wrong && siblingRecent(it.side, res.epd, c.move, now) };
       if (res.wrong) { await review(c, Rating.Again, res.ms, mode, now, log, tags); worst = Math.max(worst, 3); due = c.due; continue; }
       const r = rate({ wrong: false, hinted: res.hinted, playable: res.playable, times: [res.ms] }, app.hardSeconds);
       if (!a.graded) {
@@ -1084,6 +1085,15 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
       bump();
     }
   };
+}
+
+/** Your other move at this position was reviewed in the last 3 days (srs: interference between branch twins). */
+function siblingRecent(side: Side, epd: string, move: string, now: Date): boolean {
+  return movesAt(side, epd).some((o) => {
+    if (o === move) return false;
+    const last = cards.get(moveId(side, epd, o))?.fsrs.last_review;
+    return !!last && +now - +new Date(last) < 3 * 864e5;
+  });
 }
 
 function regenerateCandidates() {

@@ -78,6 +78,12 @@ export interface ReviewRow extends Tracked {
   implicit?: 1;
   /** review lines: the session's A/B arm (1: played from the landmark, 0: from move 1) */
   seg?: 0 | 1;
+  /** a miss: the move played first */
+  played?: string;
+  /** at a branch: your other move was played first (not a miss) */
+  sibling?: 1;
+  /** a miss at a branch within 3 days of a review of your other move there (interference) */
+  sib?: 1;
 }
 
 export interface RepRow extends Tracked {

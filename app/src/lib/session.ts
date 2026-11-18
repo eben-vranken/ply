@@ -76,6 +76,10 @@ export interface AskResult {
   /** the move finally played (Drill can branch) */
   uci: string;
   epd: string;
+  /** the first wrong move, when there was one */
+  tried?: string;
+  /** at a branch: your other move was played first */
+  sibling?: boolean;
 }
 
 export interface Outcome {

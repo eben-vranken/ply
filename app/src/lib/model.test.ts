@@ -112,9 +112,9 @@ describe('model on real data', () => {
       const q = m.todayCounts().queue.find((x) => x.kind === 'line' && x.due.includes(b.id))!;
       expect(q).toBeTruthy();
       const [line] = m.itemsFor([q]);
-      const results: Record<number, { wrong: boolean; hinted: boolean; playable: boolean; ms: number; uci: string; epd: string }> = {};
+      const results: Record<number, { wrong: boolean; hinted: boolean; playable: boolean; ms: number; uci: string; epd: string; tried?: string }> = {};
       let e = chess.START_EPD;
-      line.moves.forEach((u, i) => { if (line.asks[i]) results[i] = { wrong: line.asks[i].card === wrongAt, hinted: false, playable: false, ms: 1000, uci: u, epd: e }; e = chess.child(e, u); });
+      line.moves.forEach((u, i) => { if (line.asks[i]) results[i] = { wrong: line.asks[i].card === wrongAt, hinted: false, playable: false, ms: 1000, uci: u, epd: e, ...(line.asks[i].card === wrongAt ? { tried: 'd7d5' } : {}) }; e = chess.child(e, u); });
       return m.applyOutcome({ item: line, results }, 'today');
     };
     const rowsOf = async (id: string) => (await dbm.db.reviews.toArray()).filter((r) => r.cardId === id);
@@ -136,7 +136,7 @@ describe('model on real data', () => {
     expect((await rowsOf(a.id)).length).toBe(0);
     await r3.undo();
     await play(a.id);
-    expect((await rowsOf(a.id)).map((r) => [r.rating, r.implicit])).toEqual([[1, 1]]);
+    expect((await rowsOf(a.id)).map((r) => [r.rating, r.implicit, r.played])).toEqual([[1, 1, 'd7d5']]);
   });
 
   it('a line carries the colour of its branch in the skill tree', () => {

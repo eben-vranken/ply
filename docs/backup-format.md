@@ -132,6 +132,9 @@ interface ReviewRow {
   prev?: object | null;             // FSRS card before the review (for Undo grade)
   implicit?: 1;                     // the card was not due: a move played on the way along a line
   seg?: 0 | 1;                      // review lines: the session's A/B arm (1: from the landmark)
+  played?: string;                  // a miss: the move played first (UCI)
+  sibling?: 1;                      // at a branch: your other move was played first (not a miss)
+  sib?: 1;                          // a miss at a branch within 3 days of a review of the other move there
 }
 ```
 

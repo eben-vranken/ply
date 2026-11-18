@@ -178,3 +178,12 @@ Phase 2 of `docs/ROADMAP.md`.
 - **Whole lines:** a fifth of lines each day play from move 1 with nothing skipped, the same lines all day.
 - **A/B:** Settings → Board and appearance → Review lines start: Mixed (default: half the sessions at random), Landmark, Move 1. Every review from a review line logs its arm (`seg`).
 - **Tests:** unit tests for the landmark, the callout text and the whole-line share; a model test on real data (asks before the landmark dropped, the callout, the arm logged). Vitest 157 passed; `npm run smoke` passes. A landmark line was not seen in a browser: the smoke session starts from a fresh install with nothing due.
+
+## Branch twins and the log check (Nov 18)
+
+Phase 3 of `docs/ROADMAP.md`, and the tool for 1c and 2h.
+
+- **Twins side by side** (`withTwins` in `lib/srs/queue.ts`): when a due move sits at a branch of yours, the line to your other move there comes right after it, if you have learned that move and it is not due anyway. With landmark lines it starts at its landmark and says "Now your other move here". Its move is credited on the way (once a day), not graded as due.
+- **What a miss was:** a review from a miss now logs the move played first (`played`); playing your other branch move first logs `sibling` (still not a miss); a miss at a branch within 3 days of a review of the other move there logs `sib`.
+- **`npm run log-check -- backup.json`** (`lib/logcheck.ts`): misses on cards that were not due (the old bias); lapses at the next due review after credit on the way and after an on-time review; the landmark A/B (first try, the next due review, seconds per move); branches (lapses at a branch and elsewhere, misses that were your other move, lapses with the twin reviewed in the 3 days before and without).
+- **Tests:** twins in the queue; the log check on a hand-made log; a miss logs the move played. Vitest 159 passed; `npm run smoke` passes.
