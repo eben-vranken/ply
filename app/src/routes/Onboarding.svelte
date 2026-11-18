@@ -88,7 +88,7 @@
         <h1 class="t-name hl">Openings that stay learned.</h1>
         <p class="lead">Ply drills the lines people at your rating really play and the traps inside them. A few minutes a day, on a schedule that fades what you know and repeats what you don't.</p>
       {:else if step === 1}
-        <h1 class="t-title">What are you mastering?</h1>
+        <h1 class="t-title">What do you want to learn first?</h1>
         <p class="lead">These openings feed your daily cards first. Every other line is built in too, and you can add or swap openings whenever you like.</p>
         {#each picks as p}
           <h2 class="gh">{p.title}</h2>

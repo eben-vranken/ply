@@ -2,7 +2,7 @@
   import { app, go, run } from '../lib/state.svelte';
   import { catchUpDay, startCatchUp, stopCatchUp, studyDay } from '../lib/model.svelte';
   import { shouldOffer, suggestDays, daysAway } from '../lib/srs/catchup';
-  import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew, mastering, learnRound, drillLine, type Mastery } from '../lib/model.svelte';
+  import { model, todayCounts, itemsFor, requeue, arcade, allCards, grantExtraNew, mastering, learnRound, learnNext, drillLine, type Mastery } from '../lib/model.svelte';
   import { levelOf, xpToday } from '../lib/game';
   import { countup } from '../lib/countup';
   import { greet } from '../lib/voice';
@@ -92,7 +92,7 @@
   const HUES = ['#254bd2', '#c82611', '#018359', '#a77602', '#844bc6', '#067c8e'];
   const ms = $derived(mastering());
   const openTree = (m: Mastery) => go(`/tree?side=${m.side}&p=${encodeURIComponent(m.path.join(' '))}`);
-  /** five new moves of an opening you are mastering, or a drill through it once all are learned */
+  /** five new moves of an opening you are learning, round after round, or a drill through it once all are learned */
   function train(m: Mastery) {
     const first = learnRound(m.side, m.path);
     if (first.length) {
@@ -220,13 +220,13 @@
 {/snippet}
 
 {#snippet mastery()}
-  <div class="sect"><h2 class="t-head">Mastering</h2><button class="link" onclick={() => go('/repertoire')}>All openings</button></div>
+  <div class="sect"><h2 class="t-head">Learning</h2><button class="link" onclick={() => go('/repertoire')}>All openings</button></div>
   <div class="mast" class:one={ms.length < 2}>
     {#each ms as m, i (m.side + m.path.join(' '))}
       <article class="card mc">
         <button class="mtop" onclick={() => openTree(m)} aria-label="Open the {m.name} tree">
           <Sigil path={m.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={m.side === 'b'} you={m.side} size={52} />
-          <span class="grow"><span class="t-name mn">{m.name}</span><span class="mm">{m.side === 'w' ? 'White' : 'Black'} · {m.learned} of {m.total} moves</span></span>
+          <span class="grow"><span class="t-name mn">{m.name}</span><span class="mm">{m.side === 'w' ? 'White' : 'Black'} · {m.done ? 'learned' : `${m.learned} of ${m.total} moves`}</span></span>
           <span class="mp t-num">{m.pct}<small>%</small></span>
         </button>
         <span class="mbar" role="img" aria-label="{m.stages[3]} mature, {m.stages[2]} young, {m.stages[1]} learning, {m.stages[0]} new">
@@ -237,12 +237,20 @@
           <p class="chap"><b>{at < 0 ? 'Every chapter learned' : `Chapter ${at + 1} of ${m.chapters.length}`}</b>{#if at >= 0} · {m.chapters[at].name} · {m.chapters[at].learned}/{m.chapters[at].total}{/if}</p>
           <span class="chs" aria-hidden="true">{#each m.chapters as c}<i style="flex:{Math.max(c.total, m.total / 14)}"><b style="width:{(c.learned / c.total) * 100}%"></b></i>{/each}</span>
         {/if}
-        <button class="btn wide sm" class:quiet={!m.fresh} onclick={(e) => { takeOffFrom(e); train(m); }}>{m.fresh ? `Learn ${Math.min(5, m.fresh)} new moves` : 'Drill it'}</button>
+        {#if m.done && m.next}
+          <p class="chap"><b>Every move learned.</b> Its reviews go on as before.</p>
+          <div class="row" style="gap:8px">
+            <button class="btn sm grow" onclick={() => learnNext(m)}>Learn next: {m.next.name}</button>
+            <button class="btn sm quiet" onclick={(e) => { takeOffFrom(e); train(m); }}>Drill it</button>
+          </div>
+        {:else}
+          <button class="btn wide sm" class:quiet={!m.fresh} onclick={(e) => { takeOffFrom(e); train(m); }}>{m.fresh ? `Learn ${Math.min(5, m.fresh)} new moves` : 'Drill it'}</button>
+        {/if}
       </article>
     {:else}
       <button class="card pickone" onclick={() => go('/repertoire')}>
         <span class="star"><Icon name="star" size={22} fill /></span>
-        <span class="grow"><b>Pick an opening to master</b><br /><span class="t-small">Open one in Repertoire and tap its star. Half of each day's new moves then come from it.</span></span>
+        <span class="grow"><b>Pick an opening to learn</b><br /><span class="t-small">Open one in Repertoire and tap its star. Every new move then comes from it, one opening at a time.</span></span>
         <Icon name="next" size={18} />
       </button>
     {/each}

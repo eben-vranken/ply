@@ -198,13 +198,13 @@
   {/if}
 
   <div class="pane grp">
-  <div class="sect"><h2 class="t-head">Mastering</h2></div>
+  <div class="sect"><h2 class="t-head">Learning</h2></div>
   <section class="card rows">
-    <p class="t-small intro">Half of each day's new moves come from the openings you are mastering. Pick as many as you like for each colour; everything else still arrives in the order you are most likely to meet it.</p>
+    <p class="t-small intro">Every new move comes from the openings you are learning, so you master one before the next. One per colour works best; pick more if you like. With none picked, new moves arrive in the order you are most likely to meet them.</p>
     {#each ops as o (o.key)}
       <label class="r">
         <div class="grow"><p class="lb t-name on">{o.name}</p><p class="t-small">{o.side === 'w' ? 'You play White' : `You play Black, ${o.section.slice(6)}`} · {o.learned} of {o.total} moves learned</p></div>
-        <input type="checkbox" role="switch" checked={isFocus(o.side, o.path)} onchange={() => { toggleFocus(o.side, o.path); buzz(8); }} aria-label="Master the {o.name}" />
+        <input type="checkbox" role="switch" checked={isFocus(o.side, o.path)} onchange={() => { toggleFocus(o.side, o.path); buzz(8); }} aria-label="Learn the {o.name}" />
       </label>
     {/each}
   </section>

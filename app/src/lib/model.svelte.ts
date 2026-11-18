@@ -384,6 +384,7 @@ export function todayQueue(): QItem[] {
     lines: L,
     newMoves: newMoveSpecs,
     focus: focusSpecs(),
+    focusOnly: learningAny(),
     newTraps: newTrapSpecs,
     limits: limitsFor({ newMoves: app.newMoves, newTraps: app.newTraps, maxReviews: app.maxReviews }, app.catchUp, today0()),
     done: doneToday(),
@@ -741,7 +742,15 @@ export function chapters(side: Side, path: string[]): Chapter[] {
     return { name, total: s.n.sum.total, learned: s.n.sum.total - s.n.sum.stages[0], path: [...s.n.path, s.n.uci] };
   });
 }
-export interface Mastery { side: Side; path: string[]; name: string; eco: string; total: number; learned: number; stages: number[]; fresh: number; pct: number; chapters: Chapter[] }
+export interface Mastery {
+  side: Side; path: string[]; name: string; eco: string; total: number; learned: number; stages: number[]; fresh: number; pct: number; chapters: Chapter[];
+  /** every move learned and most of them past their learning steps */
+  done: boolean;
+  /** what to learn after it, when done: the biggest opening of the same section not learned yet */
+  next: OpeningSummary | null;
+}
+/** Openings are set as learning: every new move comes from them (docs/ROADMAP.md, phase 4). */
+export const learningAny = () => focusList('w').length + focusList('b').length > 0;
 export function mastering(): Mastery[] {
   void model.rev;
   const out: Mastery[] = [];
@@ -753,9 +762,39 @@ export function mastering(): Mastery[] {
     const [eco, name] = nameOf(epdAfter(path), path);
     // mastery: a learning move counts a quarter, a young one half, a mature one in full
     const pct = total ? Math.round(((stages[1] * 0.25 + stages[2] * 0.5 + stages[3]) / total) * 100) : 0;
-    out.push({ side, path, name, eco, total, learned: total - stages[0], stages, fresh: subtreeNew(side, path).length, pct, chapters: chapters(side, path) });
+    const fresh = subtreeNew(side, path).length;
+    const done = total > 0 && fresh === 0 && stages[1] <= Math.max(2, total * 0.2);
+    out.push({ side, path, name, eco, total, learned: total - stages[0], stages, fresh, pct, chapters: chapters(side, path), done, next: done ? nextOpening(side, path) : null });
   }
   return out;
+}
+/** The biggest opening of the same section (White, Black vs 1.e4, …) that you are not learning and have not learned. */
+function nextOpening(side: Side, path: string[]): OpeningSummary | null {
+  const sec = sectionOf(side, path[0] ?? null);
+  return summaries().filter((o) => o.side === side && o.section === sec && o.path.length && !isFocus(o.side, o.path) && o.learned < o.total && !path.join(' ').startsWith(o.path.join(' ')) && !o.path.join(' ').startsWith(path.join(' ')))
+    .sort((a, b) => b.total - b.learned - (a.total - a.learned))[0] ?? null;
+}
+/** Done with one opening: stop learning it (its reviews go on) and start the next. */
+export function learnNext(m: Mastery) {
+  if (!m.next) return;
+  toggleFocus(m.side, m.path);
+  toggleFocus(m.next.side, m.next.path);
+}
+/**
+ * Before another Learn round: a word from Birch when the moves still in learning steps pile up, or
+ * tomorrow already has more reviews than the daily limit. Only advice: you can go on.
+ */
+export function learnBrake(): string | null {
+  let learning = 0, tomorrow = 0;
+  const end = today0() + 2 * 864e5;
+  for (const c of cards.values()) {
+    if (c.suspended || c.fsrs.state === 0 || (c.type !== 'move' && c.type !== 'punish' && c.type !== 'danger')) continue;
+    if (c.fsrs.state === 1 || c.fsrs.state === 3) learning++;
+    else if (c.due < end) tomorrow++;
+  }
+  if (learning > 20) return `${learning} moves are still settling in. They stick better if you see them again before taking on more: a few minutes' break, or tomorrow.`;
+  if (tomorrow > app.maxReviews) return `Tomorrow already has ${tomorrow} reviews, more than your limit of ${app.maxReviews}. More new moves now means more reviews later.`;
+  return null;
 }
 /**
  * Unlearned moves of the openings you are mastering, in teaching order: for each one the moves

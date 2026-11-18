@@ -187,3 +187,12 @@ Phase 3 of `docs/ROADMAP.md`, and the tool for 1c and 2h.
 - **What a miss was:** a review from a miss now logs the move played first (`played`); playing your other branch move first logs `sibling` (still not a miss); a miss at a branch within 3 days of a review of the other move there logs `sib`.
 - **`npm run log-check -- backup.json`** (`lib/logcheck.ts`): misses on cards that were not due (the old bias); lapses at the next due review after credit on the way and after an on-time review; the landmark A/B (first try, the next due review, seconds per move); branches (lapses at a branch and elsewhere, misses that were your other move, lapses with the twin reviewed in the 3 days before and without).
 - **Tests:** twins in the queue; the log check on a hand-made log; a miss logs the move played. Vitest 159 passed; `npm run smoke` passes.
+
+## Learning one opening at a time (Nov 18)
+
+Phase 4 of `docs/ROADMAP.md`.
+
+- **Every new move from the openings you are learning** (the starred openings, `focusW` / `focusB`, called Learning in the app now instead of Mastering): Today's new moves come only from them, in their teaching order. With none starred, new moves arrive as before (half from them, the rest by probability). Due reviews from every opening are unchanged.
+- **Finished:** an opening with no new moves left and at most a fifth of its moves in learning steps shows as learned on Today, with **Learn next: …** (the biggest opening of the same section you have not learned) beside Drill it. Switching keeps every card and its schedule.
+- **A word between Learn rounds** (`learnBrake`): once a sitting, before another round, Birch suggests a pause when more than 20 moves are still in learning steps, or tomorrow already has more reviews than the daily limit. Keep going or Stop here.
+- **Tests:** the queue with openings set as learning (only theirs, in order; nothing when they are all learned); the model end to end (new moves inside the Italian only, learned and next, switching keeps the cards). Vitest 161 passed; `npm run smoke` passes.

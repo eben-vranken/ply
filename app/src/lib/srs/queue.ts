@@ -36,8 +36,10 @@ export interface QueueInput {
   cards: CardRow[];
   lines: Partial<Record<Side, Lines>>;
   newMoves: MoveSpec[];
-  /** unlearned moves of the focus openings, in the order to teach them; they get half of the day's new moves */
+  /** unlearned moves of the openings you are learning, in the order to teach them */
   focus?: MoveSpec[];
+  /** openings are set as learning: every new move comes from them (else they get half, the rest by probability) */
+  focusOnly?: boolean;
   newTraps: TrapSpec[];
   limits: Limits;
   done: DoneToday;
@@ -144,16 +146,20 @@ export function buildQueue(q: QueueInput): QItem[] {
   items.push(...withTwins(groupLines(due.filter((c) => c.type === 'move'), q.lines, near), q.lines, known));
   // 2. due Punish and Danger cards
   for (const c of due.filter(isTrap).sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
-  // 3. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first
+  // 3. new Move cards: only from the openings you are learning, in their teaching order; with none set,
+  //    half from them and the rest by line probability, shown highest probability first
   const nm = Math.max(0, q.limits.newMoves - q.done.newMoves) + (q.extraNew ?? 0);
   const byProb = (a: MoveSpec, b: MoveSpec) => b.prob - a.prob || a.ply - b.ply;
   const open = new Set(q.newMoves.map((s) => s.id));
-  const picked = (q.focus ?? []).filter((s) => open.has(s.id)).slice(0, Math.ceil(nm / 2));
-  const taken = new Set(picked.map((s) => s.id));
-  picked.push(...[...q.newMoves].sort(byProb).filter((s) => !taken.has(s.id)).slice(0, nm - picked.length));
-  for (const s of picked.sort(byProb)) {
-    const L = q.lines[s.side];
-    items.push({ kind: 'new', spec: s, path: L ? pathTo(L, s.epd) : [] });
+  const picked = (q.focus ?? []).filter((s) => open.has(s.id)).slice(0, q.focusOnly ? nm : Math.ceil(nm / 2));
+  if (q.focusOnly) for (const s of picked) items.push({ kind: 'new', spec: s, path: q.lines[s.side] ? pathTo(q.lines[s.side]!, s.epd) : [] });
+  if (!q.focusOnly) {
+    const taken = new Set(picked.map((s) => s.id));
+    picked.push(...[...q.newMoves].sort(byProb).filter((s) => !taken.has(s.id)).slice(0, nm - picked.length));
+    for (const s of picked.sort(byProb)) {
+      const L = q.lines[s.side];
+      items.push({ kind: 'new', spec: s, path: L ? pathTo(L, s.epd) : [] });
+    }
   }
   // 4. new traps: Punish and Danger by frequency × loss
   const nt = Math.max(0, q.limits.newTraps - q.done.newTraps);

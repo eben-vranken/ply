@@ -45,8 +45,8 @@
   const focused = $derived.by(() => { void model.rev; return isFocus(side, path); });
   function focus() {
     model.notice = toggleFocus(side, path)
-      ? `You are mastering the ${name[1]}. About half of each day's new moves now come from the openings you master.`
-      : `No longer mastering the ${name[1]}. Its cards keep their schedule.`;
+      ? `You are learning the ${name[1]}. Every new move now comes from the openings you are learning.`
+      : `No longer learning the ${name[1]}. Its cards keep their schedule.`;
   }
   async function share() {
     const file = pgnName(`${name[1]}-${colour}`);
@@ -61,9 +61,9 @@
     <Sigil path={path.slice(0, 8)} flip={side === 'b'} you={side} size={44} />
     <div class="grow">
       <h1 class="t-name ttl">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</h1>
-      <p class="ord">{#if focused}<b class="fc">Mastering</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
+      <p class="ord">{#if focused}<b class="fc">Learning</b>{/if}{colour}{path.length ? `, ${moveOrder(sans(path))}` : ''}</p>
     </div>
-    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop mastering this opening` : `Master this opening as ${colour}`} title={focused ? 'Mastering: click to stop' : 'Master this opening'}><Icon name="star" fill={focused} /></button>
+    <button class="ib" class:on={focused} onclick={focus} aria-pressed={focused} disabled={!path.length} aria-label={focused ? `Stop learning this opening` : `Learn this opening as ${colour}`} title={focused ? 'Learning: click to stop' : 'Learn this opening'}><Icon name="star" fill={focused} /></button>
     <button class="ib" onclick={share} disabled={!roots.length} aria-label="Export this opening as PGN" title="Export as PGN"><Icon name="share" /></button>
     <button class="ib" onclick={() => explore(path)} aria-label="Open this position in Explore" title="Open in Explore"><Icon name="explore" /></button>
   </header>

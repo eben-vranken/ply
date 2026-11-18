@@ -37,12 +37,12 @@ From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: le
 
 **Why.** "Learn 5 new moves" is the most fun part of the app: many small variants of one idea, over and over, until the core idea clicks. The Anki-style daily trickle of new moves from everywhere dilutes that.
 
-- ☐ **4a. Learning set:** the openings you are learning (per colour; the existing mastering openings, `focusW` / `focusB`, renamed in the UI). When any are set, *all* new moves come from them, not half. With none set, new moves arrive as today.
-- ☐ **4b. No daily new-move limit while learning:** "Learn 5 more" rounds go on as long as you want, in the opening's teaching order (the main line first, then the most played branches).
-- ☐ **4c. A brake, not a wall:** when the moves still in learning steps pile up (for example more than 20), or tomorrow's due count would pass your review limit, Birch suggests reviewing first or stopping for the day. You can still go on.
-- ☐ **4d. Finishing an opening:** when every move is learned and most are past learning, the opening shows as learned and Birch suggests the next one (the next most-met opening of that colour in your games, or the onboarding choices).
-- ☐ **4e. Reviews are unchanged:** due reviews from every opening still come every day; only new moves are focused. Otherwise older openings would be forgotten.
-- ☐ **4f. One at a time by default, several allowed:** onboarding and the star in the tree propose one opening per colour; adding more is allowed.
+- ☑ **4a. Learning set:** the openings you are learning (per colour; the existing mastering openings, `focusW` / `focusB`, renamed in the UI). When any are set, *all* new moves come from them, not half. With none set, new moves arrive as today.
+- ☑ **4b. No daily new-move limit while learning** (the Learn button on the opening's card on Today already ran round after round; Today's own new moves keep the daily limit): "Learn 5 more" rounds go on as long as you want, in the opening's teaching order (the main line first, then the most played branches).
+- ☑ **4c. A brake, not a wall** (once a sitting, between rounds: Keep going / Stop here): when the moves still in learning steps pile up (for example more than 20), or tomorrow's due count would pass your review limit, Birch suggests reviewing first or stopping for the day. You can still go on.
+- ☑ **4d. Finishing an opening** (done: no new moves left and at most a fifth still in learning steps; next: the biggest opening of the same section, White, Black vs 1.e4 and so on, not learned yet): when every move is learned and most are past learning, the opening shows as learned and Birch suggests the next one (the next most-met opening of that colour in your games, or the onboarding choices).
+- ☑ **4e. Reviews are unchanged:** due reviews from every opening still come every day; only new moves are focused. Otherwise older openings would be forgotten.
+- ☑ **4f. One at a time by default, several allowed** (onboarding already picks one per section: White, Black vs 1.e4, Black vs 1.d4): onboarding and the star in the tree propose one opening per colour; adding more is allowed.
 
 ## Phase 5. Learn a move properly; review it quickly
 

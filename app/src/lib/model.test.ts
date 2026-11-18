@@ -224,6 +224,37 @@ describe('model on real data', () => {
     expect(logged.map((r) => r.seg)).toEqual([1]);
   });
 
+  it('learning one opening: done when every move is learned, then the next one of its section', async () => {
+    const { pathTo } = await import('./srs/lines');
+    const italian = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4'];
+    expect(m.learningAny()).toBe(false);
+    m.toggleFocus('w', italian);
+    expect(m.learningAny()).toBe(true);
+    const w = m.mastering().find((x) => x.side === 'w')!;
+    expect(w.done).toBe(false);
+    // every new move in Today comes from the opening being learned: on the way to it or below it
+    const fresh = m.todayCounts().queue.filter((i) => i.kind === 'new');
+    expect(fresh.length).toBeGreaterThan(0);
+    for (const i of fresh) {
+      if (i.kind !== 'new') continue;
+      const p = [...pathTo(m.lines().w!, i.spec.epd), i.spec.move].join(' ');
+      expect(i.spec.side === 'w' && (p.startsWith(italian.join(' ')) || italian.join(' ').startsWith(p))).toBe(true);
+    }
+    expect(m.learnBrake()).toBeNull();
+    // pretend it is done: a next opening is offered from the same section, and switching keeps the old one's cards
+    const fake = { ...w, done: true, next: m.summaries().find((o) => o.side === 'w' && o.section === 'White' && o.path.length && o.path.join(' ') !== w.path.join(' ') && !w.path.join(' ').startsWith(o.path.join(' ')))! };
+    expect(fake.next).toBeTruthy();
+    const before = m.allCards().size;
+    m.learnNext(fake);
+    expect(m.isFocus('w', w.path)).toBe(false);
+    expect(m.isFocus('w', fake.next.path)).toBe(true);
+    expect(m.allCards().size).toBe(before);
+    m.learnNext({ ...fake, path: fake.next.path, next: { ...fake.next, path: w.path } });
+    expect(m.isFocus('w', w.path)).toBe(true);
+    m.toggleFocus('w', italian);
+    expect(m.learningAny()).toBe(false);
+  });
+
   it('the first chess.com rating sets the band and depth at once', async () => {
     const { app } = await import('./state.svelte');
     expect(app.bandSet).toBe(false);

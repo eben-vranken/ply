@@ -100,7 +100,7 @@
           <Sigil path={o.path.slice(0, 8)} hue={HUES[i % HUES.length]} flip={o.side === 'b'} you={o.side} size={60} />
           <span class="grow">
             <span class="t-name nm">{o.name}{#if o.eco}<span class="eco">{o.eco}</span>{/if}</span>
-            <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Mastering</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
+            <span class="meta">{#if isFocus(o)}<b class="fc"><Icon name="star" size={13} fill /> Learning</b>{/if}{o.lines} line{o.lines === 1 ? '' : 's'} · {o.learned}/{o.total} moves</span>
             <span class="bar" role="img" aria-label="{o.stages[3]} mature, {o.stages[2]} young, {o.stages[1]} learning, {o.stages[0]} new">
               {#each [3, 2, 1, 0] as k}<i style="flex:{o.stages[k]};background:var(--st-{STAGES[k]})"></i>{/each}
             </span>

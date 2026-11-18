@@ -272,6 +272,15 @@ describe('queue', () => {
     expect(none.map((i) => (i.kind === 'new' ? i.spec.id : ''))).toEqual(rest.slice(0, 4).map((s) => s.id));
   });
 
+  it('with openings set as learning, every new move comes from them, in their teaching order', () => {
+    const order = [...specs].sort((a, b) => b.prob - a.prob || a.ply - b.ply);
+    const focus = order.slice(-3).reverse();
+    const items = buildQueue(base({ newMoves: specs, focus, focusOnly: true, limits: { newMoves: 4, newTraps: 0, maxReviews: 150 } }));
+    expect(items.map((i) => (i.kind === 'new' ? i.spec.id : ''))).toEqual(focus.map((s) => s.id));
+    // all learned: no new moves until the next opening is picked
+    expect(buildQueue(base({ newMoves: order.slice(0, -3), focus, focusOnly: true, limits: { newMoves: 4, newTraps: 0, maxReviews: 150 } })).length).toBe(0);
+  });
+
   it('rolls the day over at the set hour', () => {
     const at = new Date(2026, 10, 14, 3, 30).getTime();
     expect(dayStart(at, 4)).toBe(new Date(2026, 10, 13, 4).getTime());

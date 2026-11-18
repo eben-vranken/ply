@@ -4,7 +4,7 @@
   import type { DrawShape } from '@lichess-org/chessground/draw';
   import { app, go, run } from '../lib/state.svelte';
   import { fenOf, epdOf, epdAfter, dests as destsOf, san as sanOf, turnOf, child, type Side } from '../lib/chess';
-  import { allCards, applyOutcome, data, drillContinue, markAgain, isCard, nameOf, learnItemsFor, movesAt, type Applied } from '../lib/model.svelte';
+  import { allCards, applyOutcome, data, drillContinue, markAgain, isCard, nameOf, learnItemsFor, movesAt, learnBrake, type Applied } from '../lib/model.svelte';
   import { whenText } from '../lib/srs/fsrs';
   import type { Item, AskResult } from '../lib/session';
   import { sfx, buzz } from '../lib/fx';
@@ -41,7 +41,9 @@
   let hist = $state<string[]>([]);
   let histStart = $state(0);
   let step = $state(0);
-  let phase = $state<'play' | 'answered' | 'replay' | 'complete' | 'summary'>('play');
+  let phase = $state<'play' | 'answered' | 'replay' | 'complete' | 'summary' | 'brake'>('play');
+  /** Learn rounds: Birch's word before another round, once a sitting (lib/model.svelte.ts, learnBrake) */
+  let brakeText = $state(''), braked = false;
   let fixing = $state(false);
   let msg = $state<{ tone: 'good' | 'bad' | 'warn' | 'info'; text: string } | null>(null);
   let applied = $state<Applied | null>(null);
@@ -71,7 +73,7 @@
 
   // the evaluation bar: on an opening line it stays blank until you have answered (a swing after the
   // opponent's move would say which line this is); on a puzzle it only appears once you have played it
-  const evalOn = $derived(!!item && phase !== 'complete' && phase !== 'summary' && (!PUZZLE_KINDS.has(item.kind) || phase !== 'play'));
+  const evalOn = $derived(!!item && phase !== 'complete' && phase !== 'summary' && phase !== 'brake' && (!PUZZLE_KINDS.has(item.kind) || phase !== 'play'));
   let evalCp = $state<number | null>(null);
   let engine: Engine | null = null;
   const evalCache = new Map<string, number>();
@@ -215,6 +217,7 @@
   /** keyboard: legal moves while it is your turn to answer */
   const legalNow = () => (phase === 'play' && dests && !promo ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
   function onkey(a: KeyAction): boolean {
+    if (phase === 'brake') { if (a === 'next') { void goOn(); return true; } if (a === 'stop') { complete(); return true; } return false; }
     if (phase === 'complete' || phase === 'summary') { if (a === 'next' || a === 'stop') { leave(); return true; } return false; }
     if (a === 'hint' && phase === 'play' && dests) { hint(); return true; }
     if ((a === 'back' || a === 'fwd') && phase === 'answered') { goTo(cur + (a === 'back' ? -1 : 1)); return true; }
@@ -394,6 +397,14 @@
   async function next() {
     undone = false;
     if (idx + 1 < items.length) return load(idx + 1);
+    if (run.more && run.mode === 'learn' && !braked) {
+      const b = learnBrake();
+      if (b) { braked = true; brakeText = b; clearTimeout(timer); auto = false; phase = 'brake'; sfx.done(); return; }
+    }
+    return goOn();
+  }
+  /** the next round (Learn, Drill), or the end */
+  async function goOn() {
     if (run.more) {
       const more = await run.more(roundMissed.splice(0));
       if (more.length) { items = [...items, ...more]; return load(idx + 1); }
@@ -518,7 +529,7 @@
 {/snippet}
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="room" class:board={phase !== 'complete' && phase !== 'summary'} class:tinted={!!tint && phase !== 'complete' && phase !== 'summary'} class:lit={lineDone} style={tint ? `--line:${tint.colour}` : undefined} onpointerdown={hold}>
+<div class="room" class:board={phase !== 'complete' && phase !== 'summary' && phase !== 'brake'} class:tinted={!!tint && phase !== 'complete' && phase !== 'summary' && phase !== 'brake'} class:lit={lineDone} style={tint ? `--line:${tint.colour}` : undefined} onpointerdown={hold}>
   {#if phase === 'complete'}
     <div class="complete">
       <div class="confetti" aria-hidden="true">{#each CONFETTI as c}<i style="left:{c.x}%;width:{c.w}px;background:{c.c};animation-delay:{c.d}ms;--r:{c.r}deg"></i>{/each}</div>
@@ -546,6 +557,17 @@
       <div class="row" style="gap:10px">
         {#if lastLine}<button class="btn big night" onclick={playOut}><Icon name="sword" size={20} /> Play it out</button>{/if}
         <button class="btn big grow sun" onclick={leave}>Done</button>
+      </div>
+      <MoveInput legal={() => null} onmove={() => {}} onaction={onkey} />
+    </div>
+  {:else if phase === 'brake'}
+    <div class="complete summary">
+      <div class="stackart" aria-hidden="true"><span class="birch"><Mascot mood="think" size={92} /></span></div>
+      <h1 class="t-name">A good place to pause</h1>
+      <p class="lead">{brakeText}</p>
+      <div class="row" style="gap:10px">
+        <button class="btn big night grow" onclick={() => void goOn()}>Keep going</button>
+        <button class="btn big grow sun" onclick={complete}>Stop here</button>
       </div>
       <MoveInput legal={() => null} onmove={() => {}} onaction={onkey} />
     </div>
