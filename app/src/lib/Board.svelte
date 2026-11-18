@@ -8,6 +8,8 @@
   import type { Api } from '@lichess-org/chessground/api';
   import type { Key } from '@lichess-org/chessground/types';
   import type { DrawShape } from '@lichess-org/chessground/draw';
+  import type { Kind } from './review';
+  import KindIcon from './KindIcon.svelte';
 
   interface Props {
     fen: string;
@@ -23,9 +25,15 @@
     coords?: boolean;
     /** right-click drags an arrow, right-click a square rings it; a left click clears them (off for the landing's demos) */
     draw?: boolean;
+    /** your own arrows for this position, kept by the screen per position (as Lichess keeps them per move) */
+    drawn?: DrawShape[];
+    /** your arrows changed */
+    ondraw?: (shapes: DrawShape[]) => void;
     onmove?: (from: string, to: string) => void;
+    /** game review: the verdict on the last move, at the corner of its square */
+    mark?: { square: string; kind: Kind } | null;
   }
-  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, coords = true, draw = true, onmove = () => {} }: Props = $props();
+  let { fen, side = 'w', dests = null, lastMove = null, shapes = [], badge = null, check = false, rev = 0, shake = 0, dark = false, coords = true, draw = true, drawn, ondraw, onmove = () => {}, mark = null }: Props = $props();
 
   let el = $state<HTMLDivElement>()!;
   let top = $state<HTMLDivElement>();
@@ -44,7 +52,7 @@
       draggable: { showGhost: true },
       // your own arrows, as on Lichess: plain right-drag is green, Shift red, Alt blue, Shift+Alt yellow
       disableContextMenu: draw,
-      drawable: { enabled: draw, visible: true, brushes: {
+      drawable: { enabled: draw, visible: true, onChange: (sh) => ondraw?.(sh), brushes: {
         good: { key: 'good', color: '#018359', opacity: 0.9, lineWidth: 11 },
         bad: { key: 'bad', color: '#c82611', opacity: 0.85, lineWidth: 11 },
         hint: { key: 'hint', color: '#ffbe45', opacity: 1, lineWidth: 9 },
@@ -94,6 +102,8 @@
         events: { after: (f, t) => onmove(f, t) }
       }
     });
+    // the arrows you drew on this position come back with it
+    if (moved && drawn) api.setShapes(drawn);
     api.setAutoShapes(shapes);
   });
 
@@ -105,6 +115,11 @@
     const y = side === 'w' ? 7 - r : r;
     return `left:${(x + 1) * 12.5}%;top:${y * 12.5}%`;
   });
+  const markAt = $derived.by(() => {
+    if (!mark) return '';
+    const f = mark.square.charCodeAt(0) - 97, r = +mark.square[1] - 1;
+    return `left:${((side === 'w' ? f : 7 - f) + 1) * 12.5}%;top:${(side === 'w' ? 7 - r : r) * 12.5}%`;
+  });
   const sq = $derived.by(() => {
     if (!badge) return '';
     const f = badge.square.charCodeAt(0) - 97, r = +badge.square[1] - 1;
@@ -115,6 +130,9 @@
 <div class="slab" class:dark data-fen={fen}>
   <div class="top" bind:this={top}>
     <div class="cg-wrap" bind:this={el}></div>
+    {#if mark && markAt}
+      {#key mark.square + mark.kind}<span class="mark" style={markAt} aria-hidden="true"><KindIcon kind={mark.kind} size={30} /></span>{/key}
+    {/if}
     {#if badge && pos}
       {#key badge.square + badge.glyph + rev}
         <span class="flash {badge.tone}" style={sq} aria-hidden="true"></span>
@@ -143,6 +161,9 @@
     animation: pop 260ms var(--spring) both; pointer-events: none;
   }
   .badge.good { background: var(--good-mark); }
+  .mark { position: absolute; z-index: 5; width: 30px; height: 30px; margin: -11px 0 0 -20px; pointer-events: none; filter: drop-shadow(0 2px 4px rgba(21, 25, 54, 0.35)); animation: pop 220ms var(--spring) both; }
+  .mark :global(svg) { width: 100%; height: 100%; }
+  @media (max-width: 520px) { .mark { width: 24px; height: 24px; margin: -8px 0 0 -16px; } }
   .flash { position: absolute; z-index: 3; width: 12.5%; aspect-ratio: 1; pointer-events: none; opacity: 0; animation: flash 520ms ease-out both; }
   .flash.good { background: #52db9c; }
   .flash.bad { background: #ee5b45; }

@@ -150,9 +150,23 @@ await page.waitForTimeout(900);
 for (const k of ['e4', 'e5', 'nf3']) { await page.keyboard.type(k); await page.waitForTimeout(150); }
 let crumbs = (await page.locator('.crumbs').innerText()).replace(/\s+/g, ' ');
 if (!crumbs.includes('2.Nf3')) errors.push('typed moves: expected 2.Nf3 in ' + crumbs);
+// as on Lichess: Backspace and ← step back, → forward again (the move stays, dimmed, ahead), ↑ to the start
+const curCrumb = async () => (await page.locator('.crumbs .crumb.cur').innerText()).replace(/\s+/g, ' ');
 await page.keyboard.press('Backspace'); await page.waitForTimeout(200);
-crumbs = (await page.locator('.crumbs').innerText()).replace(/\s+/g, ' ');
-if (crumbs.includes('Nf3')) errors.push('Backspace should step back: ' + crumbs);
+if (!(await curCrumb()).endsWith('e5')) errors.push('Backspace should step back to e5: ' + (await curCrumb()));
+await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200);
+if (!(await curCrumb()).endsWith('Nf3')) errors.push('→ should go forward to Nf3 again: ' + (await curCrumb()));
+await page.keyboard.press('ArrowUp'); await page.waitForTimeout(200);
+if ((await curCrumb()) !== 'Start') errors.push('↑ should go to the start: ' + (await curCrumb()));
+await page.keyboard.press('ArrowDown'); await page.waitForTimeout(200);
+await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(200);
+step('explore navigation: back, forward, start, end');
+// a different move after stepping back is a variation: forward still knows the old one
+await page.keyboard.type('nc3'); await page.waitForTimeout(200);
+await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(200);
+await page.keyboard.press('ArrowRight'); await page.waitForTimeout(200);
+if (!(await curCrumb()).endsWith('Nf3')) errors.push('forward after a variation should follow the mainline Nf3: ' + (await curCrumb()));
+await page.keyboard.press('ArrowLeft'); await page.waitForTimeout(200);
 step('keyboard in Explore: ' + crumbs);
 await page.goto(url + '#/today'); await page.waitForTimeout(600);
 await page.getByRole('button', { name: /Start|Continue/ }).click();
@@ -217,6 +231,33 @@ await page.getByRole('button', { name: 'Replace and import' }).click();
 const restored = await page.getByText('Backup imported').waitFor({ timeout: 15_000 }).then(() => true, () => false);
 if (!restored) errors.push('backup import from Settings did not finish');
 step('backup: exported ' + bk.suggestedFilename() + (restored ? ' and imported back' : ', import FAILED'));
+
+// game review: a pasted game is reviewed (accuracy, verdicts), the arrows walk it, a move played is a variation
+await page.goto(url + '#/games'); await page.waitForTimeout(500);
+await page.getByRole('button', { name: /Paste PGN or FEN/ }).click();
+await page.locator('.dialog textarea').fill('[White "A"]\n[Black "B"]\n[Result "0-1"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxe5 Qg5 5. Nxf7 Qxg2 6. Rf1 Qxe4+ 7. Be2 Nf3# 0-1');
+await page.getByRole('button', { name: 'Analyse', exact: true }).click();
+await page.waitForSelector('.room .sum', { timeout: 120_000 }).catch(() => errors.push('review: no summary after 120 s'));
+const acc = (await page.locator('.room .sum .accrow').innerText().catch(() => '')).replace(/\s+/g, ' ');
+if (!/Accuracy \d+\.\d \d+\.\d/.test(acc)) errors.push('review: accuracy row reads ' + acc);
+const blunders = (await page.locator('.room .sum tr', { hasText: 'Blunder' }).innerText().catch(() => '')).replace(/\s+/g, ' ');
+for (let i = 0; i < 10; i++) { await page.keyboard.press('ArrowRight'); await page.waitForTimeout(60); }
+const said = (await page.locator('.room .say .h').innerText().catch(() => '')).replace(/\s+/g, ' ');
+if (!/^Qxg2/.test(said) && !said.includes('Qxg2')) errors.push('review: after 10 plies expected a verdict on 5...Qxg2, got ' + said);
+if (!(await page.locator('.room .mark').isVisible())) errors.push('review: no verdict mark on the board');
+await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowUp'); await page.waitForTimeout(100);
+if (await page.locator('.room .say').isVisible()) errors.push('review: ↑ should go back to the start');
+await page.keyboard.press('ArrowDown'); await page.waitForTimeout(200);
+if (!(await page.locator('.room .say .h').innerText().catch(() => '')).includes('Checkmate') && !(await page.locator('.room .say .h').innerText().catch(() => '')).includes('Nf3#')) errors.push('review: ↓ should reach the mate');
+// a variation: back to move 2 for White and play d4 instead of Nf3
+await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(100);
+await page.keyboard.type('d4'); await page.waitForTimeout(400);
+const vars = await page.locator('.room .vars').innerText().catch(() => '');
+if (!vars.includes('d4')) errors.push('review: playing d4 should show as a variation, list reads ' + vars);
+await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowRight'); await page.waitForTimeout(150);
+if ((await page.locator('.room .mv.on').innerText().catch(() => '')).trim().replace(/\s+/g, '') !== 'Nf3' && !(await page.locator('.room .mv.on').innerText().catch(() => '')).includes('Nf3')) errors.push('review: forward from the branch should follow the game (Nf3)');
+step(`review: ${acc} · ${blunders} · ${said}`);
+await shot('review');
 
 // the landing page: in a build without accounts it lives at #/welcome and its buttons open the app
 await page.goto(url + '#/welcome');

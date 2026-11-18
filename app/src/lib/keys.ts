@@ -48,13 +48,16 @@ export function matchMove(typed: string, legal: Legal[]): Match {
 }
 
 /** Keys that are never part of a move, so they can drive the screen while nothing is typed. */
-export type KeyAction = 'hint' | 'next' | 'undo' | 'back' | 'fwd' | 'stop';
+export type KeyAction = 'hint' | 'next' | 'undo' | 'back' | 'fwd' | 'first' | 'last' | 'stop';
 export function actionOf(e: { key: string }): KeyAction | null {
   if (e.key === '?') return 'hint';
   if (e.key === 'Enter' || e.key === ' ') return 'next';
   if (e.key === 'ArrowRight') return 'fwd';
   if (e.key === 'Backspace') return 'undo';
   if (e.key === 'ArrowLeft') return 'back';
+  // as on Lichess: ↑ / Home to the start, ↓ / End to the end
+  if (e.key === 'ArrowUp' || e.key === 'Home') return 'first';
+  if (e.key === 'ArrowDown' || e.key === 'End') return 'last';
   if (e.key === 'Escape') return 'stop';
   return null;
 }

@@ -35,6 +35,8 @@
     return [
       { key: 's1', group: 'Go to', label: 'Today', icon: 'today', go: () => go('/today') },
       { key: 's2', group: 'Go to', label: 'Explore', icon: 'explore', go: () => go('/explore') },
+      { key: 's6', group: 'Go to', label: 'Games', sub: 'Review your games', icon: 'games', go: () => go('/games') },
+      { key: 's7', group: 'Go to', label: 'Analysis board', icon: 'explore', go: () => go('/review') },
       { key: 's3', group: 'Go to', label: 'Repertoire', icon: 'repertoire', go: () => go('/repertoire') },
       { key: 's4', group: 'Go to', label: 'Stats', icon: 'stats', go: () => go('/stats') },
       { key: 's5', group: 'Go to', label: 'Settings', icon: 'settings', go: () => go('/settings') },

@@ -95,7 +95,7 @@ export function resetSettings() { Object.assign(app, defaults); save(); }
 
 // hash router
 export const route = $state({ path: location.hash.slice(1) || '/today', dir: 1 });
-const ORDER = ['/today', '/explore', '/repertoire', '/stats', '/settings'];
+const ORDER = ['/today', '/explore', '/games', '/repertoire', '/stats', '/settings'];
 addEventListener('hashchange', () => {
   const next = location.hash.slice(1) || '/today';
   route.dir = ORDER.indexOf(next.split('?')[0]) >= ORDER.indexOf(route.path.split('?')[0]) ? 1 : -1;

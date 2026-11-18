@@ -12,6 +12,8 @@
   import Train from './routes/Train.svelte';
   import Tree from './routes/Tree.svelte';
   import Play from './routes/Play.svelte';
+  import Games from './routes/Games.svelte';
+  import Review from './routes/Review.svelte';
   import Onboarding from './routes/Onboarding.svelte';
   import { configured, cloud, initCloud, autoSyncCloud, likelyGuest } from './lib/cloud/cloud.svelte';
   import { desk, ui } from './lib/desk.svelte';
@@ -44,7 +46,7 @@
   $effect(() => { if (cloud.ready && (!configured || cloud.user)) startBoot(); });
   // leaving a training session or Play it out syncs it
   let wasTraining = false;
-  $effect(() => { const t = training || base === '/play'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
+  $effect(() => { const t = training || base === '/play' || base === '/review'; if (wasTraining && !t && model.status === 'ready') autoSyncCloud(); wasTraining = t; });
   const needLogin = $derived(configured && !cloud.user);
   const path = $derived(route.path.split('?')[0]);
   const outside = $derived(needLogin && !cloud.leaving && (cloud.ready || likelyGuest) && model.status !== 'error');
@@ -70,16 +72,17 @@
   const tabs = [
     ['/today', 'today', 'Today'],
     ['/explore', 'explore', 'Explore'],
+    ['/games', 'games', 'Games'],
     ['/repertoire', 'repertoire', 'Repertoire'],
     ['/stats', 'stats', 'Stats'],
     ['/settings', 'settings', 'Settings']
   ] as const;
   const base = $derived(route.path.split('?')[0]);
   // the skill tree sits under Repertoire
-  const tabOf = (b: string) => (b === '/tree' ? '/repertoire' : b);
+  const tabOf = (b: string) => (b === '/tree' ? '/repertoire' : b === '/review' ? '/games' : b);
   const training = $derived(base === '/train');
   // the session and the skill tree are rooms of their own: no tab bar
-  const bare = $derived(training || base === '/tree' || base === '/play');
+  const bare = $derived(training || base === '/tree' || base === '/play' || base === '/review');
   // Ctrl/Cmd+K, or / when nothing is being typed: the command palette
   const canJump = $derived(model.status === 'ready' && app.onboarded && !landing && !bare);
   onMount(() => {
@@ -134,7 +137,7 @@
 {:else if !app.onboarded}
   <div out:fade={{ duration: dur }}><Onboarding /></div>
 {:else}
-  {#key base === '/tree' || base === '/play' ? route.path : base}
+  {#key base === '/tree' || base === '/play' || base === '/review' ? route.path : base}
     <div class="page" class:over={training} class:full={bare}
       in:fly={{ x: training || desk.on ? 0 : 28 * route.dir, y: training ? 60 : desk.on ? 10 : 0, duration: dur, easing: cubicOut }}
       out:fade={{ duration: dur * 0.5 }}>
@@ -146,6 +149,8 @@
       {:else if base === '/train'}<Train />
       {:else if base === '/tree'}<Tree />
       {:else if base === '/play'}<Play />
+      {:else if base === '/games'}<Games />
+      {:else if base === '/review'}<Review />
       {:else}<Today />{/if}
     </div>
   {/key}

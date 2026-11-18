@@ -19,6 +19,7 @@
   import Promo from '../lib/Promo.svelte';
   import MoveInput from '../lib/MoveInput.svelte';
   import type { KeyAction } from '../lib/keys';
+  import NavBar from '../lib/NavBar.svelte';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   const side = ((q.get('side') as Side) ?? 'w');
@@ -66,10 +67,11 @@
     if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
     void play(from, to);
   }
-  const legalNow = () => (!over && dests && !promo ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
+  const legalNow = () => (!over && dests && !promo && view === null ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
   const typed = (u: string) => void play(u.slice(0, 2), u.slice(2, 4), u[4]);
   function onkey(a: KeyAction): boolean {
     if (a === 'stop' || (a === 'next' && over)) { leave(); return true; }
+    if (a === 'back' || a === 'fwd' || a === 'first' || a === 'last') { nav(a); return true; }
     return false;
   }
   function pickPromo(piece: string) { const p = promo!; promo = null; void play(p.from, p.to, piece); }
@@ -133,6 +135,25 @@
     return () => { alive = false; engine?.quit(); };
   });
 
+  // looking back through the game so far (← → ↑ ↓, or the buttons): `view` moves in, null = the live position
+  let view = $state<number | null>(null);
+  const frames = $derived.by(() => {
+    const c = new Chess(fenOf(epdAfter(path)));
+    const out: { fen: string; last: [string, string] | null }[] = [{ fen: c.fen(), last: path.length ? [path.at(-1)!.slice(0, 2), path.at(-1)!.slice(2, 4)] : null }];
+    for (const s of hist) { const m = c.move(s); out.push({ fen: c.fen(), last: [m.from, m.to] }); }
+    return out;
+  });
+  const at = $derived(view ?? frames.length - 1);
+  const shown = $derived(view === null ? null : frames[view]);
+  function nav(a: 'back' | 'fwd' | 'first' | 'last') {
+    const k = Math.max(0, Math.min(frames.length - 1, a === 'back' ? at - 1 : a === 'fwd' ? at + 1 : a === 'first' ? 0 : frames.length - 1));
+    if (k === at) return;
+    view = k === frames.length - 1 ? null : k;
+    sfx.move();
+  }
+  // a new move brings you back to the live position
+  $effect(() => { void hist.length; view = null; });
+
   const say = $derived(over ? verdict(over.cp, worst) : null);
   // the bar: your share of the board, ±3 pawns end to end
   const bar = $derived(50 + Math.max(-50, Math.min(50, (cp / 300) * 50)));
@@ -150,7 +171,7 @@
     <p class="ord">Play it out · {path.length ? moveOrder(sans(path)) : 'from the start'}</p>
   </div>
   <div class="boardwrap" use:land>
-    <Board {fen} {side} {dests} {lastMove} {badge} {check} {rev} {shake} dark {onmove} />
+    <Board fen={shown ? shown.fen : fen} {side} dests={shown ? null : dests} lastMove={shown ? shown.last : lastMove} badge={shown ? null : badge} check={shown ? false : check} {rev} {shake} dark {onmove} />
     {#if promo}<Promo {side} inset="0 8px" onpick={pickPromo} oncancel={cancelPromo} />{/if}
     <MoveInput legal={legalNow} onmove={typed} onaction={onkey} dark />
   </div>
@@ -177,11 +198,12 @@
       <p class="msg {msg.tone}"><span class="g">{msg.tone === 'good' ? '!' : msg.tone === 'bad' ? '?' : msg.tone === 'warn' ? '?!' : 'i'}</span>{msg.text}</p>
     {/key}
     <div class="strip">
-      {#each hist.slice(-8) as m, i}<span class:last={i === Math.min(hist.length, 8) - 1}>{m}</span>{/each}
+      {#each hist as m, i}{#if i >= hist.length - 8}<button class:last={i + 1 === at} onclick={() => { view = i + 1 === hist.length ? null : i + 1; }}>{m}</button>{/if}{/each}
     </div>
+    <div class="navrow"><NavBar dark canBack={at > 0} canFwd={at < frames.length - 1} away={view !== null} onnav={nav} /></div>
     <footer><p class="src">The opponent plays what your level plays, then Stockfish. Cards are not touched.</p></footer>
   {/if}
-  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>Esc</kbd> leave</p>
+  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>←</kbd><kbd>→</kbd> look back <kbd>Esc</kbd> leave</p>
   </div>
 </div>
 
@@ -207,7 +229,8 @@
   .msg.warn .g { background: var(--sun); color: #3c2a0b; }
   .msg.good { color: #8be0b6; } .msg.bad { color: #feb6a8; } .msg.warn { color: #ffd38d; }
   .strip { display: flex; gap: 4px; padding: 10px 16px; min-height: 46px; overflow: hidden; }
-  .strip span { white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--night-ink-2); padding: 4px 7px; border-radius: 8px; }
+  .navrow { padding: 0 16px; }
+  .strip button { white-space: nowrap; font-size: 15px; font-weight: 600; color: var(--night-ink-2); padding: 4px 7px; border-radius: 8px; }
   .strip .last { background: var(--night-3); color: var(--night-ink); }
   footer { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 8px 16px 6px; }
   .src { font-size: 13px; color: var(--night-ink-2); }

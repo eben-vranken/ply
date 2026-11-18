@@ -50,8 +50,13 @@ export class Engine {
       const cp = t[si + 1] === 'mate' ? (v > 0 ? 10000 - v : -10000 - v) : v;
       lines.set(k, { cp, pv: t.slice(t.indexOf('pv') + 1), depth: +t[t.indexOf('depth') + 1] });
     });
-    return [...lines.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
+    // a search stopped mid-depth can leave line 2 from the depth before naming line 1's new move: keep each first move once
+    const seen = new Set<string>();
+    return [...lines.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v).filter((l) => !seen.has(l.pv[0]) && !!seen.add(l.pv[0]));
   }
+
+  /** end the running search early (it still answers with bestmove) */
+  stop() { this.send('stop'); }
 
   quit() { try { this.send('quit'); } catch { /* gone */ } this.w.terminate(); }
 }

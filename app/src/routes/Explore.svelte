@@ -16,10 +16,21 @@
   import MiniBoard from '../lib/MiniBoard.svelte';
   import { desk } from '../lib/desk.svelte';
   import { takeOff } from '../lib/flight';
+  import { MoveTree } from '../lib/tree.svelte';
+  import NavBar from '../lib/NavBar.svelte';
 
   const q = new URLSearchParams(route.path.split('?')[1] ?? '');
   let side = $state<Side>((q.get('side') as Side) ?? 'w');
-  let path = $state<string[]>(q.get('p')?.split(' ').filter(Boolean) ?? []);
+  // the moves you have been through, as on Lichess: back and forward walk it, a new move is a variation
+  const tree = new MoveTree();
+  tree.setPath(q.get('p')?.split(' ').filter(Boolean) ?? []);
+  const path = $derived.by(() => { void tree.rev; return tree.path; });
+  const setPath = (p: string[]) => tree.setPath(p);
+  const playMove = (u: string) => { tree.play(u); };
+  // the crumbs: the way here, then where forward leads (dimmed)
+  const crumbs = $derived.by(() => { void tree.rev; const c = tree.cur; return { done: tree.lineTo(c), ahead: tree.mainFrom(c) }; });
+  // your own arrows, per position
+  let arrows = $state<Record<string, DrawShape[]>>({});
   let search = $state('');
   let toast = $state('');
   let editing = $state(false);
@@ -36,7 +47,7 @@
     lastRoute = r;
     const p = new URLSearchParams(r.split('?')[1] ?? '');
     side = (p.get('side') as Side) ?? side;
-    path = p.get('p')?.split(' ').filter(Boolean) ?? [];
+    setPath(p.get('p')?.split(' ').filter(Boolean) ?? []);
   });
   $effect(() => { void path; showRare = false; preview = null; });
 
@@ -68,22 +79,23 @@
   });
 
   function say(t: string) { toast = t; setTimeout(() => (toast = ''), 2800); }
-  const back = () => { if (path.length) path = path.slice(0, -1); };
+  const back = () => { tree.back(); };
   let promo = $state<{ from: string; to: string } | null>(null);
   let boardRev = $state(0);
   function onBoardMove(from: string, to: string) {
     const c = new Chess(fenOf(epd));
     const p = c.get(from as never);
     if (p?.type === 'p' && (to[1] === '8' || to[1] === '1')) { promo = { from, to }; return; }
-    path = [...path, from + to];
+    playMove(from + to);
   }
   const legalNow = () => (editing || confirmDev || promo ? null : new Chess(pos.fen).moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })));
   function onkey(a: KeyAction): boolean {
-    if ((a === 'back' || a === 'undo') && path.length) { back(); return true; }
+    if (a === 'undo') return tree.back();
+    if (a === 'back' || a === 'fwd' || a === 'first' || a === 'last') { tree.key(a); return true; }
     if (a === 'stop' && drillOpen) { drillOpen = false; return true; }
     return false;
   }
-  function pickPromo(piece: string) { const p = promo!; promo = null; path = [...path, p.from + p.to + piece]; }
+  function pickPromo(piece: string) { const p = promo!; promo = null; playMove(p.from + p.to + piece); }
   function cancelPromo() { promo = null; boardRev++; }
 
   // ---------- Learn from here
@@ -173,7 +185,7 @@
   {#if hits.length}
     <ul class="hits card">
       {#each hits as h (h.id)}
-        <li><button onclick={() => { path = h.uci.slice(); search = ''; }}><span class="t-name">{h.name}</span><span class="eco">{h.eco}</span></button></li>
+        <li><button onclick={() => { setPath(h.uci.slice()); search = ''; }}><span class="t-name">{h.name}</span><span class="eco">{h.eco}</span></button></li>
       {/each}
     </ul>
   {/if}
@@ -183,21 +195,24 @@
   <div class="where">
     <p class="t-name nm">{name[1]}{#if name[0]}<span class="eco">{name[0]}</span>{/if}</p>
     <div class="crumbs">
-      <button class="crumb home" onclick={() => (path = [])} aria-label="Start position">Start</button>
-      {#each sans(path) as m, i}
-        <button class="crumb" class:cur={i === path.length - 1} onclick={() => (path = path.slice(0, i + 1))}>{#if i % 2 === 0}<em>{i / 2 + 1}.</em>{/if}{m}</button>
+      <button class="crumb home" class:cur={!path.length} onclick={() => tree.first()} aria-label="Start position">Start</button>
+      {#each crumbs.done as n, i (n.id)}
+        <button class="crumb" class:cur={i === crumbs.done.length - 1} onclick={() => tree.goto(n)}>{#if n.ply % 2 === 1}<em>{(n.ply + 1) / 2}.</em>{/if}{n.san}</button>
+      {/each}
+      {#each crumbs.ahead as n (n.id)}
+        <button class="crumb ahead" onclick={() => tree.goto(n)}>{#if n.ply % 2 === 1}<em>{(n.ply + 1) / 2}.</em>{/if}{n.san}</button>
       {/each}
     </div>
   </div>
 
-  <div class="bw" role="presentation" bind:this={boardEl} ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { if (e.changedTouches[0].clientX - sx > 70) back(); }}>
-    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} shapes={hoverShapes} onmove={onBoardMove} />
+  <div class="bw" role="presentation" bind:this={boardEl} ontouchstart={(e) => (sx = e.touches[0].clientX)} ontouchend={(e) => { const dx = e.changedTouches[0].clientX - sx; if (dx > 70) back(); else if (dx < -70) tree.fwd(); }}>
+    <Board fen={pos.fen} {side} lastMove={pos.last} check={pos.check} dests={pos.dests} rev={boardRev} shapes={hoverShapes} drawn={arrows[path.join(' ')] ?? []} ondraw={(sh) => (arrows = { ...arrows, [path.join(' ')]: sh })} onmove={onBoardMove} />
     {#if promo}<Promo side={pos.turn} onpick={pickPromo} oncancel={cancelPromo} />{/if}
-    <MoveInput legal={legalNow} onmove={(u) => (path = [...path, u])} onaction={onkey} />
+    <MoveInput legal={legalNow} onmove={playMove} onaction={onkey} />
   </div>
+  <div class="navrow"><NavBar canBack={!!path.length} canFwd={crumbs.ahead.length > 0} onnav={(a) => tree.key(a)} /></div>
 
   <div class="acts">
-    <button class="btn quiet sq" onclick={back} disabled={!path.length} aria-label="Step back"><Icon name="back" /></button>
     <button class="btn grow" onclick={learn}>Learn from here</button>
     <button class="btn quiet grow" onclick={() => (drillOpen = !drillOpen)} aria-expanded={drillOpen}>Drill</button>
   </div>
@@ -213,7 +228,7 @@
     </div>
   {/if}
   {#if toast}<p class="toast" role="status">{toast}</p>{/if}
-  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>←</kbd> step back <kbd>/</kbd> jump to an opening</p>
+  <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>←</kbd><kbd>→</kbd> back and forward <kbd>/</kbd> jump to an opening</p>
   </div>
 
   <div class="pane b">
@@ -222,7 +237,7 @@
       <div class="lh"><span>Move</span><span>Played</span><span>Results</span><span>Eval</span></div>
       {#each showRare ? rows : rows.slice(0, 8) as m (m.u)}
         {@const st = isMineRow(m.u) ? stageAt(side, epd, m.u) : null}
-        <button class="mv" class:out={pos.turn !== side && !coveredReply(m.u)} class:pointed={hover?.u === m.u} onclick={() => (path = [...path, m.u])} onpointerenter={(e) => point(e, m.u)} onpointerleave={() => (hover = null)}>
+        <button class="mv" class:out={pos.turn !== side && !coveredReply(m.u)} class:pointed={hover?.u === m.u} onclick={() => playMove(m.u)} onpointerenter={(e) => point(e, m.u)} onpointerleave={() => (hover = null)}>
           <span class="san">
             {m.san}
             <span class="marks">
@@ -331,11 +346,12 @@
   .crumb { flex: none; height: 34px; padding: 0 9px; border-radius: 10px; font-weight: 600; font-size: 14.5px; color: var(--ink-2); background: var(--wash); }
   .crumb em { font-style: normal; opacity: 0.55; margin-right: 2px; font-weight: 500; }
   .crumb.cur { background: var(--ink); color: var(--on-ink); }
+  .crumb.ahead { background: none; color: var(--ink-3); font-weight: 500; }
+  .navrow { margin-top: 14px; }
 
   .bw { position: relative; }
-  .acts { display: flex; gap: 10px; margin: 20px 0 6px; }
+  .acts { display: flex; gap: 10px; margin: 12px 0 6px; }
   .acts .btn { padding: 0 14px; font-size: 16px; white-space: nowrap; }
-  .acts .sq { width: 52px; padding: 0; }
   .drillbox { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; animation: rise 200ms var(--ease) both; }
   .btn.sm { min-height: 46px; font-size: 15px; }
   .rr { display: flex; align-items: center; gap: 12px; min-height: 52px; }
@@ -438,7 +454,7 @@
     .ex .crumbs { flex-wrap: nowrap; overflow-x: auto; }
     .ex .crumb { cursor: pointer; transition: background 140ms; }
     .ex .crumb:not(.cur):hover { background: var(--line); color: var(--ink); }
-    .ex .acts { margin-top: 18px; }
+    .ex .acts { margin-top: 12px; }
     .ex .btn:not(:disabled):hover { filter: brightness(1.06); }
     .ex .keys { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
     .ex .keys kbd { font: inherit; font-weight: 700; font-size: 11.5px; padding: 2px 7px; border-radius: 6px; background: var(--card); box-shadow: 0 1.5px 0 var(--quiet-edge); color: var(--ink-2); margin-left: 8px; }

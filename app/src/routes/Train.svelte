@@ -17,6 +17,7 @@
   import Mascot from '../lib/Mascot.svelte';
   import Board, { type Badge } from '../lib/Board.svelte';
   import EvalBar from '../lib/EvalBar.svelte';
+  import NavBar from '../lib/NavBar.svelte';
   import { Engine } from '../lib/engine/stockfish';
   import { puzzleGame } from '../lib/puzzleGame';
   import Icon from '../lib/Icon.svelte';
@@ -97,7 +98,7 @@
   }
   // the game before a puzzle (fetched from Lichess), so the line reads from move 1
   let pre = $state<string[]>([]);
-  // browsing the whole line after the answer with ← and →: the position after `view` moves, null = the live one
+  // browsing the line with ← and → (while it is your move too, as on Lichess): the position after `view` moves, null = the live one
   let view = $state<number | null>(null);
   const line = $derived.by(() => {
     if (!item) return [];
@@ -112,10 +113,12 @@
   /** the ply number of the line's first move, for "12… Qh5" */
   const lineStart = $derived(pre.length ? 0 : histStart);
   const cur = $derived(view ?? line.length - 1);
-  const browsing = $derived(view !== null && phase === 'answered');
+  /** you can look back while it is your move, and through the whole line once it is answered */
+  const canBrowse = $derived(phase === 'answered' || (phase === 'play' && !!dests && !promo));
+  const browsing = $derived(view !== null && canBrowse);
   const shown = $derived(browsing ? line[view!] : null);
   function goTo(k: number) {
-    if (phase !== 'answered' || !line.length) return;
+    if (!canBrowse || !line.length) return;
     k = Math.max(0, Math.min(line.length - 1, k));
     if (k === cur) return;
     hold();
@@ -243,17 +246,18 @@
     play(from + to);
   }
   /** keyboard: legal moves while it is your turn to answer */
-  const legalNow = () => (phase === 'play' && dests && !promo ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
+  const legalNow = () => (phase === 'play' && dests && !promo && !browsing ? chess.moves({ verbose: true }).map((m) => ({ san: m.san, uci: m.from + m.to + (m.promotion ?? '') })) : null);
   function onkey(a: KeyAction): boolean {
     if (phase === 'brake') { if (a === 'next') { void goOn(); return true; } if (a === 'stop') { complete(); return true; } return false; }
     if (phase === 'complete' || phase === 'summary') { if (a === 'next' || a === 'stop') { leave(); return true; } return false; }
-    if (a === 'hint' && phase === 'play' && dests) { hint(); return true; }
-    if ((a === 'back' || a === 'fwd') && phase === 'answered') { goTo(cur + (a === 'back' ? -1 : 1)); return true; }
+    if (a === 'hint' && phase === 'play' && dests && !browsing) { hint(); return true; }
+    if ((a === 'back' || a === 'fwd' || a === 'first' || a === 'last') && canBrowse) { nav(a); return true; }
     if (a === 'next' && phase === 'answered') { void next(); return true; }
     if (a === 'undo' && phase === 'answered' && !drill && applied && !undone) { void undo(); return true; }
     if (a === 'stop') { stop(); return true; }
     return false;
   }
+  function nav(a: 'back' | 'fwd' | 'first' | 'last') { goTo(a === 'back' ? cur - 1 : a === 'fwd' ? cur + 1 : a === 'first' ? 0 : line.length - 1); }
   function pickPromo(piece: string) { const p = promo!; promo = null; play(p.from + p.to + piece); }
   function cancelPromo() { promo = null; rev++; }
 
@@ -550,7 +554,7 @@
   <div class="strip" bind:this={strip} style={tint ? `--line:${tint.colour}` : undefined}>
     {#each line.slice(1) as m, i}
       {@const ply = lineStart + i}
-      <button class:last={i + 1 === cur} class:br={i >= branchAt} class:end={lineDone && i === line.length - 2} disabled={phase !== 'answered'} onclick={() => goTo(i + 1)}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m.san}</button>
+      <button class:last={i + 1 === cur} class:br={i >= branchAt} class:end={lineDone && i === line.length - 2} disabled={!canBrowse} onclick={() => goTo(i + 1)}>{#if ply % 2 === 0}<em>{ply / 2 + 1}.</em>{:else if i === 0}<em>{(ply + 1) / 2}…</em>{/if}{m.san}</button>
     {/each}
     {#if line.length <= 1}<span class="ghost">1.</span>{/if}
   </div>
@@ -716,12 +720,13 @@
         {/if}
       </div>
       {@render moves()}
+      <div class="navrow"><NavBar dark canBack={cur > 0 && canBrowse} canFwd={cur < line.length - 1 && canBrowse} away={browsing} onnav={nav} /></div>
       <footer>
-        <button class="btn night" onclick={hint} disabled={!dests}><Icon name="hint" size={20} /> Hint</button>
-        {#if retry}<button class="btn night" onclick={showMe} disabled={!dests || fixing}><Icon name="explore" size={20} /> Show me</button>{/if}
+        <button class="btn night" onclick={hint} disabled={!dests || browsing}><Icon name="hint" size={20} /> Hint</button>
+        {#if retry}<button class="btn night" onclick={showMe} disabled={!dests || fixing || browsing}><Icon name="explore" size={20} /> Show me</button>{/if}
         <p class="src">{item.source ?? ''}<span class="keyhelp">Type a move · ? hint · Esc stop</span></p>
       </footer>
-      <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>?</kbd> hint <kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
+      <p class="keys" aria-hidden="true"><kbd>Nf3</kbd> type a move <kbd>?</kbd> hint <kbd>←</kbd><kbd>→</kbd> look back <kbd>Esc</kbd> {drill || run.mode === 'learn' ? 'stop' : 'leave'}</p>
     {:else}
       <div class="answer {gradeInfo[0]}">
         <div class="row">
@@ -746,11 +751,8 @@
           </button>
         {/if}
       </div>
-      <div class="browse">
-        <button class="btn night sq" onclick={() => goTo(cur - 1)} disabled={cur === 0} aria-label="Previous move"><Icon name="back" size={20} /></button>
-        <div class="grow">{@render moves()}</div>
-        <button class="btn night sq" onclick={() => goTo(cur + 1)} disabled={cur >= line.length - 1} aria-label="Next move"><Icon name="next" size={20} /></button>
-      </div>
+      {@render moves()}
+      <div class="navrow"><NavBar dark canBack={cur > 0} canFwd={cur < line.length - 1} away={browsing} onnav={nav} /></div>
       <footer>
         {#if !drill}<button class="btn night sq" onclick={undo} disabled={undone || !applied || phase === 'replay'} aria-label="Undo grade"><Icon name="undo" size={22} /></button>{/if}
         {#if auto}<button class="btn night stay" onclick={hold}>Stay</button>{/if}
@@ -856,9 +858,7 @@
   .room.tinted.lit::before { opacity: 0.3; }
   .strip button:disabled { opacity: 1; cursor: default; }
   .strip button:not(:disabled):hover { color: var(--night-ink); background: var(--night-2); }
-  .browse { display: flex; align-items: center; gap: 6px; padding: 8px 8px 0; }
-  .browse .sq { width: 44px; height: 44px; padding: 0; flex: none; }
-  .browse .strip { padding: 4px 4px; min-height: 40px; }
+  .navrow { padding: 6px 12px 0; }
 
   footer { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 8px 16px 6px; }
   .src { font-size: 13px; color: var(--night-ink-2); text-align: right; flex: 1; }
@@ -977,7 +977,7 @@
     .room.board .prompt { min-height: 96px; padding-top: 18px; border-top: 1px solid var(--night-3); margin-top: 4px; }
     .room.board .ask { font-size: 30px; }
     .room.board .msg { font-size: 19px; }
-    .room.board .browse .strip::before { display: none; }
+
     .room.board .strip { flex-wrap: wrap; overflow: visible; padding: 14px 16px 8px; gap: 2px 4px; align-content: flex-start; }
     .room.board .strip::before { content: 'The line so far'; flex: 0 0 100%; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--night-ink-2); opacity: 0.8; margin-bottom: 4px; }
     .room.board .answer { margin: 14px 8px 0; background-clip: padding-box; }

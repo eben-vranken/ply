@@ -11,7 +11,7 @@
   import Icon from './Icon.svelte';
 
   let { current }: { current: string } = $props();
-  const tabs = [['/today', 'today', 'Today'], ['/explore', 'explore', 'Explore'], ['/repertoire', 'repertoire', 'Repertoire'], ['/stats', 'stats', 'Stats'], ['/settings', 'settings', 'Settings']] as const;
+  const tabs = [['/today', 'today', 'Today'], ['/explore', 'explore', 'Explore'], ['/games', 'games', 'Games'], ['/repertoire', 'repertoire', 'Repertoire'], ['/stats', 'stats', 'Stats'], ['/settings', 'settings', 'Settings']] as const;
   let stats = $state<StatsData | null>(null);
   $effect(() => { void model.rev; void loadStats(allCards().values(), app.rollover).then((s) => (stats = s)); });
   const xp = $derived.by(() => { void app.xpToday; void app.xpDay; return xpToday(); });
