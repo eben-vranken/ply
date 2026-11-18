@@ -42,6 +42,13 @@ export interface Opening {
   uci: string[];
   san: string;
 }
+/**
+ * ideas-<band>.json.gz (docs/DATA_CONTRACT.md): at a position, the opponent's best move if the side to
+ * move passed (the threat), what it would gain them, and the common moves there that stop it.
+ */
+export interface Idea { t: string; g: number; s: string[] }
+export type Ideas = Record<string, Idea>;
+
 export interface Manifest {
   version: string;
   month: string;
@@ -86,8 +93,10 @@ export async function fetchManifest(): Promise<Manifest> {
 }
 
 export const filesFor = (band: number) => ['openings.json', 'puzzles.json.gz', `tree-${band}.json.gz`, `traps-${band}.json.gz`];
+/** Files the app does without: fetched when the manifest lists them, never blocking a launch. */
+export const optionalFor = (band: number) => [`ideas-${band}.json.gz`];
 
-export interface Loaded { tree: Tree; traps: Trap[]; puzzles: Puzzle[]; openings: Opening[]; version: string; band: number }
+export interface Loaded { tree: Tree; traps: Trap[]; puzzles: Puzzle[]; openings: Opening[]; ideas: Ideas; version: string; band: number }
 
 /**
  * Make sure every file for `band` is stored locally, downloading what is missing
@@ -99,20 +108,28 @@ export async function ensureFiles(band: number, progress?: (done: number, total:
   const stored = (await db.data.get('manifest.json'))?.text;
   let manifest: Manifest | null = stored ? JSON.parse(stored) : null;
   const missing = have.some((h) => !h);
-  if (missing || update) {
+  const extra = optionalFor(band), haveExtra = await db.data.bulkGet(extra);
+  if (missing || update || haveExtra.some((h) => !h)) {
     try { manifest = await fetchManifest(); } catch (e) { if (missing) throw e; return manifest?.version ?? ''; }
   }
   if (!manifest) throw new Error('No data manifest');
-  const todo = need.filter((n, i) => {
+  const stale = (names: string[], had: typeof have) => names.filter((n, i) => {
     const f = manifest!.files.find((x) => x.name === n);
-    return !have[i] || (f && have[i]!.sha256 !== f.sha256);
+    return !had[i] || (f && had[i]!.sha256 !== f.sha256);
   });
+  const todo = stale(need, have);
+  // an optional file only when this manifest has it; a failed download is tried again next launch
+  const todoExtra = stale(extra, haveExtra).filter((n) => manifest!.files.some((x) => x.name === n));
   const total = todo.reduce((s, n) => s + (manifest!.files.find((x) => x.name === n)?.bytes ?? 0), 0);
   let done = 0;
   for (const name of todo) {
     const f = manifest.files.find((x) => x.name === name);
     const bytes = await fetchBytes(name, (n) => { done += n; progress?.(done, total); });
     await db.data.put({ name, bytes, sha256: f?.sha256 ?? '', version: manifest.version });
+  }
+  for (const name of todoExtra) {
+    const f = manifest.files.find((x) => x.name === name)!;
+    try { await db.data.put({ name, bytes: await fetchBytes(name, () => {}), sha256: f.sha256, version: manifest.version }); } catch { /* next launch */ }
   }
   await db.data.put({ name: 'manifest.json', text: JSON.stringify(manifest), version: manifest.version, sha256: '' });
   return manifest.version;
@@ -127,7 +144,10 @@ export async function loadBand(band: number): Promise<Loaded> {
     gunzipText(t.bytes).then(JSON.parse),
     gunzipText(r.bytes).then(JSON.parse)
   ]);
-  return { openings, puzzles, tree, traps, version: m?.version ?? '', band };
+  const i = await db.data.get(`ideas-${band}.json.gz`);
+  let ideas: Ideas = {};
+  try { if (i?.bytes) ideas = JSON.parse(await gunzipText(i.bytes)); } catch { /* without ideas, Learn reads the board only */ }
+  return { openings, puzzles, tree, traps, ideas, version: m?.version ?? '', band };
 }
 
 /** Is a newer data version published? */

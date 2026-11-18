@@ -102,6 +102,46 @@
       "name": "puzzles.json.gz",
       "bytes": 786853,
       "sha256": "b1111b8f4365cfc2c5a8f984298929067a7539bdd0a1d0db26de0da9bfd74dc4"
+    },
+    {
+      "name": "ideas-1000.json.gz",
+      "bytes": 314630,
+      "sha256": "f0f6ec12113ced746b146eec4f6e32fa0ebbea280b482163d80570d1657f0589"
+    },
+    {
+      "name": "ideas-1200.json.gz",
+      "bytes": 315001,
+      "sha256": "4084c918dab3d8b6b086aa710df1a0d445a005a922bc6cdc6a05a07157ea5636"
+    },
+    {
+      "name": "ideas-1400.json.gz",
+      "bytes": 308841,
+      "sha256": "457088da38f3338e4eb0fe4a176f41e4f423657be38b00ef6a4e269c4848fc12"
+    },
+    {
+      "name": "ideas-1600.json.gz",
+      "bytes": 302356,
+      "sha256": "4de2c06a47235c2f3acce25b547d2a97cb47f94a04bb8c39d8dbb006ad499ea0"
+    },
+    {
+      "name": "ideas-1800.json.gz",
+      "bytes": 307813,
+      "sha256": "ca3c5881b1212a14f398edf1c1734a5c512ebd41ad265ad8c737959c86273272"
+    },
+    {
+      "name": "ideas-2000.json.gz",
+      "bytes": 323483,
+      "sha256": "8b64a0233b231e75a40399e55e5733da23c620e1ce70981ffdbfd0c5b2466831"
+    },
+    {
+      "name": "ideas-2200.json.gz",
+      "bytes": 361063,
+      "sha256": "b84e548687fe15ad5f7b43ba0066ac7c141ebc730ab644959730379ce3c4c34f"
+    },
+    {
+      "name": "ideas-2400.json.gz",
+      "bytes": 200690,
+      "sha256": "c0bf4359128c72d108904999afd51c8e99cce09b14717a81cb2a40933cb5c844"
     }
   ]
 }

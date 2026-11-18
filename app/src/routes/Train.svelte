@@ -4,7 +4,8 @@
   import type { DrawShape } from '@lichess-org/chessground/draw';
   import { app, go, run } from '../lib/state.svelte';
   import { fenOf, epdOf, epdAfter, dests as destsOf, san as sanOf, turnOf, child, type Side } from '../lib/chess';
-  import { allCards, applyOutcome, data, drillContinue, markAgain, isCard, nameOf, learnItemsFor, movesAt, learnBrake, type Applied } from '../lib/model.svelte';
+  import { allCards, applyOutcome, data, drillContinue, markAgain, isCard, nameOf, learnItemsFor, movesAt, learnBrake, nextInLine, type Applied } from '../lib/model.svelte';
+  import { teach, passed, type Teach } from '../lib/teach';
   import { whenText } from '../lib/srs/fsrs';
   import type { Item, AskResult } from '../lib/session';
   import { sfx, buzz } from '../lib/fx';
@@ -141,6 +142,31 @@
   let why = $state('');
   let coach = $state('');
   function tip(k: Tip) { const t = tipOnce(k); if (t) coach = t; return !!t; }
+  /** a new move: the idea before you play it (lib/teach.ts), and the demonstrations it offers */
+  let lesson = $state<Teach | null>(null);
+  let demoing = $state(false);
+  function lessonAt(epd: string, u: string, side: Side): Teach {
+    const D = data();
+    const last = chess.history({ verbose: true }).at(-1);
+    return teach({
+      epd, uci: u, node: D?.tree[epd], childNode: (x) => D?.tree[child(epd, x)], idea: D?.ideas?.[epd],
+      last: last ? { to: last.to, captured: !!last.captured } : undefined, next: nextInLine(side, epd, u)
+    });
+  }
+  /** play the threat (as if you had passed) or what the move prepares, then put the board back */
+  function demo(kind: 'threat' | 'prepares') {
+    if (!lesson || demoing || phase !== 'play') return;
+    const frames: { fen: string; last: [string, string] }[] = [];
+    const c = new Chess(kind === 'threat' ? fenOf(passed(epdOf(chess))) : chess.fen());
+    for (const u of kind === 'threat' ? [lesson.threat!] : lesson.prepares!) {
+      try { const m = c.move(toMove(u)); frames.push({ fen: c.fen(), last: [m.from, m.to] }); } catch { break; }
+    }
+    if (!frames.length) return;
+    const keep = { last: lastMove, shapes, dests };
+    demoing = true; dests = null; shapes = [];
+    frames.forEach((f, i) => setTimeout(() => { fen = f.fen; lastMove = f.last; sfx.move(); }, 150 + i * 750));
+    setTimeout(() => { fen = chess.fen(); lastMove = keep.last; shapes = keep.shapes; dests = keep.dests; demoing = false; }, 150 + frames.length * 750 + 1100);
+  }
   function reason(epd: string, u: string) { const n = data()?.tree[epd], row = n?.m.find((m) => m[0] === u); return explain(epd, u, n && row && n.g ? row[1] / n.g : undefined); }
   let levelUp = $state<Level | null>(null);
   let goalHit = $state(false);
@@ -173,7 +199,7 @@
     step = 0; wrong = false; hinted = false; playable = false; results = {}; fixing = false; showOthers = false;
     view = null; pre = [];
     if (it.puzzle) void puzzleGame(it.puzzle, fenOf(it.start)).then((u) => { if (u && idx === i && items[i] === it) pre = u; });
-    phase = 'play'; msg = null; badge = null; shapes = []; lastMove = null; dests = null; applied = null; cheer = null; auto = false; lastXp = 0; why = ''; coach = '';
+    phase = 'play'; msg = null; badge = null; shapes = []; lastMove = null; dests = null; applied = null; cheer = null; auto = false; lastXp = 0; why = ''; coach = ''; lesson = null; demoing = false;
     sync();
     timer = setTimeout(advance, 450);
   }
@@ -202,11 +228,13 @@
     const a = it.asks[step];
     if (a?.intro) {
       const e = peek(it.moves[step]);
-      shapes = [{ orig: e.from as never, dest: e.to as never, brush: 'good' }];
-      msg = { tone: 'info', text: `New move. Play ${e.san}` };
-      why = reason(epdOf(chess), it.moves[step]);
+      lesson = lessonAt(epdOf(chess), it.moves[step], it.side);
+      const t = lesson.threat;
+      shapes = [{ orig: e.from as never, dest: e.to as never, brush: 'good' }, ...(t ? [{ orig: t.slice(0, 2) as never, dest: t.slice(2, 4) as never, brush: 'bad' }] : [])];
+      msg = { tone: 'info', text: lesson.plain ? `New move. Play ${e.san}` : `New move: ${e.san}. The idea first, then play it` };
+      why = lesson.text;
       tip('intro');
-    } else { why = ''; if (it.kind === 'line' || it.kind === 'new') tip('quiz'); }
+    } else { why = ''; lesson = null; if (it.kind === 'line' || it.kind === 'new') tip('quiz'); }
   }
 
   function onmove(from: string, to: string) {
@@ -676,6 +704,12 @@
             </p>
           {/key}
           {#if item.asks[step]?.intro && (item.note || why)}<p class="note inl">{item.note || why}</p>
+            {#if lesson && !lesson.plain && (lesson.threat || lesson.prepares)}
+              <p class="demos">
+                {#if lesson.threat}<button class="link" disabled={demoing} onclick={() => demo('threat')}><Icon name="warn" size={16} /> See the threat</button>{/if}
+                {#if lesson.prepares}<button class="link" disabled={demoing} onclick={() => demo('prepares')}><Icon name="next" size={16} /> See what it prepares</button>{/if}
+              </p>
+            {/if}
           {:else if why && msg.tone === 'bad'}<p class="note inl">{why}</p>{/if}
         {:else}
           <p class="ask">{item.prompt}</p>
@@ -729,6 +763,9 @@
 </div>
 
 <style>
+  .demos { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0 0 38px; }
+  .demos .link { display: inline-flex; align-items: center; gap: 5px; color: var(--sun); font-size: 14px; font-weight: 650; }
+  .demos .link:disabled { opacity: 0.5; }
   .pips { display: flex; align-items: center; gap: 5px; margin: 4px 0 0; font-size: 13px; color: var(--night-ink-2); flex-wrap: wrap; }
   .pips i { width: 9px; height: 9px; border-radius: 50%; background: var(--night-3); transition: background 200ms; }
   .pips i.due { box-shadow: inset 0 0 0 2px var(--sun); }

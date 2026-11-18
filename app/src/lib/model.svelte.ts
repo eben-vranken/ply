@@ -1126,6 +1126,15 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
   };
 }
 
+/** Your next move in the line after this one and the most played reply to it (lib/teach.ts, "prepares"). */
+export function nextInLine(side: Side, epd: string, uci: string): { reply: string; move: string } | undefined {
+  const q = child(epd, uci), n = D?.tree[q];
+  if (!n?.m.length) return;
+  const reply = n.m.reduce((b, r) => (r[1] > b[1] ? r : b))[0];
+  const move = movesAt(side, child(q, reply))[0];
+  return move ? { reply, move } : undefined;
+}
+
 /** Your other move at this position was reviewed in the last 3 days (srs: interference between branch twins). */
 function siblingRecent(side: Side, epd: string, move: string, now: Date): boolean {
   return movesAt(side, epd).some((o) => {

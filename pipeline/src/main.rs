@@ -9,6 +9,7 @@ mod chess;
 mod emit;
 mod evals;
 mod games;
+mod ideas;
 mod openings;
 mod positions;
 mod source;
@@ -35,6 +36,26 @@ enum Cmd {
     Build(Build),
     /// Count the distinct positions in the band trees and how many reach 50, 200 and 1,000 games.
     Positions(Positions),
+    /// What each common move stops: the threat after a pass, per position (ideas-<band>.json.gz).
+    Ideas(Ideas),
+}
+
+#[derive(Parser)]
+struct Ideas {
+    /// Directory with manifest.json and tree-<band>.json.gz (the app's public/data); the files are written here
+    #[arg(long, default_value = "../app/public/data")]
+    data: PathBuf,
+    /// Stockfish binary
+    #[arg(long, default_value = "stockfish")]
+    stockfish: String,
+    #[arg(long, default_value_t = 12)]
+    depth: u32,
+    /// Parallel single-threaded Stockfish processes
+    #[arg(long, default_value_t = 10)]
+    procs: usize,
+    /// Searches done before, as JSON lines
+    #[arg(long, default_value = "cache/ideas.jsonl")]
+    cache: PathBuf,
 }
 
 #[derive(Parser)]
@@ -108,6 +129,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
         Cmd::Build(b) => build(b),
+        Cmd::Ideas(i) => ideas::run(&i.data, &i.stockfish, i.depth, i.procs, &i.cache),
         Cmd::Positions(p) => {
             let m: emit::Manifest = serde_json::from_reader(std::fs::File::open(p.data.join("manifest.json")).context("manifest.json")?)?;
             let trees = m.bands.iter().map(|&b| Ok((b, positions::read_tree(&p.data.join(format!("tree-{b}.json.gz")))?))).collect::<Result<Vec<_>>>()?;

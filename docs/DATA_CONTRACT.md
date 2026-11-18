@@ -15,6 +15,7 @@ Moves are UCI everywhere (`e2e4`, `e1g1` for castling, `e7e8q` for promotion).
 | `tree-<band>.json.gz` | per band | the opening tree for one band |
 | `traps-<band>.json.gz` | per band | Punish and Danger cards for one band |
 | `puzzles.json.gz` | global | filtered Lichess opening puzzles |
+| `ideas-<band>.json.gz` | per band, optional | the threat after a pass and the common moves that stop it (`ply-data ideas`) |
 
 Bands: 1000, 1200, 1400, 1600, 1800, 2000. A band covers games where **both** players are rated band − 100 … band + 99 on Lichess.
 
@@ -104,6 +105,22 @@ interface Puzzle {
 ```
 
 Kept: OpeningTags not empty, full-move number ≤ 15, Popularity ≥ 80, NbPlays ≥ 300, Rating ≤ 2000. Tags match opening names with underscores turned into spaces, case and punctuation ignored. At most 150 per opening family (the first tag), most played first.
+
+## ideas-&lt;band&gt;.json.gz
+
+Written by `ply-data ideas` from the built trees (not by `build`), so it runs without the game or eval databases. Optional: the app downloads it when the manifest lists it and teaches from the board alone without it.
+
+```ts
+type Ideas = Record<string /* EPD, side to move = the side whose move is learned */, {
+  t: string;    // the opponent's best move if the side to move passed (UCI)
+  g: number;    // what that gains them over the position's eval, centipawns (≥ 100)
+  s: string[];  // common moves here (≥ 3% of games, or the default move) that stop it
+}>;
+```
+
+- Stockfish 17, depth 12, on the position with the other side to move and no en passant (positions where the side to move is in check are skipped).
+- A move stops the threat when the threat is illegal after it, or is no longer the opponent's best move there (same depth).
+- Only positions where at least one common move stops a threat are listed.
 
 ## Sources and licences
 
