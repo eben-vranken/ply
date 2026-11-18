@@ -74,6 +74,8 @@ export interface ReviewRow extends Tracked {
   stage: 'new' | 'learning' | 'young' | 'mature';
   /** card before the review, so Undo grade can restore it */
   prev?: FsrsCard | null;
+  /** 1 when the card was not due: a move played on the way along a line (docs/ROADMAP.md, phase 1a) */
+  implicit?: 1;
 }
 
 export interface RepRow extends Tracked {

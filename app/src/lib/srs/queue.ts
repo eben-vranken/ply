@@ -3,7 +3,7 @@
 import type { CardRow } from '../db';
 import { START_EPD, child, type Side } from '../chess';
 import type { Lines, MoveSpec } from './lines';
-import { pathTo } from './lines';
+import { pathTo, otherOrders } from './lines';
 
 export interface Limits {
   newMoves: number;
@@ -47,6 +47,9 @@ export interface QueueInput {
   retrievability: (c: CardRow) => number;
 }
 
+/** Below this retrievability a card that is not due yet counts as nearly due. */
+export const NEAR_R = 0.95;
+
 const isTrap = (c: CardRow) => c.type === 'punish' || c.type === 'danger';
 const isNew = (c: CardRow) => c.fsrs.state === 0;
 
@@ -55,8 +58,9 @@ const isNew = (c: CardRow) => c.fsrs.state === 0;
  * line reaching it, and every other due card on that path. The line ends after
  * your move at its deepest due card.
  */
-export function groupLines(due: CardRow[], lines: Partial<Record<Side, Lines>>): QItem[] {
+export function groupLines(due: CardRow[], lines: Partial<Record<Side, Lines>>, near: CardRow[] = []): QItem[] {
   const left = new Map(due.map((c) => [c.id, c]));
+  const nearKeys = new Set(near.map((c) => c.side + c.epd + c.move));
   const out: QItem[] = [];
   const plyOf = (c: CardRow) => lines[c.side]?.pos.get(c.epd)?.ply ?? c.path?.length ?? 0;
   const order = [...due].sort((a, b) => plyOf(b) - plyOf(a) || a.id.localeCompare(b.id));
@@ -64,16 +68,26 @@ export function groupLines(due: CardRow[], lines: Partial<Record<Side, Lines>>):
     if (!left.has(deep.id)) continue;
     const L = lines[deep.side];
     const inLines = L?.pos.has(deep.epd);
-    const prefix = inLines ? pathTo(L!, deep.epd) : (deep.path ?? []);
-    const path = [...prefix, deep.move];
-    // other due cards whose (position, move) lies on this path
-    const onPath: string[] = [];
     const byPos = new Map<string, CardRow[]>();
     for (const c of left.values()) if (c.side === deep.side) (byPos.get(c.epd) ?? byPos.set(c.epd, []).get(c.epd)!).push(c);
-    const epds = epdsAlong(path);
-    for (let i = 0; i < path.length; i++) {
-      for (const c of byPos.get(epds[i]) ?? []) if (c.move === path[i]) onPath.push(c.id);
+    // other due cards whose (position, move) lies on a path
+    const dueOn = (path: string[], epds: string[]) => {
+      const ids: string[] = [];
+      for (let i = 0; i < path.length; i++) for (const c of byPos.get(epds[i]) ?? []) if (c.move === path[i]) ids.push(c.id);
+      return ids;
+    };
+    const nearOn = (path: string[], epds: string[]) => path.reduce((n, u, i) => n + (nearKeys.has(deep.side + epds[i] + u) ? 1 : 0), 0);
+    // where the position has other move orders, take the one through the most due cards, then the most
+    // nearly due ones (they are credited on the way), then the most probable (the first)
+    const prefixes = inLines ? [pathTo(L!, deep.epd), ...otherOrders(L!, deep.epd)] : [deep.path ?? []];
+    let best: { path: string[]; onPath: string[]; near: number } | null = null;
+    for (const pre of prefixes) {
+      const path = [...pre, deep.move];
+      const epds = epdsAlong(path);
+      const cand = { path, onPath: dueOn(path, epds), near: nearOn(path, epds) };
+      if (!best || cand.onPath.length > best.onPath.length || (cand.onPath.length === best.onPath.length && cand.near > best.near)) best = cand;
     }
+    const { path, onPath } = best!;
     for (const id of onPath) left.delete(id);
     left.delete(deep.id);
     out.push({ kind: 'line', side: deep.side, path, due: onPath.includes(deep.id) ? onPath : [...onPath, deep.id] });
@@ -97,7 +111,9 @@ export function buildQueue(q: QueueInput): QItem[] {
 
   const items: QItem[] = [];
   // 1. due Move cards, as lines
-  items.push(...groupLines(due.filter((c) => c.type === 'move'), q.lines));
+  // cards not due yet but slipping (R < 0.95): a line through them credits them on the way
+  const near = active.filter((c) => c.type === 'move' && !isNew(c) && c.due > q.now && q.retrievability(c) < NEAR_R);
+  items.push(...groupLines(due.filter((c) => c.type === 'move'), q.lines, near));
   // 2. due Punish and Danger cards
   for (const c of due.filter(isTrap).sort((a, b) => a.due - b.due)) items.push({ kind: 'card', card: c });
   // 3. new Move cards: half from the focus openings, the rest by line probability; shown highest probability first

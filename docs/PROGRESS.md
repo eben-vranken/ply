@@ -158,3 +158,11 @@ Still to check on the S20 FE itself: installing from Chrome, opening offline aft
 - **Backlog:** "You played X, it was punished by Y" from your games, as information (not a drilled card). `findMistakes` in `lib/import/mistakes.ts` is kept and tested for it.
 - **Desktop trainer board:** the 820 px cap is lifted, so the board is as tall as the window allows (up to 1400 px) on 1920 x 1080 and larger. Chessground could size the board while the page was still flying in and keep that size; the board now watches its real size for 1.5 s after mount and redraws when it changes. `npm run layouts` has a 2560 x 1440 dark size.
 
+## Lines: credit on the way and the move order (Nov 18)
+
+Phase 1 of `docs/ROADMAP.md`, from `reports/Chess line SRS.md`.
+
+- **Credit for moves that are not due** (`lib/srs/credit.ts`, `applyOutcome`): a correct move on a line that was not due used to update nothing, while a miss gave Again. Both are now FSRS reviews, flagged `implicit: 1`. A correct answer earns nothing for cards in a learning step, cards with difficulty ≥ 8, and cards already reviewed today. Implicit reviews do not count towards the day's review limit or the retention figures; they do go into Your schedule's weight fit, which until now saw the misses without the successes.
+- **Move order of a line** (`groupLines`): where the deepest due card's position has other move orders, the line takes the one through the most due cards, then the most nearly due (R < 0.95), then the most probable.
+- **Tests:** a model test (credit once a day, not against the limit, nothing for a hard card unless it is missed, Undo removes it) and a queue test on a transposition. Vitest 151 passed; `npm run smoke` passes on a build without account keys.
+- **Not done yet:** 1c, checking on real logs how often a card credited on the way lapses at its next due review.

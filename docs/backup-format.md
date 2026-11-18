@@ -130,8 +130,11 @@ interface ReviewRow {
   mode: 'today' | 'learn' | 'drill-again';
   stage: 'new' | 'learning' | 'young' | 'mature'; // before this review
   prev?: object | null;             // FSRS card before the review (for Undo grade)
+  implicit?: 1;                     // the card was not due: a move played on the way along a line
 }
 ```
+
+`implicit` appears from 18 Nov 2026 (no format change: it is optional and readers can ignore it). Such reviews are real FSRS reviews and go into the weight fit, but they do not count towards the daily review limit or the retention figures (`docs/ROADMAP.md`, phase 1a). A miss on a card that was not due was logged before this date too, without the flag; a correct answer on one was not logged at all.
 
 Files written while the Keep going mode existed (November 2026) can hold `mode: 'extra'`: reviews of due cards graded like Today. They import as `'today'`.
 

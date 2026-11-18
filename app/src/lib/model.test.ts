@@ -95,6 +95,50 @@ describe('model on real data', () => {
     expect(r2.rating).toBe(1); // Again
   });
 
+  it('a move that is not due is credited on the way along a line, once a day; hard cards only on a miss', async () => {
+    const { moveId } = await import('./srs/lines');
+    const eA = chess.epdAfter(['e2e4']), eB = chess.epdAfter(['e2e4', 'e7e5', 'g1f3']);
+    const uB = m.movesAt('b', eB)[0];
+    const now = Date.now(), DAY = 864e5;
+    const row = (epd: string, move: string, dueIn: number) => ({
+      id: moveId('b', epd, move), type: 'move' as const, side: 'b' as const, epd, move, answer: [], line: [], label: '', path: [],
+      fsrs: { due: new Date(now + dueIn), stability: 20, difficulty: 5, elapsed_days: 0, scheduled_days: 20, learning_steps: 0, reps: 3, lapses: 0, state: 2, last_review: new Date(now - 10 * DAY) },
+      due: now + dueIn, suspended: 0 as const, created: now - 30 * DAY, lapses: 0
+    });
+    const a = row(eA, 'e7e5', 10 * DAY), b = row(eB, uB, -1000);
+    expect(m.allCards().has(a.id) || m.allCards().has(b.id)).toBe(false);
+    await m.addCards([a, b]);
+    const play = async (wrongAt?: string) => {
+      const q = m.todayCounts().queue.find((x) => x.kind === 'line' && x.due.includes(b.id))!;
+      expect(q).toBeTruthy();
+      const [line] = m.itemsFor([q]);
+      const results: Record<number, { wrong: boolean; hinted: boolean; playable: boolean; ms: number; uci: string; epd: string }> = {};
+      let e = chess.START_EPD;
+      line.moves.forEach((u, i) => { if (line.asks[i]) results[i] = { wrong: line.asks[i].card === wrongAt, hinted: false, playable: false, ms: 1000, uci: u, epd: e }; e = chess.child(e, u); });
+      return m.applyOutcome({ item: line, results }, 'today');
+    };
+    const rowsOf = async (id: string) => (await dbm.db.reviews.toArray()).filter((r) => r.cardId === id);
+    const before = m.doneToday().reviews;
+    const r1 = await play();
+    const got = await rowsOf(a.id);
+    expect(got.map((r) => [r.rating, r.implicit])).toEqual([[3, 1]]);
+    expect(m.allCards().get(a.id)!.due).toBeGreaterThan(now + 10 * DAY);
+    expect(m.doneToday().reviews).toBe(before + 1); // only the due card uses up the limit
+    // the same line again today: the move on the way is not credited twice
+    const cb = m.allCards().get(b.id)!; cb.due = now - 1000; cb.fsrs = { ...cb.fsrs, due: new Date(now - 1000) };
+    const r2 = await play();
+    expect((await rowsOf(a.id)).length).toBe(1);
+    await r2.undo(); await r1.undo();
+    expect((await rowsOf(a.id)).length).toBe(0);
+    // a hard card gets nothing from a correct answer, but a miss still gives Again
+    const ca = m.allCards().get(a.id)!; ca.fsrs = { ...ca.fsrs, difficulty: 9 };
+    const r3 = await play();
+    expect((await rowsOf(a.id)).length).toBe(0);
+    await r3.undo();
+    await play(a.id);
+    expect((await rowsOf(a.id)).map((r) => [r.rating, r.implicit])).toEqual([[1, 1]]);
+  });
+
   it('a line carries the colour of its branch in the skill tree', () => {
     const root = ['e2e4', 'e7e5', 'g1f3', 'b8c6', 'f1c4'];
     const next = (ms: import('./model.svelte').TreeMove[]) => ms.flatMap((r) => (r.mine ? [r] : r.children.filter((c) => c.mine)));

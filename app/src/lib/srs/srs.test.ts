@@ -179,6 +179,25 @@ describe('queue', () => {
     expect(first.due.length).toBe(2);
   });
 
+  it('takes the move order through the most due cards, then the most nearly due ones', () => {
+    const t = treeFrom([[500, 'Nf3 Nf6 g3 g6'], [400, 'g3 Nf6 Nf3 g6']]);
+    const B = generate(makeCtx(t, [], []), none, { side: 'b', depth: 3, replyPct: 0.03 });
+    const at = (ms: string[]) => [...B.cards.values()].find((x) => x.epd === epdAfter(ms))!;
+    const deep = at(['g1f3', 'g8f6', 'g2g3']), viaNf3 = at(['g1f3']), viaG3 = at(['g2g3']);
+    const as = (s: typeof deep) => card({ id: s.id, side: 'b', epd: s.epd, move: s.move });
+    const line = (items: ReturnType<typeof groupLines>) => items[0] as Extract<(typeof items)[0], { kind: 'line' }>;
+    // alone, the most probable order
+    expect(sans(line(groupLines([as(deep)], { b: B })).path).join(' ')).toBe('Nf3 Nf6 g3 g6');
+    // with the other order's first move due, one line takes both
+    const both = groupLines([as(deep), as(viaG3)], { b: B });
+    expect(both.length).toBe(1);
+    expect(sans(line(both).path).join(' ')).toBe('g3 Nf6 Nf3 g6');
+    expect(line(both).due.length).toBe(2);
+    // nothing else due: a nearly due move decides
+    expect(sans(line(groupLines([as(deep)], { b: B }, [as(viaG3)])).path).join(' ')).toBe('g3 Nf6 Nf3 g6');
+    expect(sans(line(groupLines([as(deep)], { b: B }, [as(viaNf3)])).path).join(' ')).toBe('Nf3 Nf6 g3 g6');
+  });
+
   it('orders lines, traps, then new moves and new traps; puzzles and mistakes are never scheduled', () => {
     const items = buildQueue(base({
       cards: [

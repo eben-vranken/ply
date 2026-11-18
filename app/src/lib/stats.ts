@@ -69,13 +69,14 @@ export async function loadStats(cards: Iterable<CardRow>, rollover: number, unkn
   const week = Array.from({ length: 7 }, (_, i) => i <= dow && history[370 - (dow - i)] > 0);
   const weekFrozen = Array.from({ length: 7 }, (_, i) => i <= dow && frozen.has(370 - (dow - i)));
   // retention: first-try correct on reviews of young and mature cards
-  const scored = reviews.filter((r) => r.mode !== 'drill-again' && (r.stage === 'young' || r.stage === 'mature'));
+  // moves credited on the way (not due) are left out, so the figure stays one of due reviews
+  const scored = reviews.filter((r) => r.mode !== 'drill-again' && !r.implicit && (r.stage === 'young' || r.stage === 'mature'));
   const since = (d: number) => scored.filter((r) => r.at >= now - d * DAY);
   const retention = {
     young7: pct(since(7).filter((r) => r.stage === 'young')), mature7: pct(since(7).filter((r) => r.stage === 'mature')),
     young30: pct(since(30).filter((r) => r.stage === 'young')), mature30: pct(since(30).filter((r) => r.stage === 'mature'))
   };
-  const retention7 = pct(reviews.filter((r) => r.at >= now - 7 * DAY && r.stage !== 'new' && r.mode !== 'drill-again'));
+  const retention7 = pct(reviews.filter((r) => r.at >= now - 7 * DAY && r.stage !== 'new' && r.mode !== 'drill-again' && !r.implicit));
   // weakest: most lapses in the last 30 days
   const lapses = new Map<string, number>();
   for (const r of reviews) if (r.at >= now - 30 * DAY && r.rating === 1 && r.stage !== 'new' && r.stage !== 'learning') lapses.set(r.cardId, (lapses.get(r.cardId) ?? 0) + 1);

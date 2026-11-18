@@ -8,7 +8,8 @@ import { START_EPD, child, epdAfter, san, sans, moveOrder, turnOf, fenOf, hashId
 import { branchCues } from './cue';
 import { makeCtx, generate, pathTo, coverage, myMoves, replies, lineReplies, otherOrders, moveId, sectionOf, type Ctx, type Lines, type MoveSpec, type Section, type GenOpts, type Pos } from './srs/lines';
 import { buildQueue, dayStart, type QItem, type TrapSpec } from './srs/queue';
-import { grade, retrievability, stageOf, createEmptyCard, Rating, type Stage, type Card } from './srs/fsrs';
+import { grade, retrievability, stageOf, createEmptyCard, revive, Rating, type Stage, type Card } from './srs/fsrs';
+import { earnsCredit } from './srs/credit';
 import { rate } from './srs/grade';
 import { limitsFor, planCatchUp, dayOf } from './srs/catchup';
 import { setWeights } from './srs/fsrs';
@@ -357,7 +358,8 @@ export function doneToday() {
   const rs = reviewsToday.filter((r) => r.at >= t0);
   const intro = (types: CardType[]) => rs.filter((r) => r.stage === 'new' && types.includes(typeOfCard(r.cardId))).length;
   return {
-    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn').length,
+    // moves credited on the way (not due) do not use up the day's review limit
+    reviews: rs.filter((r) => r.stage !== 'new' && r.mode !== 'learn' && !r.implicit).length,
     newMoves: intro(['move']),
     newTraps: intro(['punish', 'danger']),
     all: rs.length
@@ -850,7 +852,7 @@ function newCardRow(item: Item, id: string, type: CardType, epd: string, move: s
   };
 }
 
-async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[]) {
+async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Good, ms: number, mode: Mode, now: Date, log: { card: CardRow; prev: CardRow | null; rid: number }[], implicit = false) {
   const prev = cards.has(c.id) ? (structuredClone($state.snapshot(c)) as CardRow) : null;
   const stage = stageOf(c.fsrs);
   const next: Card = grade(c.fsrs, rating, now, app.retention / 100);
@@ -860,7 +862,7 @@ async function review(c: CardRow, rating: Rating.Again | Rating.Hard | Rating.Go
   c.suspended = 0;
   cards.set(c.id, c);
   await db.cards.put($state.snapshot(c) as CardRow);
-  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null };
+  const r: ReviewRow = { cardId: c.id, at: +now, rating, ms: Math.round(ms), mode, stage, prev: prev?.fsrs ?? null, ...(implicit ? { implicit: 1 as const } : {}) };
   const rid = await db.reviews.add(r);
   r.id = rid;
   reviewsToday.push(r);
@@ -1003,9 +1005,14 @@ export async function applyOutcome(o: Outcome, mode: Mode): Promise<Applied> {
         continue;
       }
       if (!c) continue;
-      if (res.wrong) { await review(c, Rating.Again, res.ms, mode, now, log); worst = Math.max(worst, 3); due = c.due; continue; }
-      if (!a.graded) continue;
+      if (res.wrong) { await review(c, Rating.Again, res.ms, mode, now, log, !a.graded); worst = Math.max(worst, 3); due = c.due; continue; }
       const r = rate({ wrong: false, hinted: res.hinted, playable: res.playable, times: [res.ms] }, app.hardSeconds);
+      if (!a.graded) {
+        // a move that was not due, played right on the way: it counts too (srs/credit.ts)
+        const t0 = today0();
+        if (earnsCredit(revive(c.fsrs), reviewsToday.some((x) => x.cardId === c!.id && x.at >= t0))) await review(c, r, res.ms, mode, now, log, true);
+        continue;
+      }
       await review(c, r, res.ms, mode, now, log);
       const sev = r === Rating.Hard ? 2 : 1;
       if (sev > worst || due === null) due = c.due;
