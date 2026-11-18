@@ -1,6 +1,12 @@
 # Roadmap: lines, learning one opening at a time, and teaching
 
-From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: learn one opening at a time, and keep learning a move separate from reviewing it. Each phase ships on its own and leaves the app working. Status: ☐ to do, ◐ in progress, ☑ done.
+From `reports/Chess line SRS.md` (18 Nov 2026) and the owner's two additions: learn one opening at a time, and keep learning a move separate from reviewing it. Each phase ships on its own and leaves the app working. Status: ☐ to do, ◐ in progress, ☑ done, ☒ dropped.
+
+**Status on 18 Nov 2026: not finished.** Phases 1–5 are built and pushed (`9d006c1` … `11bda55`). Still open:
+
+- **1c, 2h, 3a (the checks on real data):** use the app for about two weeks, export a backup (Settings → Export backup), run `npm run log-check -- <backup.json>` in `app/`, and decide from it: keep or tighten the credit rule (1c), make landmark lines the default or drop them (2h), keep or rework the branch twins and cue (3a). **Check-in due 2 December 2026.**
+- **2d:** extending a line past its last due move to the next boundary (not built; see DECISIONS.md).
+- **5:** the Learn walkthrough (threat arrow, See the threat, See what it prepares) has not been seen on a real phone.
 
 ## Phase 1. Credit every move you play, and choose paths that cover the most (invisible)
 
